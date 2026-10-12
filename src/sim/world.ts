@@ -21,6 +21,7 @@ import type {
   SimEvent,
   Variant,
   WaveDef,
+  WeaponId,
   World,
 } from './types'
 import { add, dist, fromAngle, scale, sub, vec } from './vec'
@@ -30,6 +31,7 @@ export interface CreateWorldOptions {
   readonly wave: WaveDef
   readonly variant: Variant
   readonly families: FamilyRegistry
+  readonly weapon?: WeaponId // arme en main au départ (Couperet par défaut) ; le banc s'en sert pour jouer la Masse
 }
 
 export const createWorld = (opts: CreateWorldOptions): World => {
@@ -104,7 +106,7 @@ export const createWorld = (opts: CreateWorldOptions): World => {
       vie: TUNING.vieMax,
       ferveur: 0,
       lastFerveurGain: 0,
-      weapon: 'couperet',
+      weapon: opts.weapon ?? 'couperet',
       comboStep: 0,
       dodgeCharges: TUNING.dodge.charges,
       dodgeRechargeAt: null,

@@ -136,6 +136,7 @@ export const playRun = (
     wave: waveById(spec.wave),
     variant: spec.variant,
     families: FAMILIES,
+    weapon: spec.weapon, // l'arme est en main dès le départ : aucune commande de changement à rejouer
   })
   const startWeapon = w.player.weapon
   const events: SimEvent[] = [...w.events]
@@ -160,9 +161,8 @@ export const playRun = (
     pending.push(cmd)
     // B4 I3 : les commandes calculées sur le monde du tick t s'appliquent au tick t + latency ; avant, IDLE.
     const delayed = pending.length > spec.latency ? (pending.shift() as PlayerCommands) : IDLE_COMMANDS
-    // --weapon : le banc demande le changement d'arme jusqu'à ce qu'elle soit en main (aucune créature Hostile
-    // à 15 m au départ de V1 à V6). Les fronts des politiques (B3 I10) passent tels quels.
-    const applied = weaponAt === null ? { ...delayed, swapWeapon: true } : delayed
+    // Les fronts des politiques (B3 I10) passent tels quels.
+    const applied = delayed
     const after = step(w, applied)
     for (const e of after.events) events.push(e)
     series.push(seriesLine(after))

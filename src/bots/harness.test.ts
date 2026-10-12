@@ -153,14 +153,27 @@ describe('une partie', () => {
     // Sans T0, le plafond compte depuis le tick 0 : la partie s'arrête quand même.
     expect(playRun(spec({ timeoutTicks: 30, timeoutFrom: 't0' })).result.endTick).toBe(30)
   })
-  it('--weapon masse : le banc demande le changement au premier tick, puis ne touche plus aux commandes', () => {
+  it("--weapon masse : l'arme est en main dès la création du monde, aucune commande de changement (B4, vérificateur)", () => {
     const masse = playRun(spec({ weapon: 'masse', timeoutTicks: 5 }), { keepCommands: true })
-    expect(masse.result.weaponAt).toBe(1)
-    expect(masse.trace.commands?.map((c) => c.swapWeapon)).toEqual([true, false, false, false, false])
-    expect(masse.trace.events).toContainEqual({ type: 'weapon-swap', tick: 1, weapon: 'masse' })
+    expect(masse.result.weaponAt).toBe(0)
+    expect(masse.trace.commands?.every((c) => !c.swapWeapon)).toBe(true)
+    expect(masse.trace.events.some((e) => e.type === 'weapon-swap')).toBe(false)
     const couperet = playRun(spec({ timeoutTicks: 5 }), { keepCommands: true })
     expect(couperet.result.weaponAt).toBe(0)
-    expect(couperet.trace.commands?.every((c) => !c.swapWeapon)).toBe(true)
+  })
+  it("faucheur-masse avec 12 ticks de latence garde la Masse toute la partie (plus d'oscillation d'arme)", () => {
+    const r = playRun(
+      spec({ wave: 'V2', policy: 'faucheur-masse', weapon: 'masse', latency: 12, timeoutTicks: 3000 }),
+      {
+        keepCommands: true,
+      },
+    )
+    expect(r.trace.events.some((e) => e.type === 'weapon-swap')).toBe(false)
+    expect(
+      r.trace.events
+        .filter((e) => e.type === 'hit' && e.by === 'player')
+        .every((e) => e.type === 'hit' && e.damageType === 'contondant'),
+    ).toBe(true)
   })
   it('déterministe : même spécification, même JSON', () => {
     const s = spec({ wave: 'V6', policy: 'ref-frappeur', seed: 4, variant: 'B' })
