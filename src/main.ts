@@ -40,6 +40,7 @@ let running = false
 let paused = false
 let frozenUntil = 0
 let source: CommandSource | null = null
+let filter: ((c: PlayerCommands) => PlayerCommands) | null = null
 const stepListeners = new Set<(w: World, c: PlayerCommands) => void>()
 const frameListeners = new Set<(ms: number) => void>()
 
@@ -51,9 +52,14 @@ const host: GameHost = {
     world = newWorld(next)
     prev = world
     loop = initialLoop
+    renderer.debug.clearGore() // pas de sang de la partie précédente (requête C7 R4)
+    audio.reset() // le moteur audio repart à zéro avec le tick (requête C7 R3)
   },
   setCommandSource: (s) => {
     source = s
+  },
+  setCommandFilter: (f) => {
+    filter = f
   },
   setPaused: (p) => {
     paused = p
@@ -78,7 +84,8 @@ const host: GameHost = {
 const playerStruck = (w: World): boolean => w.events.some((e) => e.type === 'hit' && e.by === 'player')
 
 const simulate = (): PlayerCommands => {
-  const commands = source ? source(world) : input.sample()
+  const raw = source ? source(world) : input.sample()
+  const commands = filter ? filter(raw) : raw
   prev = world
   world = step(world, commands)
   renderer.setAim(commands.aim)
@@ -96,8 +103,8 @@ const frame = (now: number): void => {
   lastFrame = now
   const r = advance(loop, now, document.hidden || paused)
   loop = r.state
-  for (let i = 0; i < r.steps; i++) {
-    simulate()
+  for (let i = 0; i < r.steps && !paused; i++) {
+    simulate() // la pause est relue entre deux pas (requête C7 R7)
     if (playerStruck(world)) frozenUntil = now + HIT_FREEZE_MS[world.player.weapon]
   }
   if (now < frozenUntil) return
@@ -125,5 +132,7 @@ addEventListener('keydown', (e) => {
 
 requestAnimationFrame(frame)
 
-// Outils de dev (C7) : branchés ici à la fusion.
+// Outils de dev (C7) : absents du build de production.
+if (import.meta.env.DEV) void import('./dev/index').then(({ installDev }) => installDev(host))
+
 export { host }

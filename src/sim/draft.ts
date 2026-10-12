@@ -1,5 +1,6 @@
 // État de travail d'un step. step() copie le monde dans un brouillon mutable, le fait avancer d'un tick,
 // puis le rend en lecture seule. Muter ici est volontaire (boucle chaude) ; le monde d'entrée n'est jamais touché.
+import { dpowInt } from './dmath'
 import { MEMBRE } from './families/membre'
 import { TUNING } from './tuning'
 import type {
@@ -48,7 +49,8 @@ export const familyOf = (d: Draft, c: Creature): FamilyModule => {
 }
 
 export const radiusOf = (c: Creature): number =>
-  (c.size === 'small' ? TUNING.radiusSmall : TUNING.radiusLarge) * TUNING.cicatriceSizeMul ** c.cicatrices
+  (c.size === 'small' ? TUNING.radiusSmall : TUNING.radiusLarge) *
+  dpowInt(TUNING.cicatriceSizeMul, c.cicatrices)
 
 export const isStanding = (c: Creature): boolean => c.state.kind === 'rituel' || c.state.kind === 'hostile'
 export const isDown = (c: Creature): boolean => c.state.kind === 'abattu'
@@ -57,7 +59,7 @@ export const isPresent = (c: Creature): boolean => c.state.kind !== 'mort' && c.
 export const baseChair = (d: Draft, c: Creature): number =>
   c.familyData.baseChair ?? familyOf(d, c).base.chair
 export const chairMaxFor = (base: number, cicatrices: number): number =>
-  base * TUNING.cicatriceChairMul ** cicatrices
+  base * dpowInt(TUNING.cicatriceChairMul, cicatrices)
 
 export const crying = (c: Creature, tick: Tick): boolean =>
   (c.state.kind === 'abattu' || c.state.kind === 'absorbe') && c.state.cryAt !== null && c.state.cryAt <= tick

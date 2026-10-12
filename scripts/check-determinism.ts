@@ -5,13 +5,20 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { createWorld, hashWorld, type PlayerCommands, souriant, step, type WaveDef } from '../src/sim/index'
 
-const SIM_DIR = 'src/sim'
+// src/sim et src/metrics : les mesures des contrats doivent donner le même chiffre dans le navigateur et dans Node.
+const SIM_DIRS = ['src/sim', 'src/metrics']
+const ALLOW = new Set(['src/sim/dmath.ts'])
 const BANNED: readonly (readonly [RegExp, string])[] = [
   [/Math\.random\b/, 'utiliser le PRNG du monde (rng.ts)'],
   [/Date\.now\b|new Date\(/, "pas d'horloge murale dans la simulation"],
   [/performance\.now\b/, "pas d'horloge murale dans la simulation"],
   [/\b(setTimeout|setInterval|requestAnimationFrame)\b/, 'pas de minuterie : le temps est le tick'],
   [/\bcrypto\.(getRandomValues|randomUUID)\b/, 'utiliser le PRNG du monde'],
+  [
+    /Math\.(sin|cos|tan|asin|acos|atan|atan2|hypot|pow|exp|expm1|log|log2|log10|log1p|cbrt|sinh|cosh|tanh)\b/,
+    'approximé par le moteur JS : utiliser src/sim/dmath.ts (dsin, dcos, datan2, dhypot, dpowInt)',
+  ],
+  [/[\w)\]]\s*\*\*\s*[\w(]/, '** passe par Math.pow : utiliser dpowInt'],
 ]
 
 const walk = (dir: string): string[] =>
@@ -21,7 +28,7 @@ const walk = (dir: string): string[] =>
   })
 
 let bad = 0
-for (const file of walk(SIM_DIR)) {
+for (const file of SIM_DIRS.flatMap(walk).filter((f) => !ALLOW.has(f))) {
   readFileSync(file, 'utf8')
     .split('\n')
     .forEach((line, i) => {

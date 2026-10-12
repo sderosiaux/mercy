@@ -62,6 +62,8 @@ export const createAudioEngine = (
 // Point d'entrée du jeu : l'AudioContext ne se crée qu'après un geste de l'utilisateur (§24), au premier resume().
 export interface GameAudio {
   resume(): Promise<void>
+  // Nouvelle partie : coupe toutes les sources et repart d'un moteur neuf (requête C7 R3).
+  reset(): void
   update(world: World, listener: Vec2): void
   log(): AudioLog | null
   readonly context: BaseAudioContext | null
@@ -72,6 +74,7 @@ export const createAudio = (
 ): GameAudio => {
   let ctx: BaseAudioContext | null = opts.context ?? null
   let engine: AudioEngine | null = null
+  let bank: Bank | null = null
   let loading: Promise<void> | null = null
   return {
     resume: async () => {
@@ -79,10 +82,16 @@ export const createAudio = (
       if (ctx instanceof AudioContext && ctx.state !== 'running') await ctx.resume()
       const c = ctx
       if (opts.screenRight) orientListener(c, opts.screenRight) // la droite de l'écran sonne à droite (C5 R1)
-      loading ??= loadBank(c, opts.baseUrl ?? '/audio/').then((bank) => {
-        engine = createAudioEngine(c, bank)
+      loading ??= loadBank(c, opts.baseUrl ?? '/audio/').then((b) => {
+        bank = b
+        engine = createAudioEngine(c, b)
       })
       await loading
+    },
+    reset: () => {
+      if (!ctx || !bank) return
+      engine?.dispose()
+      engine = createAudioEngine(ctx, bank)
     },
     update: (world, listener) => engine?.update(world, listener),
     log: () => engine?.log() ?? null,

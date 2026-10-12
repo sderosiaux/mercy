@@ -1,6 +1,7 @@
 // Série par tick (B4 I4), lue dans World. Un second flux à côté des évènements, commun au banc de bots et à la
 // télémétrie humaine (C7). Une ligne ne dépend que du monde du tick : (World) => ligne.
 import type { Creature, Vec2, World } from '../sim/index'
+import { dhypot } from '../sim/index'
 
 // Paramètres de mesure fixés par les contrats (pas des réglages de jeu).
 export const HORDE_RADIUS_M = 8 // B4.O7 : rayon du cri (L2), tient dans le champ de la caméra
@@ -24,7 +25,7 @@ export interface SeriesLine {
   readonly ferveur: number
 }
 
-const dist = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.z - b.z)
+const dist = (a: Vec2, b: Vec2): number => dhypot(a.x - b.x, a.z - b.z) // déterministe d'un moteur à l'autre
 
 // Un corps crie dès cryAt (L2), à terre ou dans un sac (D8). Lecture de l'état, pas une règle.
 export const isCrying = (c: Creature, tick: number): boolean =>

@@ -4,6 +4,7 @@ import { hashValue } from './hash'
 import { sentenceTargetOf } from './player/bourreau'
 import type { Action, ActionPhase, PlayerCommands, Tick, Vec2, World } from './types'
 
+export { datan2, dcos, dhypot, dpowInt, dsin } from './dmath'
 export { souriant } from './families/souriant'
 export { CHANNEL_ACTIONS, inPorteurRearArc, PORTEUR_STAGE_KEY } from './predicates'
 export { TICK_HZ, TUNING, ticks } from './tuning'

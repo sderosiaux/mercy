@@ -18,6 +18,8 @@ export interface GameHost {
   restart(next: GameStart): void
   // Remplace les commandes du joueur (bot dans le navigateur). null : retour au clavier et à la souris.
   setCommandSource(source: CommandSource | null): void
+  // Filtre appliqué à toutes les commandes avant la simulation (mode aveugle : Couperet seul, requête C7 R5).
+  setCommandFilter(filter: ((c: PlayerCommands) => PlayerCommands) | null): void
   // Rendu piloté (B2 I2) : en pause, la boucle n'avance plus ; stepOnce() avance d'un tick et rend avec alpha = 1.
   setPaused(paused: boolean): void
   stepOnce(): void

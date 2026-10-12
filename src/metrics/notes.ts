@@ -2,6 +2,7 @@
 // évènement, et qu'un évènement seul ne porte pas. Calculées sur la transition (monde d'avant, commandes
 // appliquées, monde d'après), par le banc à chaque step et par la télémétrie humaine au rejeu (C7).
 import type { Creature, FamilyKind, PlayerCommands, SimEvent, Vec2, World } from '../sim/index'
+import { dhypot } from '../sim/index'
 import { voicesByRank } from './series'
 
 // Paramètres de mesure fixés par les contrats.
@@ -40,7 +41,7 @@ export type TickNote =
   // F pressée avec des Résistants à terre à 2,5 m ou moins du joueur : B2.O8c.
   | { readonly kind: 'f'; readonly tick: number; readonly resistantsProches: readonly number[] }
 
-const dist = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.z - b.z)
+const dist = (a: Vec2, b: Vec2): number => dhypot(a.x - b.x, a.z - b.z) // déterministe d'un moteur à l'autre
 
 const byId = (w: World, id: number): Creature | undefined => w.creatures.find((c) => c.id === id)
 
