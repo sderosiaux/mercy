@@ -1,0 +1,22 @@
+{
+  "key": "post",
+  "fingerprint": "b883f8869107ac86de600f68659944ab929675974a9ebeb17f349f6015f53adc",
+  "status": "reussi",
+  "credits": 0,
+  "outputs": {
+    "glb": {
+      "file": "public/models/porteur.glb",
+      "sha256": "3b736c4b12af35b1c1bf1758e2c75230148722c0b4c9ef3ecdc4d06d6ec929a2"
+    },
+    "rapport": {
+      "file": "art/forge/porteur/post-traitements.json",
+      "sha256": "6ff863d868e1ca30c9310cb1ea050dfe620d1dd88bf09da3390aeae78beca729"
+    }
+  },
+  "meta": {
+    "avant": 10,
+    "apres": 3,
+    "regressions": 0
+  },
+  "updatedAt": "2026-10-12T04:59:08.690Z"
+}

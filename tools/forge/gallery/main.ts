@@ -7,8 +7,10 @@ import { bancFigure, bancSheet } from '../banc'
 import { estimateAsset } from '../estimate'
 import { writeGlb } from '../gltf/glb'
 import type { ClipRecipe } from '../playback'
+import type { ClipPost, Treatment } from '../post/run'
 import { type AssetSheet, type ClipSpec, resolveTemps } from '../schema'
-import { type CheckResult, type ValidationReport, validate } from '../validate/checks'
+import type { PostFile } from '../stages/post'
+import { type CheckResult, type ClipMeasures, type ValidationReport, validate } from '../validate/checks'
 import { loadRig } from '../validate/rig'
 import { type GalleryAsset, loadAssets } from './data'
 import { type CameraMode, type LightMode, Viewer, type ViewerState } from './viewer'
@@ -63,6 +65,14 @@ interface PageModel {
   readonly credits: number | null
   readonly banner: string | null
   readonly load: (() => Promise<{ root: Object3D; clips: AnimationClip[] }>) | null
+  readonly post: PostFile | null // post-traitements qui ont produit ce modèle
+  readonly loadAvant: (() => Promise<{ root: Object3D; clips: AnimationClip[] }>) | null // assemblage brut
+}
+
+type Loaded = { root: Object3D; clips: AnimationClip[] }
+const loadGlb = async (url: string): Promise<Loaded> => {
+  const gltf = await new GLTFLoader().loadAsync(url)
+  return { root: gltf.scene, clips: gltf.animations }
 }
 
 const bancPage = async (): Promise<PageModel> => {
@@ -87,12 +97,19 @@ const bancPage = async (): Promise<PageModel> => {
       const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(0) as ArrayBuffer, '')
       return { root: gltf.scene, clips: gltf.animations }
     },
+    post: null,
+    loadAvant: null,
   }
 }
 
 const assetPage = (a: GalleryAsset): PageModel | null => {
   if (!a.sheet) return null
   const glb = a.manifeste?.glb
+  // le compte rendu ne vaut que pour le GLB qu'il a produit
+  const post =
+    a.rapport?.postTraitements && a.rapport.glbSha256 === a.manifeste?.sha256
+      ? a.rapport.postTraitements
+      : null
   return {
     id: a.id,
     titre: a.sheet.nom,
@@ -103,12 +120,10 @@ const assetPage = (a: GalleryAsset): PageModel | null => {
     rapport: a.rapport,
     credits: a.manifeste?.credits.meshy ?? null,
     banner: null,
-    load: glb
-      ? async () => {
-          const gltf = await new GLTFLoader().loadAsync(`/${glb}`)
-          return { root: gltf.scene, clips: gltf.animations }
-        }
-      : null,
+    load: glb ? () => loadGlb(`/${glb}`) : null,
+    post,
+    // L'assemblage brut est dans le cache local de la Forge : présent là où la Forge a tourné.
+    loadAvant: post ? () => loadGlb(`/${post.source.file}`) : null,
   }
 }
 
@@ -192,6 +207,7 @@ const reportCard = (p: PageModel): HTMLElement => {
         h(
           'div',
           { class: 'card-body' },
+          p.post ? postSummary(p.post) : null,
           h(
             'div',
             { class: 'stages', style: 'margin-left:0' },
@@ -310,8 +326,18 @@ const clipsCard = (
   recipes: ReadonlyMap<string, ClipRecipe>,
   onPick: (etat: string) => void,
 ): HTMLElement => {
+  const avant = new Map((p.post?.clipsAvant ?? []).map((m) => [m.etat, m]))
+  const apres = new Map((p.rapport?.clips ?? []).map((m) => [m.etat, m]))
+  const posts = new Map((p.post?.clips ?? []).map((c) => [c.etat, c]))
   const rows = p.sheet.clips.map((c) => {
     const rec = recipes.get(c.etat)
+    const post = posts.get(c.etat)
+    const forge = h(
+      'td',
+      {},
+      ...(post?.traitements ?? []).map((t) => h('span', { class: 'chip' }, TRAITEMENT[t.traitement])),
+      ...clipDelta(avant.get(c.etat), apres.get(c.etat), post).map((d) => h('div', { class: 'delta' }, d)),
+    )
     const tr = h(
       'tr',
       { class: rec ? 'clickable' : '', 'data-etat': c.etat },
@@ -325,6 +351,7 @@ const clipsCard = (
         { class: 'mono' },
         rec ? `×${fmt(rec.rate)}${rec.startS ? ` dès ${fmt(rec.startS)} s` : ''}` : '',
       ),
+      forge,
       h('td', { class: 'note' }, c.note),
     )
     if (rec) tr.addEventListener('click', () => onPick(c.etat))
@@ -351,9 +378,16 @@ const clipsCard = (
           h(
             'tr',
             {},
-            ...['État', 'Type', 'Source', 'Boucle', 'Temps de la simulation', 'Recette', 'Règle servie'].map(
-              (t) => h('th', {}, t),
-            ),
+            ...[
+              'État',
+              'Type',
+              'Source',
+              'Boucle',
+              'Temps de la simulation',
+              'Recette',
+              'Forge (avant → après)',
+              'Règle servie',
+            ].map((t) => h('th', {}, t)),
           ),
         ),
         h('tbody', {}, ...rows),
@@ -362,19 +396,154 @@ const clipsCard = (
   )
 }
 
+// ---------------------------------------------------------------- post-traitements
+
+const TRAITEMENT: Readonly<Record<Treatment['traitement'], string>> = {
+  racine: 'racine',
+  boucle: 'boucle',
+  foulee: 'foulée',
+  pieds: 'pieds',
+}
+
+const mmOf = (m: number | undefined): string => (m === undefined ? '' : `${Math.round(m * 1000)}`)
+
+// Avant → après d'un clip, sur les mesures que la validation porte (couture, glissement, vitesse de lecture).
+const clipDelta = (
+  avant: ClipMeasures | undefined,
+  apres: ClipMeasures | undefined,
+  post: ClipPost | undefined,
+): string[] => {
+  if (!post || post.traitements.length === 0 || !avant || !apres) return []
+  const out: string[] = []
+  const kinds = new Set(post.traitements.map((t) => t.traitement))
+  if (kinds.has('boucle') && avant.coutureM !== undefined)
+    out.push(`couture ${mmOf(avant.coutureM)} → ${mmOf(apres.coutureM)} mm`)
+  if (kinds.has('pieds') && avant.glissementM !== undefined)
+    out.push(`glissement ${mmOf(avant.glissementM)} → ${mmOf(apres.glissementM)} mm`)
+  if (kinds.has('foulee')) out.push(`vitesse ×${fmt(avant.recette.rate)} → ×${fmt(apres.recette.rate)}`)
+  if (kinds.has('racine')) {
+    const r = post.traitements.find((t) => t.traitement === 'racine')
+    out.push(`dérive ${fmt(r?.avant.deriveMps)} → ${fmt(r?.apres.deriveMps)} m/s`)
+  }
+  if (kinds.has('boucle') && Math.abs(avant.dureeS - apres.dureeS) > 1e-3)
+    out.push(`durée ${fmt(avant.dureeS)} → ${fmt(apres.dureeS)} s`)
+  return out
+}
+
+const postSummary = (post: PostFile): HTMLElement =>
+  h(
+    'div',
+    { class: 'post-summary' },
+    h('span', { class: 'pill echec' }, `avant : ${post.avant.echec} échec(s)`),
+    h(
+      'span',
+      { class: `pill ${post.apres.echec === 0 ? 'ok' : 'echec'}` },
+      `après : ${post.apres.echec} échec(s)`,
+    ),
+    h(
+      'span',
+      { class: `pill ${post.regressions.length === 0 ? 'ok' : 'echec'}` },
+      `${post.regressions.length} régression(s)`,
+    ),
+    h(
+      'span',
+      { class: 'pill' },
+      `${post.clips.filter((c) => c.traitements.length > 0).length} clip(s) post-traité(s) · source ${post.source.sha256.slice(0, 8)}`,
+    ),
+    ...post.nonCorriges.map((n) =>
+      h('span', { class: 'pill echec' }, `non corrigé : ${n.controle} ${n.etat} (${n.raison})`),
+    ),
+  )
+
 // ---------------------------------------------------------------- page
 
 let viewer: Viewer | null = null
+let duo: Viewer[] = [] // comparaison avant / après
+let initialDuoCam: CameraMode = 'pieds'
 
-// Liens profonds (pour l'humain et les captures) : #<id>?cam=jeu&light=neutre&clip=<état>
+// Carte « Avant / après » : le clip brut (assemblage Meshy, recette mesurée sur lui) et le clip post-traité
+// (recette de la validation), côte à côte, même caméra, traces des pieds au sol.
+interface DuoCard {
+  readonly el: HTMLElement
+  readonly avant: HTMLElement
+  readonly apres: HTMLElement
+  readonly info: HTMLElement
+  readonly replay: HTMLButtonElement
+  readonly cam: (onChange: (v: CameraMode) => void) => HTMLElement
+}
+
+const duoCard = (p: PageModel): DuoCard | null => {
+  if (!p.post) return null
+  const pane = (title: string): HTMLElement =>
+    h(
+      'div',
+      { class: 'stage duo-stage' },
+      h('div', { class: 'vignette' }),
+      h('div', { class: 'stage-label' }, title),
+    )
+  const avant = pane('avant · clip Meshy brut')
+  const apres = pane('après · post-traité par la Forge')
+  const info = h('div', { class: 'duo-info' })
+  const replay = h('button', { class: 'btn', type: 'button' }, 'Rejouer les deux') as HTMLButtonElement
+  const camSlot = h('div', {})
+  const el = h(
+    'section',
+    { class: 'card' },
+    h(
+      'div',
+      { class: 'card-head' },
+      h('h2', {}, 'Avant / après'),
+      h(
+        'span',
+        { class: 'hint' },
+        'traces des pieds, une image = un point : cyan en appui, gris en vol ; une traînée cyan = un pied qui glisse',
+      ),
+    ),
+    h('div', { class: 'duo' }, avant, apres),
+    h('div', { class: 'controls' }, camSlot, replay, info),
+  )
+  return {
+    el,
+    avant,
+    apres,
+    info,
+    replay,
+    cam: (onChange) => {
+      const seg = h('div', { class: 'seg' })
+      for (const [v, text] of [
+        ['pieds', 'Pieds'],
+        ['fixe', 'Corps'],
+        ['tour', 'Tour'],
+        ['jeu', 'Caméra du jeu'],
+      ] as [CameraMode, string][]) {
+        const b = h('button', { type: 'button', class: v === initialDuoCam ? 'on' : '' }, text)
+        b.addEventListener('click', () => {
+          for (const x of seg.children) x.classList.remove('on')
+          b.classList.add('on')
+          onChange(v)
+        })
+        seg.append(b)
+      }
+      camSlot.replaceChildren(seg)
+      return seg
+    },
+  }
+}
+
+// Liens profonds (pour l'humain et les captures) : #<id>?cam=jeu|fixe&light=neutre&clip=<état>&traces=oui
+// &vue=avant-apres (fait défiler jusqu'à la comparaison) &duo=corps|tour (caméra de la comparaison, pieds sinon)
 const renderPage = async (
   main: HTMLElement,
   a: GalleryAsset | null,
   p: PageModel,
   q: URLSearchParams,
 ): Promise<void> => {
+  ;(window as unknown as { __forgeReady?: string | null }).__forgeReady = null
+  window.scrollTo(0, 0)
   viewer?.dispose()
   viewer = null
+  for (const v of duo) v.dispose()
+  duo = []
   main.replaceChildren()
   const recipes = new Map<string, ClipRecipe>((p.rapport?.clips ?? []).map((c) => [c.etat, c.recette]))
 
@@ -389,7 +558,7 @@ const renderPage = async (
   const dieBtn = h('button', { class: 'btn warn', type: 'button' }, 'Mourir') as HTMLButtonElement
   const replayBtn = h('button', { class: 'btn', type: 'button' }, 'Rejouer') as HTMLButtonElement
   const fullBtn = h('button', { class: 'btn', type: 'button' }, 'Plein écran') as HTMLButtonElement
-  let camMode: CameraMode = q.get('cam') === 'jeu' ? 'jeu' : 'tour'
+  let camMode: CameraMode = q.get('cam') === 'jeu' ? 'jeu' : q.get('cam') === 'fixe' ? 'fixe' : 'tour'
   let lightMode: LightMode = q.get('light') === 'neutre' ? 'neutre' : 'da'
   let current: string | null = null
   const seg = <T extends string>(
@@ -410,7 +579,9 @@ const renderPage = async (
     return el
   }
   const updateLabel = (): void => {
-    label.textContent = `${camMode === 'jeu' ? 'caméra du jeu (§20)' : 'tour du modèle'} · ${lightMode === 'da' ? 'lumière de la DA' : 'lumière neutre (B2)'}${current ? ` · ${current}` : ''}`
+    const cam =
+      camMode === 'jeu' ? 'caméra du jeu (§20)' : camMode === 'fixe' ? 'trois-quarts face' : 'tour du modèle'
+    label.textContent = `${cam} · ${lightMode === 'da' ? 'lumière de la DA' : 'lumière neutre (B2)'}${current ? ` · ${current}` : ''}`
   }
   const controls = h(
     'div',
@@ -418,6 +589,7 @@ const renderPage = async (
     seg<CameraMode>(
       [
         ['tour', 'Tour du modèle'],
+        ['fixe', 'Trois-quarts'],
         ['jeu', 'Caméra du jeu §20'],
       ],
       camMode,
@@ -439,6 +611,14 @@ const renderPage = async (
         updateLabel()
       },
     ),
+    seg<'non' | 'oui'>(
+      [
+        ['non', 'Sans traces'],
+        ['oui', 'Traces des pieds'],
+      ],
+      q.get('traces') === 'oui' ? 'oui' : 'non',
+      (v) => viewer?.setTraces(v === 'oui'),
+    ),
     replayBtn,
     hitBtn,
     dieBtn,
@@ -448,6 +628,27 @@ const renderPage = async (
   )
   fullBtn.addEventListener('click', () => void stage.requestFullscreen?.())
 
+  const compare = duoCard(p)
+  const posts = new Map((p.post?.clips ?? []).map((c) => [c.etat, c]))
+  const avantM = new Map((p.post?.clipsAvant ?? []).map((m) => [m.etat, m]))
+  const apresM = new Map((p.rapport?.clips ?? []).map((m) => [m.etat, m]))
+  const pick = (etat: string | null): void => {
+    if (!etat) return
+    current = etat
+    viewer?.play(etat)
+    for (const v of duo) v.play(etat)
+    updateLabel()
+    for (const tr of main.querySelectorAll('tr[data-etat]'))
+      tr.classList.toggle('current', tr.getAttribute('data-etat') === etat)
+    if (compare) {
+      const post = posts.get(etat)
+      const deltas = clipDelta(avantM.get(etat), apresM.get(etat), post)
+      compare.info.textContent =
+        post && post.traitements.length > 0
+          ? `${etat} : ${post.traitements.map((t) => TRAITEMENT[t.traitement]).join(' · ')}${deltas.length > 0 ? ` — ${deltas.join(' ; ')}` : ''}`
+          : `${etat} : aucun post-traitement (le clip passait déjà)`
+    }
+  }
   const head = h(
     'div',
     { class: 'page-head' },
@@ -469,13 +670,8 @@ const renderPage = async (
       stage,
       controls,
     ),
-    clipsCard(p, recipes, (etat) => {
-      current = etat
-      viewer?.play(etat)
-      updateLabel()
-      for (const tr of main.querySelectorAll('tr[data-etat]'))
-        tr.classList.toggle('current', tr.getAttribute('data-etat') === etat)
-    }),
+    compare?.el ?? null,
+    clipsCard(p, recipes, (etat) => pick(etat)),
   )
   const right = h('div', {}, boardsCard(p), sheetCard(p))
   const report = reportCard(p)
@@ -534,16 +730,9 @@ const renderPage = async (
     p.sheet.clips.find((c) => recipes.has(c.etat))?.etat ??
     clips[0]?.name ??
     null
-  const playFirst = (etat: string | null) => {
-    if (!etat) return
-    current = etat
-    viewer?.play(etat)
-    updateLabel()
-    for (const tr of main.querySelectorAll('tr[data-etat]'))
-      tr.classList.toggle('current', tr.getAttribute('data-etat') === etat)
-  }
-  playFirst(first)
-  replayBtn.addEventListener('click', () => playFirst(current))
+  viewer.setTraces(q.get('traces') === 'oui')
+  pick(first)
+  replayBtn.addEventListener('click', () => pick(current))
   hitBtn.disabled = !p.sheet.interruption
   hitBtn.addEventListener('click', () => {
     if (viewer?.hit()) {
@@ -559,8 +748,88 @@ const renderPage = async (
     if (s.impactS !== null) timeImpact.style.left = `${(s.impactS / d) * 100}%`
     timeText.textContent = `${s.time.toFixed(2)} / ${s.duration.toFixed(2)} s${s.frozen ? ' · figé' : ''}`
   })
+  if (compare) {
+    const duoCam: CameraMode = q.get('duo') === 'corps' ? 'fixe' : q.get('duo') === 'tour' ? 'tour' : 'pieds'
+    initialDuoCam = duoCam
+    await loadDuo(p, compare, recipes, () => current, pick, duoCam)
+    if (q.get('vue') === 'avant-apres') compare.el.scrollIntoView({ block: 'start' })
+  }
   // Pour les captures : un drapeau quand la scène est prête.
-  ;(window as unknown as { __forgeReady?: string }).__forgeReady = p.id
+  ;(window as unknown as { __forgeReady?: string | null }).__forgeReady = p.id
+}
+
+const loadDuo = async (
+  p: PageModel,
+  card: DuoCard,
+  recipes: ReadonlyMap<string, ClipRecipe>,
+  current: () => string | null,
+  pick: (etat: string | null) => void,
+  cam: CameraMode,
+): Promise<void> => {
+  const avantRecipes = new Map((p.post?.clipsAvant ?? []).map((c) => [c.etat, c.recette]))
+  const mount = async (
+    el: HTMLElement,
+    load: (() => Promise<Loaded>) | null,
+    rec: ReadonlyMap<string, ClipRecipe>,
+    missing: HTMLElement,
+  ): Promise<Viewer | null> => {
+    let loaded: Loaded | null = null
+    try {
+      loaded = load ? await load() : null
+    } catch {
+      loaded = null
+    }
+    if (!loaded) {
+      el.append(h('div', { class: 'stage-empty' }, missing))
+      return null
+    }
+    const v = new Viewer(el)
+    v.setCamera(cam)
+    v.setLight('neutre')
+    const group = new Group()
+    group.add(loaded.root)
+    v.setModel({
+      root: group,
+      clips: loaded.clips,
+      hauteurM: p.sheet.hauteurM,
+      recipes: rec,
+      reaction: p.sheet.interruption?.reaction ?? null,
+    })
+    v.setTraces(true)
+    return v
+  }
+  const id = p.id
+  const views = await Promise.all([
+    mount(
+      card.avant,
+      p.loadAvant,
+      avantRecipes,
+      h(
+        'div',
+        {},
+        h('strong', {}, 'Assemblage brut absent du cache'),
+        h(
+          'p',
+          {},
+          'Le cache de la Forge est local. Il se reconstruit sans appel payant si les tâches sont en cache :',
+        ),
+        h('p', {}, h('code', {}, `pnpm forge ${id} --stage anim`)),
+      ),
+    ),
+    mount(card.apres, p.load, recipes, h('div', {}, 'Modèle absent')),
+  ])
+  const ready = views.filter((v): v is Viewer => v !== null)
+  if (!card.el.isConnected) {
+    // page quittée pendant le chargement
+    for (const v of ready) v.dispose()
+    return
+  }
+  duo = ready
+  card.cam((mode) => {
+    for (const v of duo) v.setCamera(mode)
+  })
+  card.replay.addEventListener('click', () => pick(current()))
+  pick(current())
 }
 
 const nav = (assets: readonly GalleryAsset[], active: string): HTMLElement => {

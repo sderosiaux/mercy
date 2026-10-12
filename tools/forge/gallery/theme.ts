@@ -27,3 +27,13 @@ export const LIGHTS = {
 // Vacillement déterministe (somme de sinus incommensurables), entre 0,7 et 1,1 : une flamme, pas un néon.
 export const flicker = (t: number): number =>
   0.9 + 0.1 * Math.sin(t * 7.3) + 0.06 * Math.sin(t * 13.1 + 1.7) + 0.04 * Math.sin(t * 23.9 + 0.4)
+
+// Traces des pieds au sol (outil de jugement, pas une couleur du jeu) : appui en cyan froid, absent de la palette
+// et des sens de jeu (§17), vol en gris bleuté sourd. 180 images : 3 s à 60 i/s, une boucle de rituel et plus.
+export const TRACE = {
+  appui: 0x7fd8ff,
+  vol: 0x3a4656,
+  images: 180,
+  hauteur: 0.004, // m au-dessus du sol, pour ne pas se battre avec lui
+  point: 4, // px, une image = un point
+} as const

@@ -1,0 +1,22 @@
+{
+  "key": "post",
+  "fingerprint": "8e979bd015b6baa8be94e05f319246c05c5c50f036df8a8a51b3b97fd63bb6eb",
+  "status": "reussi",
+  "credits": 0,
+  "outputs": {
+    "glb": {
+      "file": "public/models/bourreau.glb",
+      "sha256": "a9430ebb9cd41ee01fcedc4eabdce4f2af4827b503ea7486cd8696c892c87f71"
+    },
+    "rapport": {
+      "file": "art/forge/bourreau/post-traitements.json",
+      "sha256": "9a5d1c23704d5011bcf64e8111d195d16d1741ad7337989863d690ea6202ab14"
+    }
+  },
+  "meta": {
+    "avant": 17,
+    "apres": 5,
+    "regressions": 0
+  },
+  "updatedAt": "2026-10-12T04:59:10.940Z"
+}

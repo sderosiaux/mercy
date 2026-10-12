@@ -1,16 +1,16 @@
 {
   "key": "validation",
-  "fingerprint": "5d329683031c205c4b13b01c1d30ddc55629d78c2e58efab0cdaff32ef235a61",
+  "fingerprint": "4b57feef596e74692775b45fe758bf231df293be952ffe795ca1c48d644430a8",
   "status": "reussi",
   "credits": 0,
   "outputs": {
     "rapport": {
       "file": "art/forge/recousu/validation.json",
-      "sha256": "b066f782d8917d6abe81dc79ad7e89b97980d1e95a2a6d2800b9a573fca9e463"
+      "sha256": "198326a433bb4e0ba1c71101fec211d21bc119bd9662d68cbc9af51cb8a47847"
     }
   },
   "meta": {
     "verdict": "refuse"
   },
-  "updatedAt": "2026-10-12T04:24:20.292Z"
+  "updatedAt": "2026-10-12T04:59:07.150Z"
 }

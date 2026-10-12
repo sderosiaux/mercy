@@ -23,6 +23,7 @@ export interface Rig {
   readonly clips: readonly AnimationClip[]
   readonly restHeight: number // unités du modèle
   readonly scale: number // mètres de jeu par unité du modèle
+  readonly nodes: ReadonlyMap<number, Object3D> // nœud glTF → objet de la scène (post-traitements)
 }
 
 export type Pose = Float64Array // x, y, z par os, en mètres de jeu
@@ -47,7 +48,12 @@ export const loadRig = async (
   const box = new Box3().setFromObject(root)
   const restHeight = box.isEmpty() ? 0 : box.max.y - box.min.y
   const scale = opts.hauteurM !== null && restHeight > 0 ? opts.hauteurM / restHeight : 1
-  return { root, bones, skinned, clips: gltf.animations, restHeight, scale }
+  const nodes = new Map<number, Object3D>()
+  for (const [object, ref] of gltf.parser.associations) {
+    const index = (ref as { nodes?: number }).nodes
+    if (index !== undefined && (object as Object3D).isObject3D) nodes.set(index, object as Object3D)
+  }
+  return { root, bones, skinned, clips: gltf.animations, restHeight, scale, nodes }
 }
 
 export const loadRigBytes = (bytes: Uint8Array, opts: { hauteurM: number | null; stripTextures: boolean }) =>
@@ -162,7 +168,7 @@ const matches = (t: string[], effecteur: Effecteur): boolean => {
 
 // Os d'un effecteur : nom imposé par la fiche, sinon reconnaissance par le nom (LeftFoot, foot.L, Bip01 R Hand…).
 export const findBone = (
-  rig: Rig,
+  rig: Pick<Rig, 'bones'>,
   effecteur: Effecteur,
   override?: Readonly<Partial<Record<Effecteur, string>>>,
 ): number => {

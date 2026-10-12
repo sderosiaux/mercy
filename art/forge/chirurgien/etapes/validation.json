@@ -1,16 +1,16 @@
 {
   "key": "validation",
-  "fingerprint": "1d2c4359b146db54f18873531db7825aa8d0e5241ee4aaadee7742a5b79a118f",
+  "fingerprint": "542b522c0630b5e6d2d3e693e40ade6f0b07e841c4e1e88dcea00ecdf2a6a76a",
   "status": "reussi",
   "credits": 0,
   "outputs": {
     "rapport": {
       "file": "art/forge/chirurgien/validation.json",
-      "sha256": "d0581ad09f2628693104a15559c6ee541b725e0440fa13b0c341a5d74eb842f9"
+      "sha256": "604ac0f8ffc2044f0cd4f5bc8baa8c8c7285b19cede70f242338d29d15c48c77"
     }
   },
   "meta": {
-    "verdict": "refuse"
+    "verdict": "valide"
   },
-  "updatedAt": "2026-10-12T04:41:16.612Z"
+  "updatedAt": "2026-10-12T04:59:02.577Z"
 }

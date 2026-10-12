@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { bancSheetRaw } from '../banc'
 import { cacheFile, createStore } from '../cache'
 import { buildFigure, type ClipDef } from '../gltf/build'
-import { hit, idle, rise, strike, walkInPlace, walkWithRootMotion } from '../gltf/fixtures'
+import { hit, idle, idleWithSeam, rise, strike, walkInPlace, walkWithRootMotion } from '../gltf/fixtures'
 import { writeGlb } from '../gltf/glb'
 import type { CommandRunner } from '../gptimage'
 import { encodePng } from '../image/png'
@@ -95,6 +95,7 @@ const MOTIONS: Record<string, ClipDef> = {
   strike: bare(strike('Armature|clip0')),
   rise: bare(rise('Armature|clip0')),
   'rise slower': bare(rise('Armature|clip0', 2)),
+  'idle seam': bare(idleWithSeam('Armature|clip0')),
 }
 const CREDITS: Record<string, (body: Record<string, unknown>) => number> = {
   'multi-image-to-3d': () => 30,
@@ -104,7 +105,7 @@ const CREDITS: Record<string, (body: Record<string, unknown>) => number> = {
 }
 
 // Meshy simulé : POST crée, GET rend la tâche réussie, les URL d'assets rendent des GLB construits en code.
-const fakeMeshy = () => {
+const fakeMeshy = (opts: { libraryClipName?: (nom: string) => string } = {}) => {
   const tasks = new Map<string, { endpoint: string; body: Record<string, unknown> }>()
   const calls: { method: string; path: string }[] = []
   let n = 0
@@ -114,8 +115,9 @@ const fakeMeshy = () => {
     if (!t) throw new Error(`tâche ${id} inconnue`)
     if (t.endpoint !== 'animations') return writeGlb(buildFigure({ clips: [] }))
     if (Array.isArray(t.body.action_ids)) {
+      const named = (c: ClipDef): ClipDef => ({ ...c, name: opts.libraryClipName?.(c.name) ?? c.name })
       return writeGlb(
-        buildFigure({ clips: (t.body.action_ids as number[]).map((a) => LIBRARY[a] as ClipDef) }),
+        buildFigure({ clips: (t.body.action_ids as number[]).map((a) => named(LIBRARY[a] as ClipDef)) }),
       )
     }
     const motion = tasks.get(String(t.body.motion_task_id))
@@ -198,6 +200,7 @@ describe('chaîne complète, concept → modèle → rig → animations → GLB 
       'model',
       'rig',
       'anim',
+      'post',
       'validate',
     ])
     expect(s1.etapes.map((e) => [e.etape, e.statut])).toEqual([
@@ -205,6 +208,7 @@ describe('chaîne complète, concept → modèle → rig → animations → GLB 
       ['model', 'fait'],
       ['rig', 'fait'],
       ['anim', 'fait'],
+      ['post', 'fait'],
       ['validate', 'fait'],
     ])
     expect(i1.runs()).toBe(1)
@@ -252,6 +256,7 @@ describe('chaîne complète, concept → modèle → rig → animations → GLB 
       'model',
       'rig',
       'anim',
+      'post',
       'validate',
     ])
     expect(m2.calls).toEqual([])
@@ -267,6 +272,7 @@ describe('chaîne complète, concept → modèle → rig → animations → GLB 
       'model',
       'rig',
       'anim',
+      'post',
       'validate',
     ])
     const m = fakeMeshy()
@@ -275,6 +281,7 @@ describe('chaîne complète, concept → modèle → rig → animations → GLB 
       'model',
       'rig',
       'anim',
+      'post',
       'validate',
     ])
     expect(m.posts().map((p) => p.path.replace('api.meshy.ai/openapi/v1/', ''))).toEqual([
@@ -305,18 +312,124 @@ describe('chaîne complète, concept → modèle → rig → animations → GLB 
   it('un clone neuf (cache binaire absent, enregistrements versionnés présents) ne repaie rien', async () => {
     const root = newRoot()
     const m = fakeMeshy()
-    const all = ['concept', 'model', 'rig', 'anim', 'validate'] as const
+    const all = ['concept', 'model', 'rig', 'anim', 'post', 'validate'] as const
     await runForge(context(root, sheetRaw(), m, fakeImage()), all)
     rmSync(join(root, 'art/forge/.cache'), { recursive: true, force: true })
     m.calls.length = 0
     const image = fakeImage()
     const s = await runForge(context(root, sheetRaw(), m, image), all)
-    expect(s.etapes.map((e) => e.statut)).toEqual(['fait', 'fait', 'fait', 'fait', 'fait'])
+    expect(s.etapes.map((e) => e.statut)).toEqual(['fait', 'fait', 'fait', 'fait', 'fait', 'fait'])
     expect(m.posts()).toEqual([])
     expect(image.runs()).toBe(0)
     const issues = s.etapes.flatMap((e) => e.pas.map((p) => p.issue))
     expect(issues).not.toContain('paye')
     expect(issues).toContain('retelecharge')
+  })
+
+  it('post-traitements : un rituel généré qui ne boucle pas est fermé, le rapport de validation le consigne', async () => {
+    const raw = sheetRaw()
+    const clips = raw.clips as Record<string, unknown>[]
+    clips[0] = { ...clips[0], source: { kind: 'mouvement', prompt: 'idle seam', dureeS: 2, mode: 'prime' } }
+    const root = newRoot()
+    const all = ['concept', 'model', 'rig', 'anim', 'post', 'validate'] as const
+    const s1 = await runForge(context(root, raw, fakeMeshy(), fakeImage()), all)
+    expect(s1.etapes.map((e) => [e.etape, e.statut])).toEqual(all.map((e) => [e, 'fait']))
+    expect(s1.etapes.find((e) => e.etape === 'post')?.detail).toMatch(/échecs mesurés 1 → 0/)
+    const report = JSON.parse(readFileSync(join(root, 'art/forge/banc/validation.json'), 'utf8'))
+    expect(report.bilan.verdict).toBe('valide')
+    expect(report.postTraitements.avant.echec).toBe(1)
+    expect(report.postTraitements.apres.echec).toBe(0)
+    const rituel = report.postTraitements.clips.find((c: { etat: string }) => c.etat === 'rituel')
+    expect(rituel.traitements.map((t: { traitement: string }) => t.traitement)).toEqual(['boucle'])
+    expect(rituel.traitements[0].avant.coutureM).toBeGreaterThan(rituel.traitements[0].avant.seuilM)
+    // l'assemblage brut reste dans le cache, le modèle du jeu est la sortie de post, le manifeste pointe dessus
+    expect(report.postTraitements.source.file).toBe('art/forge/.cache/banc/files/assemblage.glb')
+    expect(existsSync(join(root, report.postTraitements.source.file))).toBe(true)
+    expect(readManifest(root).assets.banc?.sha256).toBe(report.glbSha256)
+    const s2 = await runForge(context(root, raw, fakeMeshy(), fakeImage()), ['anim', 'post', 'validate'])
+    expect(s2.etapes.flatMap((e) => e.pas.map((p) => p.issue)).every((x) => x === 'cache')).toBe(true)
+  })
+
+  it('sans MESHY_API_KEY, tout ce qui est en cache se rejoue (assemblage, post, validation) sans aucun appel', async () => {
+    const root = newRoot()
+    const all = ['concept', 'model', 'rig', 'anim', 'post', 'validate'] as const
+    await runForge(context(root, sheetRaw(), fakeMeshy(), fakeImage()), all)
+    rmSync(join(root, 'public/models/banc.glb'))
+    rmSync(join(root, 'art/forge/.cache/banc/files/assemblage.glb'))
+    const image = fakeImage()
+    const s = await runForge(context(root, sheetRaw(), null, image), all)
+    expect(s.etapes.map((e) => [e.etape, e.statut])).toEqual(all.map((e) => [e, 'fait']))
+    expect(image.runs()).toBe(0)
+    const issues = s.etapes.flatMap((e) => e.pas.map((p) => [p.cle, p.issue]))
+    expect(issues.filter(([, i]) => i !== 'cache')).toEqual([
+      ['assemblage', 'local'],
+      ['post', 'local'],
+    ])
+    expect(existsSync(join(root, 'public/models/banc.glb'))).toBe(true)
+  })
+
+  it('bibliothèque : un clip nommé « Armature|<nom>|baselayer » par Meshy est reconnu à l’assemblage', async () => {
+    const root = newRoot()
+    const m = fakeMeshy({ libraryClipName: (nom) => `Armature|${nom}|baselayer` })
+    const all = ['concept', 'model', 'rig', 'anim', 'post', 'validate'] as const
+    const s = await runForge(context(root, sheetRaw(), m, fakeImage()), all)
+    expect(s.etapes.map((e) => [e.etape, e.statut])).toEqual(all.map((e) => [e, 'fait']))
+    const manifest = readManifest(root).assets.banc
+    expect(manifest?.clips.map((c) => c.name)).toContain('reaction')
+  })
+
+  it('fiche modifiée après coup (budget) : anim refuse de payer sur un squelette périmé, dit quoi relancer, ne paie rien', async () => {
+    const root = newRoot()
+    const all = ['concept', 'model', 'rig', 'anim', 'post', 'validate'] as const
+    await runForge(context(root, sheetRaw(), fakeMeshy(), fakeImage()), all)
+    // le budget change (modèle à refaire) et un prompt change (une animation serait à payer)
+    const changed = { ...sheetRaw('rise slower'), budgets: { triangles: 900, texturePx: 1024 } }
+    const m = fakeMeshy()
+    const s = await runForge(context(root, changed, m, fakeImage()), ['anim'])
+    expect(s.etapes[0]).toMatchObject({ etape: 'anim', statut: 'bloque' })
+    expect(s.etapes[0]?.detail).toMatch(/modele/)
+    expect(s.etapes[0]?.detail).toMatch(/--stage model/)
+    expect(m.calls).toEqual([])
+    // le rig seul : en cache, il ne paie rien et signale l'amont périmé ; à refaire (hauteur changée), il refuse
+    const cached = await runForge(context(root, changed, m, fakeImage()), ['rig'])
+    expect(cached.etapes[0]).toMatchObject({
+      etape: 'rig',
+      statut: 'fait',
+      pas: [{ cle: 'rig', issue: 'cache' }],
+    })
+    expect(cached.etapes[0]?.perimees?.map((p) => p.cle)).toEqual(['modele'])
+    const taller = { ...changed, hauteurM: 1.9 }
+    const r = await runForge(context(root, taller, m, fakeImage()), ['rig'])
+    expect(r.etapes[0]).toMatchObject({ etape: 'rig', statut: 'bloque' })
+    expect(r.etapes[0]?.detail).toMatch(/--stage model, puis --stage rig/)
+    expect(m.calls).toEqual([])
+  })
+
+  it('à blanc, une étape liste les étapes amont périmées et leur coût, et compte ses propres pas comme à repayer', async () => {
+    const root = newRoot()
+    const all = ['concept', 'model', 'rig', 'anim', 'post', 'validate'] as const
+    await runForge(context(root, sheetRaw(), fakeMeshy(), fakeImage()), all)
+    const changed = { ...sheetRaw(), budgets: { triangles: 900, texturePx: 1024 } }
+    const m = fakeMeshy()
+    const s = await runForge(context(root, changed, m, fakeImage(), true), ['anim'])
+    expect(m.calls).toEqual([])
+    const anim = s.etapes[0]
+    expect(anim?.perimees).toEqual([
+      expect.objectContaining({ etape: 'model', cle: 'modele', creditsEstimes: 30 }),
+      expect.objectContaining({ etape: 'rig', cle: 'rig', creditsEstimes: 5 }),
+    ])
+    expect(anim?.pas.every((p) => p.issue === 'prevu')).toBe(true)
+  })
+
+  it('après un changement de budget, la chaîne complète refait modèle, rig et animations dans l’ordre sans se bloquer', async () => {
+    const root = newRoot()
+    const all = ['concept', 'model', 'rig', 'anim', 'post', 'validate'] as const
+    await runForge(context(root, sheetRaw(), fakeMeshy(), fakeImage()), all)
+    const changed = { ...sheetRaw(), budgets: { triangles: 900, texturePx: 1024 } }
+    const m = fakeMeshy()
+    const s = await runForge(context(root, changed, m, fakeImage()), all)
+    expect(s.etapes.map((e) => e.statut)).toEqual(all.map(() => 'fait'))
+    expect(m.posts().map((p) => p.path.replace('api.meshy.ai/openapi/v1/', ''))[0]).toBe('multi-image-to-3d')
   })
 
   it('sans MESHY_API_KEY : la planche est faite, le modèle est bloqué et marqué non vérifié', async () => {
@@ -326,6 +439,7 @@ describe('chaîne complète, concept → modèle → rig → animations → GLB 
       'model',
       'rig',
       'anim',
+      'post',
       'validate',
     ])
     expect(s.etapes.map((e) => [e.etape, e.statut])).toEqual([
@@ -346,6 +460,7 @@ describe('chaîne complète, concept → modèle → rig → animations → GLB 
       'model',
       'rig',
       'anim',
+      'post',
       'validate',
     ])
     expect(m.calls).toEqual([])

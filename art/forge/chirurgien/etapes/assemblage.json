@@ -1,13 +1,13 @@
 {
   "key": "assemblage",
-  "fingerprint": "ef710f84c0995acb836ed7772a1217cee8ad840011a33323d9147ebc338fde41",
+  "fingerprint": "235dabb0281af24a5488955c2bf89001ecd36af1c9e4f298264d8e547e1484b7",
   "status": "reussi",
   "credits": 0,
   "outputs": {
     "glb": {
-      "file": "public/models/chirurgien.glb",
+      "file": "art/forge/.cache/chirurgien/files/assemblage.glb",
       "sha256": "6469d884950bc2ff7e90bb9fe61e5dcbee3e54b1d027ac57e91697948962d47f"
     }
   },
-  "updatedAt": "2026-10-12T04:41:16.519Z"
+  "updatedAt": "2026-10-12T04:59:01.123Z"
 }

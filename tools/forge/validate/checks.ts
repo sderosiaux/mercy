@@ -98,23 +98,23 @@ export interface ClipTag {
 export const tagOf = (clip: AnimationClip): Partial<ClipTag> =>
   ((clip.userData as { mercy?: Partial<ClipTag> } | undefined)?.mercy ?? {}) as Partial<ClipTag>
 
-const percentile = (xs: readonly number[], p: number): number => {
+export const percentile = (xs: readonly number[], p: number): number => {
   if (xs.length === 0) return 0
   const s = [...xs].sort((a, b) => a - b)
   return s[Math.min(s.length - 1, Math.floor(p * (s.length - 1)))] as number
 }
 
-const median = (xs: readonly number[]): number => percentile(xs, 0.5)
+export const median = (xs: readonly number[]): number => percentile(xs, 0.5)
 const horiz = (a: readonly number[], b: readonly number[]): number =>
   Math.hypot((a[0] as number) - (b[0] as number), (a[2] as number) - (b[2] as number))
 
-interface ContactRun {
+export interface ContactRun {
   readonly from: number
   readonly to: number
 }
 
 // Appuis d'un pied : images où il est à moins de FOOT_CONTACT_M de son point le plus bas du clip.
-const contactRuns = (poses: readonly Pose[], bone: number): ContactRun[] => {
+export const contactRuns = (poses: readonly Pose[], bone: number): ContactRun[] => {
   const ys = poses.map((p) => boneAt(p, bone)[1])
   const minY = Math.min(...ys)
   const runs: ContactRun[] = []
@@ -131,7 +131,7 @@ const contactRuns = (poses: readonly Pose[], bone: number): ContactRun[] => {
   return runs
 }
 
-const footSlide = (poses: readonly Pose[], bone: number): number => {
+export const footSlide = (poses: readonly Pose[], bone: number): number => {
   let worst = 0
   for (const run of contactRuns(poses, bone)) {
     const origin = boneAt(poses[run.from] as Pose, bone)
@@ -141,7 +141,7 @@ const footSlide = (poses: readonly Pose[], bone: number): number => {
   return worst
 }
 
-const strideSpeeds = (poses: readonly Pose[], times: readonly number[], bone: number): number[] => {
+export const strideSpeeds = (poses: readonly Pose[], times: readonly number[], bone: number): number[] => {
   const out: number[] = []
   for (const run of contactRuns(poses, bone)) {
     for (let k = run.from; k < run.to; k++) {
@@ -188,6 +188,17 @@ export const measuredImpact = (
   const times = frameTimes(spec.debutS ?? 0, clip.duration)
   const at = reachPeak(sampleClip(rig, clip, times), times, eff, hips)
   return at > (spec.debutS ?? 0) && at < clip.duration ? r3(at) : null
+}
+
+// Couture d'une boucle : écart de pose entre la dernière et la première image, et son seuil (1,5 × pas p95,
+// plancher ½ px).
+export const loopSeam = (poses: readonly Pose[]): { readonly jump: number; readonly seuil: number } => {
+  const steps: number[] = []
+  for (let k = 0; k + 1 < poses.length; k++)
+    steps.push(maxDisplacement(poses[k + 1] as Pose, poses[k] as Pose))
+  const jump = maxDisplacement(poses[poses.length - 1] as Pose, poses[0] as Pose)
+  const seuil = Math.max(LOOP_STEP_FACTOR * percentile(steps, 0.95), LOOP_FLOOR_M)
+  return { jump, seuil }
 }
 
 const trembleMinPx = (poses: readonly Pose[]): number | null => {
@@ -334,11 +345,7 @@ const measureClip = (ctx: Ctx, spec: ClipSpec, clip: AnimationClip): ClipMeasure
   }
 
   if (spec.boucle) {
-    const steps: number[] = []
-    for (let k = 0; k + 1 < poses.length; k++)
-      steps.push(maxDisplacement(poses[k + 1] as Pose, poses[k] as Pose))
-    const jump = maxDisplacement(poses[poses.length - 1] as Pose, poses[0] as Pose)
-    const seuil = Math.max(LOOP_STEP_FACTOR * percentile(steps, 0.95), LOOP_FLOOR_M)
+    const { jump, seuil } = loopSeam(poses)
     m.coutureM = r3(jump)
     check(ctx, {
       controle: 'boucle',

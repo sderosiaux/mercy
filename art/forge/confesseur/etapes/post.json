@@ -1,0 +1,22 @@
+{
+  "key": "post",
+  "fingerprint": "b5a6eb9ef2123c92308b76dd5a8a515a8d459ce572ac9ff8ad968fa2699efd5a",
+  "status": "reussi",
+  "credits": 0,
+  "outputs": {
+    "glb": {
+      "file": "public/models/confesseur.glb",
+      "sha256": "a43859039d1d4377c168185a6e0b3f6d43765b33826c8a35746516ef7e7b1d49"
+    },
+    "rapport": {
+      "file": "art/forge/confesseur/post-traitements.json",
+      "sha256": "c0ad513b32518fd675c6490826e4a550aba467f2f942aadf54946601ef3226aa"
+    }
+  },
+  "meta": {
+    "avant": 15,
+    "apres": 3,
+    "regressions": 0
+  },
+  "updatedAt": "2026-10-12T04:59:04.322Z"
+}

@@ -1,0 +1,16 @@
+{
+  "key": "validation",
+  "fingerprint": "7eb11fd5664c49f2bbaa6030983236707084933b26e1e3af5f41eb1d14ceaca6",
+  "status": "reussi",
+  "credits": 0,
+  "outputs": {
+    "rapport": {
+      "file": "art/forge/bourreau/validation.json",
+      "sha256": "66ae965fe15c60d89f961d05e5ca66232aa899f29b0db224b290aec6f9abd258"
+    }
+  },
+  "meta": {
+    "verdict": "refuse"
+  },
+  "updatedAt": "2026-10-12T04:59:11.473Z"
+}

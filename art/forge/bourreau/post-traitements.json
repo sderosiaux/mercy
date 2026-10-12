@@ -1,0 +1,488 @@
+{
+  "version": 1,
+  "clips": [
+    {
+      "etat": "repos",
+      "traitements": [
+        {
+          "traitement": "pieds",
+          "detail": "2 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+          "avant": {
+            "glissementM": 0.0647,
+            "coutureM": 0.0001
+          },
+          "apres": {
+            "glissementM": 0,
+            "coutureM": 0.0001,
+            "correctionMaxM": 0.0503,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0
+          }
+        }
+      ]
+    },
+    {
+      "etat": "course",
+      "traitements": []
+    },
+    {
+      "etat": "frappe.couperet.1",
+      "traitements": [
+        {
+          "traitement": "pieds",
+          "detail": "3 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+          "avant": {
+            "glissementM": 0.0694
+          },
+          "apres": {
+            "glissementM": 0,
+            "correctionMaxM": 0.1013,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0
+          }
+        }
+      ]
+    },
+    {
+      "etat": "frappe.couperet.2",
+      "traitements": [
+        {
+          "traitement": "pieds",
+          "detail": "5 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation ; bassin abaissé de 30.1 mm au plus là où la jambe n'atteignait pas",
+          "avant": {
+            "glissementM": 0.0902
+          },
+          "apres": {
+            "glissementM": 0,
+            "correctionMaxM": 0.0829,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0.0301
+          }
+        }
+      ]
+    },
+    {
+      "etat": "frappe.couperet.3",
+      "traitements": [
+        {
+          "traitement": "pieds",
+          "detail": "3 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+          "avant": {
+            "glissementM": 0.0638
+          },
+          "apres": {
+            "glissementM": 0,
+            "correctionMaxM": 0.057,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0
+          }
+        }
+      ]
+    },
+    {
+      "etat": "frappe.masse.1",
+      "traitements": [
+        {
+          "traitement": "pieds",
+          "detail": "2 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+          "avant": {
+            "glissementM": 0.0667
+          },
+          "apres": {
+            "glissementM": 0,
+            "correctionMaxM": 0.0544,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0
+          }
+        }
+      ]
+    },
+    {
+      "etat": "frappe.masse.2",
+      "traitements": [
+        {
+          "traitement": "racine",
+          "detail": "dérive horizontale nette du bassin retirée (tendance linéaire) : 977.6 mm sur 4.5 s",
+          "avant": {
+            "deriveMps": 0.2172,
+            "seuilMps": 0.1
+          },
+          "apres": {
+            "deriveMps": 0
+          }
+        },
+        {
+          "traitement": "pieds",
+          "detail": "10 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation ; bassin abaissé de 10.6 mm au plus là où la jambe n'atteignait pas",
+          "avant": {
+            "glissementM": 0.3039
+          },
+          "apres": {
+            "glissementM": 0,
+            "correctionMaxM": 0.1971,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0.0106
+          }
+        }
+      ]
+    },
+    {
+      "etat": "frappe.masse.3",
+      "traitements": [
+        {
+          "traitement": "pieds",
+          "detail": "4 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+          "avant": {
+            "glissementM": 0.072
+          },
+          "apres": {
+            "glissementM": 0,
+            "correctionMaxM": 0.072,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0
+          }
+        }
+      ]
+    },
+    {
+      "etat": "esquive",
+      "traitements": []
+    },
+    {
+      "etat": "balayage",
+      "traitements": [
+        {
+          "traitement": "racine",
+          "detail": "dérive horizontale nette du bassin retirée (tendance linéaire) : 1877.8 mm sur 5.6667 s",
+          "avant": {
+            "deriveMps": 0.3314,
+            "seuilMps": 0.1
+          },
+          "apres": {
+            "deriveMps": 0
+          }
+        },
+        {
+          "traitement": "pieds",
+          "detail": "3 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+          "avant": {
+            "glissementM": 0.1622
+          },
+          "apres": {
+            "glissementM": 0,
+            "correctionMaxM": 0.1987,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0
+          }
+        }
+      ]
+    },
+    {
+      "etat": "charge",
+      "traitements": []
+    },
+    {
+      "etat": "sentence.tranchant.petite",
+      "traitements": [
+        {
+          "traitement": "pieds",
+          "detail": "7 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation ; bassin abaissé de 17.4 mm au plus là où la jambe n'atteignait pas",
+          "avant": {
+            "glissementM": 0.1943
+          },
+          "apres": {
+            "glissementM": 0,
+            "correctionMaxM": 0.2204,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0.0174
+          }
+        }
+      ]
+    },
+    {
+      "etat": "sentence.tranchant.grande",
+      "traitements": [
+        {
+          "traitement": "pieds",
+          "detail": "4 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation ; bassin abaissé de 5.0 mm au plus là où la jambe n'atteignait pas",
+          "avant": {
+            "glissementM": 0.1254
+          },
+          "apres": {
+            "glissementM": 0,
+            "correctionMaxM": 0.136,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0.005
+          }
+        }
+      ]
+    },
+    {
+      "etat": "sentence.contondant.petite",
+      "traitements": [
+        {
+          "traitement": "racine",
+          "detail": "dérive horizontale nette du bassin retirée (tendance linéaire) : 666.7 mm sur 1.9667 s",
+          "avant": {
+            "deriveMps": 0.339,
+            "seuilMps": 0.1
+          },
+          "apres": {
+            "deriveMps": 0
+          }
+        },
+        {
+          "traitement": "pieds",
+          "detail": "6 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+          "avant": {
+            "glissementM": 0.282
+          },
+          "apres": {
+            "glissementM": 0,
+            "correctionMaxM": 0.2114,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0
+          }
+        }
+      ]
+    },
+    {
+      "etat": "sentence.contondant.grande",
+      "traitements": [
+        {
+          "traitement": "pieds",
+          "detail": "5 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+          "avant": {
+            "glissementM": 0.0999
+          },
+          "apres": {
+            "glissementM": 0,
+            "correctionMaxM": 0.0774,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0
+          }
+        }
+      ]
+    }
+  ],
+  "clipsAvant": [
+    {
+      "etat": "repos",
+      "dureeS": 4,
+      "recette": {
+        "name": "repos",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "coutureM": 0,
+      "tremblementMinPx": 3.525,
+      "glissementM": 0.065
+    },
+    {
+      "etat": "course",
+      "dureeS": 0.733,
+      "recette": {
+        "name": "course",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1.812310797256864
+      },
+      "coutureM": 0.129,
+      "tremblementMinPx": 79.74,
+      "fouleeMps": 2.759
+    },
+    {
+      "etat": "frappe.couperet.1",
+      "dureeS": 1.5,
+      "recette": {
+        "name": "frappe.couperet.1",
+        "boucle": false,
+        "impactS": 0.567,
+        "startS": 0.567,
+        "rate": 1
+      },
+      "impactMesureS": 0.567,
+      "glissementM": 0.069
+    },
+    {
+      "etat": "frappe.couperet.2",
+      "dureeS": 3.167,
+      "recette": {
+        "name": "frappe.couperet.2",
+        "boucle": false,
+        "impactS": 0.783,
+        "startS": 0.783,
+        "rate": 1
+      },
+      "impactMesureS": 0.783,
+      "glissementM": 0.09
+    },
+    {
+      "etat": "frappe.couperet.3",
+      "dureeS": 7.667,
+      "recette": {
+        "name": "frappe.couperet.3",
+        "boucle": false,
+        "impactS": 3.167,
+        "startS": 3.167,
+        "rate": 1
+      },
+      "impactMesureS": 3.167,
+      "glissementM": 0.064
+    },
+    {
+      "etat": "frappe.masse.1",
+      "dureeS": 1.8,
+      "recette": {
+        "name": "frappe.masse.1",
+        "boucle": false,
+        "impactS": 1.55,
+        "startS": 1.55,
+        "rate": 1
+      },
+      "impactMesureS": 1.55,
+      "glissementM": 0.067
+    },
+    {
+      "etat": "frappe.masse.2",
+      "dureeS": 4.5,
+      "recette": {
+        "name": "frappe.masse.2",
+        "boucle": false,
+        "impactS": 3.083,
+        "startS": 3.083,
+        "rate": 1
+      },
+      "impactMesureS": 3.083,
+      "glissementM": 0.121
+    },
+    {
+      "etat": "frappe.masse.3",
+      "dureeS": 3,
+      "recette": {
+        "name": "frappe.masse.3",
+        "boucle": false,
+        "impactS": 1.65,
+        "startS": 1.65,
+        "rate": 1
+      },
+      "impactMesureS": 1.65,
+      "glissementM": 0.072
+    },
+    {
+      "etat": "esquive",
+      "dureeS": 1.267,
+      "recette": {
+        "name": "esquive",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 4.222222169240316
+      }
+    },
+    {
+      "etat": "balayage",
+      "dureeS": 5.667,
+      "recette": {
+        "name": "balayage",
+        "boucle": false,
+        "impactS": 1.6,
+        "startS": 1.6,
+        "rate": 1
+      },
+      "impactMesureS": 1.6,
+      "glissementM": 0.185
+    },
+    {
+      "etat": "charge",
+      "dureeS": 0.667,
+      "recette": {
+        "name": "charge",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 0.833333358168602
+      }
+    },
+    {
+      "etat": "sentence.tranchant.petite",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "sentence.tranchant.petite",
+        "boucle": false,
+        "impactS": 1.633,
+        "startS": 0,
+        "rate": 2.7216666666666667
+      },
+      "impactMesureS": 1.633,
+      "glissementM": 0.194
+    },
+    {
+      "etat": "sentence.tranchant.grande",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "sentence.tranchant.grande",
+        "boucle": false,
+        "impactS": 0.733,
+        "startS": 0,
+        "rate": 1.2216666666666667
+      },
+      "impactMesureS": 0.733,
+      "glissementM": 0.125
+    },
+    {
+      "etat": "sentence.contondant.petite",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "sentence.contondant.petite",
+        "boucle": false,
+        "impactS": 0.267,
+        "startS": 0,
+        "rate": 0.44500000000000006
+      },
+      "impactMesureS": 0.267,
+      "glissementM": 0.31
+    },
+    {
+      "etat": "sentence.contondant.grande",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "sentence.contondant.grande",
+        "boucle": false,
+        "impactS": 0.7,
+        "startS": 0,
+        "rate": 1.1666666666666667
+      },
+      "impactMesureS": 0.7,
+      "glissementM": 0.1
+    }
+  ],
+  "avant": {
+    "ok": 58,
+    "echec": 17,
+    "nonMesurable": 0,
+    "verdict": "refuse"
+  },
+  "apres": {
+    "ok": 70,
+    "echec": 5,
+    "nonMesurable": 0,
+    "verdict": "refuse"
+  },
+  "regressions": [],
+  "echecsRestants": [
+    "triangles",
+    "recuperation frappe.masse.1",
+    "vitesse esquive",
+    "vitesse sentence.tranchant.petite",
+    "vitesse sentence.contondant.petite"
+  ],
+  "nonCorriges": [],
+  "source": {
+    "file": "art/forge/.cache/bourreau/files/assemblage.glb",
+    "sha256": "ffdb0a210b17c03356ce7499027fcef32340d084067f6ef821d175d19d940f09"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "key": "post",
+  "fingerprint": "dad6d00167b815c50c2290c92792f833cd1e9ff7daa80beb823f915044aa6a1b",
+  "status": "reussi",
+  "credits": 0,
+  "outputs": {
+    "glb": {
+      "file": "public/models/recousu.glb",
+      "sha256": "1fb8484b63e8c310d3dfc8e6d3c586e9b9e7db8c2e5d42d704603e04670852ef"
+    },
+    "rapport": {
+      "file": "art/forge/recousu/post-traitements.json",
+      "sha256": "f13787e85a9f6bc5398b913b3b76f1f7191cab321a602ab1efcbb8c474f64ae4"
+    }
+  },
+  "meta": {
+    "avant": 11,
+    "apres": 3,
+    "regressions": 0
+  },
+  "updatedAt": "2026-10-12T04:59:06.596Z"
+}

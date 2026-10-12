@@ -1,0 +1,464 @@
+{
+  "version": 1,
+  "clips": [
+    {
+      "etat": "rituel.priere",
+      "traitements": [
+        {
+          "traitement": "boucle",
+          "detail": "portion 0.8333–3.8667 s gardée sur 3.9667 s (coupe la moins coûteuse par image : 29.3 mm sur 182 images), écart restant réparti sur la portion",
+          "avant": {
+            "coutureM": 0.0575,
+            "seuilM": 0.0056,
+            "dureeS": 3.9667
+          },
+          "apres": {
+            "coutureM": 0,
+            "seuilM": 0.006,
+            "dureeS": 3.0333,
+            "debutS": 0.8333
+          }
+        }
+      ]
+    },
+    {
+      "etat": "rituel.benediction",
+      "traitements": [
+        {
+          "traitement": "boucle",
+          "detail": "portion 0.1–3.85 s gardée sur 3.9667 s (coupe la moins coûteuse par image : 1085.1 mm sur 225 images), écart restant réparti sur la portion",
+          "avant": {
+            "coutureM": 1.1921,
+            "seuilM": 0.1023,
+            "dureeS": 3.9667
+          },
+          "apres": {
+            "coutureM": 0,
+            "seuilM": 0.0851,
+            "dureeS": 3.75,
+            "debutS": 0.1
+          }
+        },
+        {
+          "traitement": "pieds",
+          "detail": "2 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+          "avant": {
+            "glissementM": 0.2167,
+            "coutureM": 0
+          },
+          "apres": {
+            "glissementM": 0,
+            "coutureM": 0,
+            "correctionMaxM": 0.1501,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0
+          }
+        }
+      ]
+    },
+    {
+      "etat": "marche",
+      "traitements": [
+        {
+          "traitement": "boucle",
+          "detail": "portion 0.0667–1.7167 s gardée sur 1.9667 s (coupe la moins coûteuse par image : 144.1 mm sur 99 images), écart restant réparti sur la portion",
+          "avant": {
+            "coutureM": 0.2407,
+            "seuilM": 0.0889,
+            "dureeS": 1.9667
+          },
+          "apres": {
+            "coutureM": 0,
+            "seuilM": 0.0878,
+            "dureeS": 1.65,
+            "debutS": 0.0667
+          }
+        }
+      ]
+    },
+    {
+      "etat": "marche.recul",
+      "traitements": [
+        {
+          "traitement": "boucle",
+          "detail": "écart de couture de 79.3 mm réparti sur tout le clip",
+          "avant": {
+            "coutureM": 0.0793,
+            "seuilM": 0.0675,
+            "dureeS": 0.8667
+          },
+          "apres": {
+            "coutureM": 0,
+            "seuilM": 0.0674,
+            "dureeS": 0.8667,
+            "debutS": 0
+          }
+        }
+      ]
+    },
+    {
+      "etat": "attaque.baton",
+      "traitements": [
+        {
+          "traitement": "pieds",
+          "detail": "6 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation ; bassin abaissé de 29.9 mm au plus là où la jambe n'atteignait pas",
+          "avant": {
+            "glissementM": 0.1792
+          },
+          "apres": {
+            "glissementM": 0,
+            "correctionMaxM": 0.1202,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0.0299
+          }
+        }
+      ]
+    },
+    {
+      "etat": "invective",
+      "traitements": []
+    },
+    {
+      "etat": "canalisation.priere",
+      "traitements": [
+        {
+          "traitement": "boucle",
+          "detail": "portion 0.6333–2.9667 s gardée sur 2.9667 s (coupe la moins coûteuse par image : 100.1 mm sur 140 images), écart restant réparti sur la portion",
+          "avant": {
+            "coutureM": 0.8276,
+            "seuilM": 0.0814,
+            "dureeS": 2.9667
+          },
+          "apres": {
+            "coutureM": 0,
+            "seuilM": 0.0229,
+            "dureeS": 2.3333,
+            "debutS": 0.6333
+          }
+        },
+        {
+          "traitement": "pieds",
+          "detail": "2 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation ; bassin abaissé de 2.4 mm au plus là où la jambe n'atteignait pas",
+          "avant": {
+            "glissementM": 0.0315,
+            "coutureM": 0
+          },
+          "apres": {
+            "glissementM": 0,
+            "coutureM": 0,
+            "correctionMaxM": 0.0235,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0.0024
+          }
+        }
+      ]
+    },
+    {
+      "etat": "canalisation.priere-abattu",
+      "traitements": [
+        {
+          "traitement": "boucle",
+          "detail": "portion 1.2–2.9667 s gardée sur 2.9667 s (coupe la moins coûteuse par image : 6.7 mm sur 106 images), écart restant réparti sur la portion",
+          "avant": {
+            "coutureM": 0.0338,
+            "seuilM": 0.0042,
+            "dureeS": 2.9667
+          },
+          "apres": {
+            "coutureM": 0,
+            "seuilM": 0.0042,
+            "dureeS": 1.7667,
+            "debutS": 1.2
+          }
+        }
+      ]
+    },
+    {
+      "etat": "reaction",
+      "traitements": [
+        {
+          "traitement": "pieds",
+          "detail": "5 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+          "avant": {
+            "glissementM": 0.0654
+          },
+          "apres": {
+            "glissementM": 0,
+            "correctionMaxM": 0.0623,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0
+          }
+        }
+      ]
+    },
+    {
+      "etat": "chute",
+      "traitements": []
+    },
+    {
+      "etat": "abattu.reptation",
+      "traitements": [
+        {
+          "traitement": "boucle",
+          "detail": "portion 0.5167–2.9667 s gardée sur 2.9667 s (coupe la moins coûteuse par image : 34.9 mm sur 147 images), écart restant réparti sur la portion",
+          "avant": {
+            "coutureM": 0.0475,
+            "seuilM": 0.0046,
+            "dureeS": 2.9667
+          },
+          "apres": {
+            "coutureM": 0,
+            "seuilM": 0.005,
+            "dureeS": 2.45,
+            "debutS": 0.5167
+          }
+        }
+      ]
+    },
+    {
+      "etat": "abattu.torsion",
+      "traitements": [
+        {
+          "traitement": "boucle",
+          "detail": "portion 0–3.2333 s gardée sur 3.9667 s (coupe la moins coûteuse par image : 348.9 mm sur 194 images), écart restant réparti sur la portion",
+          "avant": {
+            "coutureM": 0.4607,
+            "seuilM": 0.0235,
+            "dureeS": 3.9667
+          },
+          "apres": {
+            "coutureM": 0,
+            "seuilM": 0.0192,
+            "dureeS": 3.2333,
+            "debutS": 0
+          }
+        }
+      ]
+    },
+    {
+      "etat": "relevement",
+      "traitements": []
+    },
+    {
+      "etat": "mort.debout",
+      "traitements": []
+    }
+  ],
+  "clipsAvant": [
+    {
+      "etat": "rituel.priere",
+      "dureeS": 3.967,
+      "recette": {
+        "name": "rituel.priere",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "coutureM": 0.057,
+      "tremblementMinPx": 2.334,
+      "glissementM": 0.011
+    },
+    {
+      "etat": "rituel.benediction",
+      "dureeS": 3.967,
+      "recette": {
+        "name": "rituel.benediction",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "coutureM": 1.192,
+      "tremblementMinPx": 28.081,
+      "glissementM": 0.192
+    },
+    {
+      "etat": "marche",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "marche",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1.6112035288836535
+      },
+      "coutureM": 0.241,
+      "tremblementMinPx": 40.61,
+      "fouleeMps": 1.862
+    },
+    {
+      "etat": "marche.recul",
+      "dureeS": 0.867,
+      "recette": {
+        "name": "marche.recul",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 2.369795129611485
+      },
+      "coutureM": 0.079,
+      "tremblementMinPx": 45.178,
+      "fouleeMps": 1.266
+    },
+    {
+      "etat": "attaque.baton",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "attaque.baton",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "impactMesureS": 0,
+      "glissementM": 0.179
+    },
+    {
+      "etat": "invective",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "invective",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "glissementM": 0.014
+    },
+    {
+      "etat": "canalisation.priere",
+      "dureeS": 2.967,
+      "recette": {
+        "name": "canalisation.priere",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "coutureM": 0.828,
+      "tremblementMinPx": 8.066,
+      "glissementM": 0.188
+    },
+    {
+      "etat": "canalisation.priere-abattu",
+      "dureeS": 2.967,
+      "recette": {
+        "name": "canalisation.priere-abattu",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "coutureM": 0.034,
+      "tremblementMinPx": 0.312
+    },
+    {
+      "etat": "reaction",
+      "dureeS": 4.5,
+      "recette": {
+        "name": "reaction",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "glissementM": 0.065,
+      "amorceS": 1.567
+    },
+    {
+      "etat": "chute",
+      "dureeS": 4.4,
+      "recette": {
+        "name": "chute",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      }
+    },
+    {
+      "etat": "abattu.reptation",
+      "dureeS": 2.967,
+      "recette": {
+        "name": "abattu.reptation",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 46.89592395519503
+      },
+      "coutureM": 0.048,
+      "tremblementMinPx": 1.817,
+      "fouleeMps": 0.017
+    },
+    {
+      "etat": "abattu.torsion",
+      "dureeS": 3.967,
+      "recette": {
+        "name": "abattu.torsion",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "coutureM": 0.461,
+      "tremblementMinPx": 4.216
+    },
+    {
+      "etat": "relevement",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "relevement",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1.3111111323038738
+      }
+    },
+    {
+      "etat": "mort.debout",
+      "dureeS": 9.333,
+      "recette": {
+        "name": "mort.debout",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      }
+    }
+  ],
+  "avant": {
+    "ok": 43,
+    "echec": 15,
+    "nonMesurable": 0,
+    "verdict": "refuse"
+  },
+  "apres": {
+    "ok": 55,
+    "echec": 3,
+    "nonMesurable": 0,
+    "verdict": "refuse"
+  },
+  "regressions": [],
+  "echecsRestants": [
+    "vitesse marche.recul",
+    "impact attaque.baton",
+    "vitesse abattu.reptation"
+  ],
+  "nonCorriges": [
+    {
+      "etat": "marche.recul",
+      "controle": "vitesse",
+      "raison": "foulée à mettre à l'échelle ×1.3987 pour une lecture à ×1.8 : au-delà de ×1.25, il faut un autre clip"
+    },
+    {
+      "etat": "abattu.reptation",
+      "controle": "vitesse",
+      "raison": "foulée à mettre à l'échelle ×33.1113 pour une lecture à ×1.8 : au-delà de ×1.25, il faut un autre clip"
+    }
+  ],
+  "source": {
+    "file": "art/forge/.cache/confesseur/files/assemblage.glb",
+    "sha256": "8f8c9c78ace25d88c2755b8857b95d1ca1993dcbbec441f6c121571c4dbf93b2"
+  }
+}

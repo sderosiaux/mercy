@@ -1,13 +1,13 @@
 {
   "key": "assemblage",
-  "fingerprint": "07dc48323cbded2a8f5181b358ea7ceb1e8b5b10b18f8b97c744a460e2dacfdf",
+  "fingerprint": "95b28343c4bdb598c49c708d65331827ffb8c9493b2d2d6b588fb22474da2124",
   "status": "reussi",
   "credits": 0,
   "outputs": {
     "glb": {
-      "file": "public/models/porteur.glb",
+      "file": "art/forge/.cache/porteur/files/assemblage.glb",
       "sha256": "81c2f5e17792706fc6896f02aaa85b67dce2d96d6e8a60491316fade3c4e4c3d"
     }
   },
-  "updatedAt": "2026-10-12T04:29:38.171Z"
+  "updatedAt": "2026-10-12T04:59:07.852Z"
 }

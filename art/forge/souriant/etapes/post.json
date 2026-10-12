@@ -1,0 +1,22 @@
+{
+  "key": "post",
+  "fingerprint": "c90db61ab4011b4e67c7daead2f98683729defa5a8898d871d1d2e303081a412",
+  "status": "reussi",
+  "credits": 0,
+  "outputs": {
+    "glb": {
+      "file": "public/models/souriant.glb",
+      "sha256": "9b2f54e83da5d034b1f42fffd1b59cff5058a68ad734a87d54f2a1857c46172a"
+    },
+    "rapport": {
+      "file": "art/forge/souriant/post-traitements.json",
+      "sha256": "58bbbf8748972b7831d0f8abdea6bd246eb19952eb26891946641c40c72bcd9f"
+    }
+  },
+  "meta": {
+    "avant": 11,
+    "apres": 0,
+    "regressions": 0
+  },
+  "updatedAt": "2026-10-12T04:58:59.875Z"
+}

@@ -1,16 +1,16 @@
 {
   "key": "validation",
-  "fingerprint": "5d5d3b71b070d385edf964eed971e8784ea92f8aaea7ae73b1d5a175f95b8bc4",
+  "fingerprint": "704f5773b8ed7e1499a723ab2e1bda5d1c1ba94d624662f262aa967e98d1920d",
   "status": "reussi",
   "credits": 0,
   "outputs": {
     "rapport": {
       "file": "art/forge/porteur/validation.json",
-      "sha256": "5015e57b2fee43a72a3c52d3fe21943264476ff79a3378e971636fea02ee09c3"
+      "sha256": "4976fffebb536cf2c292565df14333083645a20d412360f163f63778d5ccc685"
     }
   },
   "meta": {
     "verdict": "refuse"
   },
-  "updatedAt": "2026-10-12T04:29:38.251Z"
+  "updatedAt": "2026-10-12T04:59:09.258Z"
 }

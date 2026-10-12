@@ -1,0 +1,13 @@
+{
+  "key": "assemblage",
+  "fingerprint": "9e74bef49a5a2a24c01d12b623c4c0dd307cddf0a74521ca70358976913d77d8",
+  "status": "reussi",
+  "credits": 0,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/bourreau/files/assemblage.glb",
+      "sha256": "ffdb0a210b17c03356ce7499027fcef32340d084067f6ef821d175d19d940f09"
+    }
+  },
+  "updatedAt": "2026-10-12T04:59:09.954Z"
+}

@@ -56,27 +56,27 @@
       "controle": "duree",
       "clip": "rituel.mange",
       "verdict": "ok",
-      "mesure": 3.967,
+      "mesure": 3.883,
       "unite": "s",
-      "detail": "3.967 s"
+      "detail": "3.883 s"
     },
     {
       "controle": "boucle",
       "clip": "rituel.mange",
-      "verdict": "echec",
-      "mesure": 0.225,
-      "seuil": 0.075,
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.076,
       "unite": "m",
-      "detail": "écart dernière/première image 224.6 mm, seuil 75.4 mm (1,5 × pas p95, plancher ½ px)"
+      "detail": "écart dernière/première image 0.0 mm, seuil 76.3 mm (1,5 × pas p95, plancher ½ px)"
     },
     {
       "controle": "pieds",
       "clip": "rituel.mange",
-      "verdict": "echec",
-      "mesure": 0.167,
+      "verdict": "ok",
+      "mesure": 0,
       "seuil": 0.017,
       "unite": "m",
-      "detail": "glissement d'un pied en appui 167.2 mm, seuil 16.7 mm (2 px)"
+      "detail": "glissement d'un pied en appui 0.0 mm, seuil 16.7 mm (2 px)"
     },
     {
       "controle": "clip",
@@ -136,11 +136,11 @@
     {
       "controle": "boucle",
       "clip": "marche.stade3",
-      "verdict": "echec",
-      "mesure": 0.212,
-      "seuil": 0.149,
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.157,
       "unite": "m",
-      "detail": "écart dernière/première image 211.8 mm, seuil 149.4 mm (1,5 × pas p95, plancher ½ px)"
+      "detail": "écart dernière/première image 0.0 mm, seuil 157.0 mm (1,5 × pas p95, plancher ½ px)"
     },
     {
       "controle": "sur-place",
@@ -155,10 +155,10 @@
       "controle": "vitesse",
       "clip": "marche.stade3",
       "verdict": "ok",
-      "mesure": 1.074,
+      "mesure": 1.104,
       "seuil": 2,
       "unite": "×",
-      "detail": "foulée du clip 2.792 m/s calée sur 3 m/s (porteur.speedStage3) ; bornes 0.5 à 2"
+      "detail": "foulée du clip 2.718 m/s calée sur 3 m/s (porteur.speedStage3) ; bornes 0.5 à 2"
     },
     {
       "controle": "clip",
@@ -198,11 +198,11 @@
     {
       "controle": "pieds",
       "clip": "absorption",
-      "verdict": "echec",
-      "mesure": 0.393,
+      "verdict": "ok",
+      "mesure": 0,
       "seuil": 0.017,
       "unite": "m",
-      "detail": "glissement d'un pied en appui 393.0 mm, seuil 16.7 mm (2 px)"
+      "detail": "glissement d'un pied en appui 0.0 mm, seuil 16.7 mm (2 px)"
     },
     {
       "controle": "vitesse",
@@ -230,11 +230,11 @@
     {
       "controle": "pieds",
       "clip": "reaction",
-      "verdict": "echec",
-      "mesure": 0.081,
+      "verdict": "ok",
+      "mesure": 0,
       "seuil": 0.017,
       "unite": "m",
-      "detail": "glissement d'un pied en appui 80.7 mm, seuil 16.7 mm (2 px)"
+      "detail": "glissement d'un pied en appui 0.0 mm, seuil 16.7 mm (2 px)"
     },
     {
       "controle": "clip",
@@ -267,11 +267,11 @@
     {
       "controle": "boucle",
       "clip": "abattu.reptation",
-      "verdict": "echec",
-      "mesure": 0.426,
-      "seuil": 0.017,
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.028,
       "unite": "m",
-      "detail": "écart dernière/première image 425.5 mm, seuil 17.1 mm (1,5 × pas p95, plancher ½ px)"
+      "detail": "écart dernière/première image 0.0 mm, seuil 28.4 mm (1,5 × pas p95, plancher ½ px)"
     },
     {
       "controle": "sur-place",
@@ -286,10 +286,10 @@
       "controle": "vitesse",
       "clip": "abattu.reptation",
       "verdict": "echec",
-      "mesure": 4.282,
+      "mesure": 3.431,
       "seuil": 2,
       "unite": "×",
-      "detail": "foulée du clip 0.187 m/s calée sur 0.8 m/s (abattuCrawl) ; bornes 0.5 à 2"
+      "detail": "foulée du clip 0.233 m/s calée sur 0.8 m/s (abattuCrawl) ; bornes 0.5 à 2"
     },
     {
       "controle": "clip",
@@ -301,18 +301,18 @@
       "controle": "duree",
       "clip": "abattu.torsion",
       "verdict": "ok",
-      "mesure": 3.967,
+      "mesure": 3.483,
       "unite": "s",
-      "detail": "3.967 s"
+      "detail": "3.483 s"
     },
     {
       "controle": "boucle",
       "clip": "abattu.torsion",
-      "verdict": "echec",
-      "mesure": 0.066,
+      "verdict": "ok",
+      "mesure": 0,
       "seuil": 0.004,
       "unite": "m",
-      "detail": "écart dernière/première image 65.6 mm, seuil 4.2 mm (1,5 × pas p95, plancher ½ px)"
+      "detail": "écart dernière/première image 0.0 mm, seuil 4.2 mm (1,5 × pas p95, plancher ½ px)"
     },
     {
       "controle": "clip",
@@ -373,7 +373,7 @@
   "clips": [
     {
       "etat": "rituel.mange",
-      "dureeS": 3.967,
+      "dureeS": 3.883,
       "recette": {
         "name": "rituel.mange",
         "boucle": true,
@@ -381,9 +381,9 @@
         "startS": 0,
         "rate": 1
       },
-      "coutureM": 0.225,
-      "tremblementMinPx": 25.895,
-      "glissementM": 0.167
+      "coutureM": 0,
+      "tremblementMinPx": 24.234,
+      "glissementM": 0
     },
     {
       "etat": "marche",
@@ -407,11 +407,11 @@
         "boucle": true,
         "impactS": null,
         "startS": 0,
-        "rate": 1.0743252834716965
+        "rate": 1.1038329856289666
       },
-      "coutureM": 0.212,
-      "tremblementMinPx": 70.026,
-      "fouleeMps": 2.792
+      "coutureM": 0,
+      "tremblementMinPx": 68.405,
+      "fouleeMps": 2.718
     },
     {
       "etat": "attaque.bousculade",
@@ -435,7 +435,7 @@
         "startS": 0,
         "rate": 1.3111111323038738
       },
-      "glissementM": 0.393
+      "glissementM": 0
     },
     {
       "etat": "reaction",
@@ -447,7 +447,7 @@
         "startS": 0,
         "rate": 1
       },
-      "glissementM": 0.081,
+      "glissementM": 0,
       "amorceS": 0.033
     },
     {
@@ -469,15 +469,15 @@
         "boucle": true,
         "impactS": null,
         "startS": 0,
-        "rate": 4.282217080132878
+        "rate": 3.4313114740369883
       },
-      "coutureM": 0.426,
-      "tremblementMinPx": 10.507,
-      "fouleeMps": 0.187
+      "coutureM": 0,
+      "tremblementMinPx": 12.827,
+      "fouleeMps": 0.233
     },
     {
       "etat": "abattu.torsion",
-      "dureeS": 3.967,
+      "dureeS": 3.483,
       "recette": {
         "name": "abattu.torsion",
         "boucle": true,
@@ -485,8 +485,8 @@
         "startS": 0,
         "rate": 1
       },
-      "coutureM": 0.066,
-      "tremblementMinPx": 1.9
+      "coutureM": 0,
+      "tremblementMinPx": 1.747
     },
     {
       "etat": "relevement",
@@ -516,10 +516,352 @@
     "mort": "mixer.timeScale = 0 (horloge du mélangeur gelée)"
   },
   "bilan": {
-    "ok": 35,
-    "echec": 10,
+    "ok": 42,
+    "echec": 3,
     "nonMesurable": 0,
     "verdict": "refuse"
   },
-  "glbSha256": "81c2f5e17792706fc6896f02aaa85b67dce2d96d6e8a60491316fade3c4e4c3d"
+  "glbSha256": "3b736c4b12af35b1c1bf1758e2c75230148722c0b4c9ef3ecdc4d06d6ec929a2",
+  "postTraitements": {
+    "version": 1,
+    "clips": [
+      {
+        "etat": "rituel.mange",
+        "traitements": [
+          {
+            "traitement": "boucle",
+            "detail": "portion 0–3.8833 s gardée sur 3.9667 s (coupe la moins coûteuse par image : 218.1 mm sur 233 images), écart restant réparti sur la portion",
+            "avant": {
+              "coutureM": 0.2246,
+              "seuilM": 0.0754,
+              "dureeS": 3.9667
+            },
+            "apres": {
+              "coutureM": 0,
+              "seuilM": 0.0763,
+              "dureeS": 3.8833,
+              "debutS": 0
+            }
+          },
+          {
+            "traitement": "pieds",
+            "detail": "4 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+            "avant": {
+              "glissementM": 0.1582,
+              "coutureM": 0
+            },
+            "apres": {
+              "glissementM": 0,
+              "coutureM": 0,
+              "correctionMaxM": 0.1276,
+              "ecartCibleMaxM": 0,
+              "bassinM": 0
+            }
+          }
+        ]
+      },
+      {
+        "etat": "marche",
+        "traitements": []
+      },
+      {
+        "etat": "marche.stade3",
+        "traitements": [
+          {
+            "traitement": "boucle",
+            "detail": "écart de couture de 211.8 mm réparti sur tout le clip",
+            "avant": {
+              "coutureM": 0.2118,
+              "seuilM": 0.1494,
+              "dureeS": 1.9667
+            },
+            "apres": {
+              "coutureM": 0,
+              "seuilM": 0.157,
+              "dureeS": 1.9667,
+              "debutS": 0
+            }
+          }
+        ]
+      },
+      {
+        "etat": "attaque.bousculade",
+        "traitements": []
+      },
+      {
+        "etat": "absorption",
+        "traitements": [
+          {
+            "traitement": "racine",
+            "detail": "dérive horizontale nette du bassin retirée (tendance linéaire) : 315.4 mm sur 1.9667 s",
+            "avant": {
+              "deriveMps": 0.1604,
+              "seuilMps": 0.1
+            },
+            "apres": {
+              "deriveMps": 0
+            }
+          },
+          {
+            "traitement": "pieds",
+            "detail": "4 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+            "avant": {
+              "glissementM": 0.4295
+            },
+            "apres": {
+              "glissementM": 0,
+              "correctionMaxM": 0.4328,
+              "ecartCibleMaxM": 0,
+              "bassinM": 0
+            }
+          }
+        ]
+      },
+      {
+        "etat": "reaction",
+        "traitements": [
+          {
+            "traitement": "pieds",
+            "detail": "3 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+            "avant": {
+              "glissementM": 0.0807
+            },
+            "apres": {
+              "glissementM": 0,
+              "correctionMaxM": 0.0651,
+              "ecartCibleMaxM": 0,
+              "bassinM": 0
+            }
+          }
+        ]
+      },
+      {
+        "etat": "chute",
+        "traitements": []
+      },
+      {
+        "etat": "abattu.reptation",
+        "traitements": [
+          {
+            "traitement": "boucle",
+            "detail": "écart de couture de 425.5 mm réparti sur tout le clip",
+            "avant": {
+              "coutureM": 0.4255,
+              "seuilM": 0.0171,
+              "dureeS": 2.9667
+            },
+            "apres": {
+              "coutureM": 0,
+              "seuilM": 0.0284,
+              "dureeS": 2.9667,
+              "debutS": 0
+            }
+          }
+        ]
+      },
+      {
+        "etat": "abattu.torsion",
+        "traitements": [
+          {
+            "traitement": "boucle",
+            "detail": "portion 0.4667–3.95 s gardée sur 3.9667 s (coupe la moins coûteuse par image : 56.3 mm sur 209 images), écart restant réparti sur la portion",
+            "avant": {
+              "coutureM": 0.0656,
+              "seuilM": 0.0042,
+              "dureeS": 3.9667
+            },
+            "apres": {
+              "coutureM": 0,
+              "seuilM": 0.0042,
+              "dureeS": 3.4833,
+              "debutS": 0.4667
+            }
+          }
+        ]
+      },
+      {
+        "etat": "relevement",
+        "traitements": []
+      },
+      {
+        "etat": "mort.debout",
+        "traitements": []
+      }
+    ],
+    "clipsAvant": [
+      {
+        "etat": "rituel.mange",
+        "dureeS": 3.967,
+        "recette": {
+          "name": "rituel.mange",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        "coutureM": 0.225,
+        "tremblementMinPx": 25.895,
+        "glissementM": 0.167
+      },
+      {
+        "etat": "marche",
+        "dureeS": 6.5,
+        "recette": {
+          "name": "marche",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 7.680887914861482
+        },
+        "coutureM": 0.005,
+        "tremblementMinPx": 16.043,
+        "fouleeMps": 0.26
+      },
+      {
+        "etat": "marche.stade3",
+        "dureeS": 1.967,
+        "recette": {
+          "name": "marche.stade3",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1.0743252834716965
+        },
+        "coutureM": 0.212,
+        "tremblementMinPx": 70.026,
+        "fouleeMps": 2.792
+      },
+      {
+        "etat": "attaque.bousculade",
+        "dureeS": 4.7,
+        "recette": {
+          "name": "attaque.bousculade",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        "impactMesureS": 4.7
+      },
+      {
+        "etat": "absorption",
+        "dureeS": 1.967,
+        "recette": {
+          "name": "absorption",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1.3111111323038738
+        },
+        "glissementM": 0.393
+      },
+      {
+        "etat": "reaction",
+        "dureeS": 2.833,
+        "recette": {
+          "name": "reaction",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        "glissementM": 0.081,
+        "amorceS": 0.033
+      },
+      {
+        "etat": "chute",
+        "dureeS": 3.267,
+        "recette": {
+          "name": "chute",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        }
+      },
+      {
+        "etat": "abattu.reptation",
+        "dureeS": 2.967,
+        "recette": {
+          "name": "abattu.reptation",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 4.282217080132878
+        },
+        "coutureM": 0.426,
+        "tremblementMinPx": 10.507,
+        "fouleeMps": 0.187
+      },
+      {
+        "etat": "abattu.torsion",
+        "dureeS": 3.967,
+        "recette": {
+          "name": "abattu.torsion",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        "coutureM": 0.066,
+        "tremblementMinPx": 1.9
+      },
+      {
+        "etat": "relevement",
+        "dureeS": 1.967,
+        "recette": {
+          "name": "relevement",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1.3111111323038738
+        }
+      },
+      {
+        "etat": "mort.debout",
+        "dureeS": 2.167,
+        "recette": {
+          "name": "mort.debout",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        }
+      }
+    ],
+    "avant": {
+      "ok": 35,
+      "echec": 10,
+      "nonMesurable": 0,
+      "verdict": "refuse"
+    },
+    "apres": {
+      "ok": 42,
+      "echec": 3,
+      "nonMesurable": 0,
+      "verdict": "refuse"
+    },
+    "regressions": [],
+    "echecsRestants": [
+      "vitesse marche",
+      "impact attaque.bousculade",
+      "vitesse abattu.reptation"
+    ],
+    "nonCorriges": [
+      {
+        "etat": "marche",
+        "controle": "vitesse",
+        "raison": "foulée à mettre à l'échelle ×4.2672 pour une lecture à ×1.8 : au-delà de ×1.25, il faut un autre clip"
+      },
+      {
+        "etat": "abattu.reptation",
+        "controle": "vitesse",
+        "raison": "foulée à mettre à l'échelle ×1.9063 pour une lecture à ×1.8 : au-delà de ×1.25, il faut un autre clip"
+      }
+    ],
+    "source": {
+      "file": "art/forge/.cache/porteur/files/assemblage.glb",
+      "sha256": "81c2f5e17792706fc6896f02aaa85b67dce2d96d6e8a60491316fade3c4e4c3d"
+    }
+  }
 }

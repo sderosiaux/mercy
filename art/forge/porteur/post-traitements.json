@@ -1,0 +1,342 @@
+{
+  "version": 1,
+  "clips": [
+    {
+      "etat": "rituel.mange",
+      "traitements": [
+        {
+          "traitement": "boucle",
+          "detail": "portion 0–3.8833 s gardée sur 3.9667 s (coupe la moins coûteuse par image : 218.1 mm sur 233 images), écart restant réparti sur la portion",
+          "avant": {
+            "coutureM": 0.2246,
+            "seuilM": 0.0754,
+            "dureeS": 3.9667
+          },
+          "apres": {
+            "coutureM": 0,
+            "seuilM": 0.0763,
+            "dureeS": 3.8833,
+            "debutS": 0
+          }
+        },
+        {
+          "traitement": "pieds",
+          "detail": "4 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+          "avant": {
+            "glissementM": 0.1582,
+            "coutureM": 0
+          },
+          "apres": {
+            "glissementM": 0,
+            "coutureM": 0,
+            "correctionMaxM": 0.1276,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0
+          }
+        }
+      ]
+    },
+    {
+      "etat": "marche",
+      "traitements": []
+    },
+    {
+      "etat": "marche.stade3",
+      "traitements": [
+        {
+          "traitement": "boucle",
+          "detail": "écart de couture de 211.8 mm réparti sur tout le clip",
+          "avant": {
+            "coutureM": 0.2118,
+            "seuilM": 0.1494,
+            "dureeS": 1.9667
+          },
+          "apres": {
+            "coutureM": 0,
+            "seuilM": 0.157,
+            "dureeS": 1.9667,
+            "debutS": 0
+          }
+        }
+      ]
+    },
+    {
+      "etat": "attaque.bousculade",
+      "traitements": []
+    },
+    {
+      "etat": "absorption",
+      "traitements": [
+        {
+          "traitement": "racine",
+          "detail": "dérive horizontale nette du bassin retirée (tendance linéaire) : 315.4 mm sur 1.9667 s",
+          "avant": {
+            "deriveMps": 0.1604,
+            "seuilMps": 0.1
+          },
+          "apres": {
+            "deriveMps": 0
+          }
+        },
+        {
+          "traitement": "pieds",
+          "detail": "4 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+          "avant": {
+            "glissementM": 0.4295
+          },
+          "apres": {
+            "glissementM": 0,
+            "correctionMaxM": 0.4328,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0
+          }
+        }
+      ]
+    },
+    {
+      "etat": "reaction",
+      "traitements": [
+        {
+          "traitement": "pieds",
+          "detail": "3 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+          "avant": {
+            "glissementM": 0.0807
+          },
+          "apres": {
+            "glissementM": 0,
+            "correctionMaxM": 0.0651,
+            "ecartCibleMaxM": 0,
+            "bassinM": 0
+          }
+        }
+      ]
+    },
+    {
+      "etat": "chute",
+      "traitements": []
+    },
+    {
+      "etat": "abattu.reptation",
+      "traitements": [
+        {
+          "traitement": "boucle",
+          "detail": "écart de couture de 425.5 mm réparti sur tout le clip",
+          "avant": {
+            "coutureM": 0.4255,
+            "seuilM": 0.0171,
+            "dureeS": 2.9667
+          },
+          "apres": {
+            "coutureM": 0,
+            "seuilM": 0.0284,
+            "dureeS": 2.9667,
+            "debutS": 0
+          }
+        }
+      ]
+    },
+    {
+      "etat": "abattu.torsion",
+      "traitements": [
+        {
+          "traitement": "boucle",
+          "detail": "portion 0.4667–3.95 s gardée sur 3.9667 s (coupe la moins coûteuse par image : 56.3 mm sur 209 images), écart restant réparti sur la portion",
+          "avant": {
+            "coutureM": 0.0656,
+            "seuilM": 0.0042,
+            "dureeS": 3.9667
+          },
+          "apres": {
+            "coutureM": 0,
+            "seuilM": 0.0042,
+            "dureeS": 3.4833,
+            "debutS": 0.4667
+          }
+        }
+      ]
+    },
+    {
+      "etat": "relevement",
+      "traitements": []
+    },
+    {
+      "etat": "mort.debout",
+      "traitements": []
+    }
+  ],
+  "clipsAvant": [
+    {
+      "etat": "rituel.mange",
+      "dureeS": 3.967,
+      "recette": {
+        "name": "rituel.mange",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "coutureM": 0.225,
+      "tremblementMinPx": 25.895,
+      "glissementM": 0.167
+    },
+    {
+      "etat": "marche",
+      "dureeS": 6.5,
+      "recette": {
+        "name": "marche",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 7.680887914861482
+      },
+      "coutureM": 0.005,
+      "tremblementMinPx": 16.043,
+      "fouleeMps": 0.26
+    },
+    {
+      "etat": "marche.stade3",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "marche.stade3",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1.0743252834716965
+      },
+      "coutureM": 0.212,
+      "tremblementMinPx": 70.026,
+      "fouleeMps": 2.792
+    },
+    {
+      "etat": "attaque.bousculade",
+      "dureeS": 4.7,
+      "recette": {
+        "name": "attaque.bousculade",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "impactMesureS": 4.7
+    },
+    {
+      "etat": "absorption",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "absorption",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1.3111111323038738
+      },
+      "glissementM": 0.393
+    },
+    {
+      "etat": "reaction",
+      "dureeS": 2.833,
+      "recette": {
+        "name": "reaction",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "glissementM": 0.081,
+      "amorceS": 0.033
+    },
+    {
+      "etat": "chute",
+      "dureeS": 3.267,
+      "recette": {
+        "name": "chute",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      }
+    },
+    {
+      "etat": "abattu.reptation",
+      "dureeS": 2.967,
+      "recette": {
+        "name": "abattu.reptation",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 4.282217080132878
+      },
+      "coutureM": 0.426,
+      "tremblementMinPx": 10.507,
+      "fouleeMps": 0.187
+    },
+    {
+      "etat": "abattu.torsion",
+      "dureeS": 3.967,
+      "recette": {
+        "name": "abattu.torsion",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "coutureM": 0.066,
+      "tremblementMinPx": 1.9
+    },
+    {
+      "etat": "relevement",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "relevement",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1.3111111323038738
+      }
+    },
+    {
+      "etat": "mort.debout",
+      "dureeS": 2.167,
+      "recette": {
+        "name": "mort.debout",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      }
+    }
+  ],
+  "avant": {
+    "ok": 35,
+    "echec": 10,
+    "nonMesurable": 0,
+    "verdict": "refuse"
+  },
+  "apres": {
+    "ok": 42,
+    "echec": 3,
+    "nonMesurable": 0,
+    "verdict": "refuse"
+  },
+  "regressions": [],
+  "echecsRestants": [
+    "vitesse marche",
+    "impact attaque.bousculade",
+    "vitesse abattu.reptation"
+  ],
+  "nonCorriges": [
+    {
+      "etat": "marche",
+      "controle": "vitesse",
+      "raison": "foulée à mettre à l'échelle ×4.2672 pour une lecture à ×1.8 : au-delà de ×1.25, il faut un autre clip"
+    },
+    {
+      "etat": "abattu.reptation",
+      "controle": "vitesse",
+      "raison": "foulée à mettre à l'échelle ×1.9063 pour une lecture à ×1.8 : au-delà de ×1.25, il faut un autre clip"
+    }
+  ],
+  "source": {
+    "file": "art/forge/.cache/porteur/files/assemblage.glb",
+    "sha256": "81c2f5e17792706fc6896f02aaa85b67dce2d96d6e8a60491316fade3c4e4c3d"
+  }
+}

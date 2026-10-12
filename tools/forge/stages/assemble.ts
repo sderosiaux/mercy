@@ -1,17 +1,18 @@
-// Assemblage local : un seul GLB par personnage (public/models/<id>.glb), un clip par état de la fiche, nommé
-// par l'état, étiqueté (extras.mercy : type, boucle, repère d'impact). Le repère d'une attaque est celui de la
-// fiche s'il est posé, sinon le pic d'allonge mesuré de son effecteur.
+// Assemblage local : un seul GLB par personnage, un clip par état de la fiche, nommé par l'état, étiqueté
+// (extras.mercy : type, boucle, repère d'impact). Le repère d'une attaque est celui de la fiche s'il est posé,
+// sinon le pic d'allonge mesuré de son effecteur. Sortie brute dans le cache : l'étape post en tire le modèle du
+// jeu (public/models/<id>.glb), la galerie la montre comme « avant ».
 import { runLocalStep, type StageRecord } from '../cache'
 import { type Glb, parseGlb, writeGlb } from '../gltf/glb'
 import { appendAnimation, type ClipTag, retagAnimations, stripRootDrift } from '../gltf/merge'
 import { type ClipSpec, producedClips } from '../schema'
 import { measuredImpact } from '../validate/checks'
 import { loadRig } from '../validate/rig'
-import { type ForgeContext, line, modelFile, type StepLine } from './context'
-import { updateManifest } from './manifest'
+import { assembledFile, type ForgeContext, line, type StepLine } from './context'
 import { libraryKeys } from './meshy'
 
-export const ASSEMBLY_VERSION = 1
+// 2 : sortie dans le cache (avant : public/models), le modèle du jeu vient de l'étape post
+export const ASSEMBLY_VERSION = 2
 
 const tag = (spec: ClipSpec, impactS?: number): ClipTag => ({
   name: spec.etat,
@@ -39,6 +40,14 @@ const libraryNames = (specs: readonly ClipSpec[], ids: readonly number[]): Map<s
   return out
 }
 
+// Nom de bibliothèque d'un clip tel que Meshy l'écrit : le nom seul dans un fichier à plusieurs actions, mais
+// « Armature|<nom>|baselayer » dans un fichier à une seule action (constaté sur Standard_Forward_Charge_inplace du
+// Bourreau, 2026-10-12). Les deux désignent la même action.
+export const libraryClipName = (raw: string): string => {
+  const parts = raw.split('|')
+  return parts.length === 3 && parts[2] === 'baselayer' && parts[1] ? parts[1] : raw
+}
+
 export interface AssembleInputs {
   readonly rig: StageRecord
   readonly bibliotheque: readonly StageRecord[]
@@ -53,18 +62,20 @@ export const assembleClips = (ctx: ForgeContext, inputs: AssembleInputs): Glb =>
   inputs.bibliotheque.forEach((rec, i) => {
     const names = libraryNames(specs, chunks[i]?.ids ?? [])
     const src = glbOf(rec)
-    const found = new Set((src.json.animations ?? []).map((a) => a.name ?? ''))
+    const raw = (src.json.animations ?? []).map((a) => a.name ?? '')
+    const found = new Set(raw.map(libraryClipName))
     const missing = [...names.keys()].filter((n) => !found.has(n))
     if (missing.length > 0) {
-      throw new Error(
-        `clips ${missing.join(', ')} absents de ${rec.key} (présents : ${[...found].join(', ')})`,
-      )
+      throw new Error(`clips ${missing.join(', ')} absents de ${rec.key} (présents : ${raw.join(', ')})`)
     }
     if (base === null)
-      base = retagAnimations(src, (name) => (names.has(name) ? tag(names.get(name) as ClipSpec) : null))
+      base = retagAnimations(src, (name) => {
+        const spec = names.get(libraryClipName(name))
+        return spec ? tag(spec) : null
+      })
     else {
       ;(src.json.animations ?? []).forEach((a, j) => {
-        const spec = names.get(a.name ?? '')
+        const spec = names.get(libraryClipName(a.name ?? ''))
         if (spec && base) base = appendAnimation(base, src, j, tag(spec))
       })
     }
@@ -110,7 +121,7 @@ export const placeImpacts = async (ctx: ForgeContext, glb: Glb): Promise<Glb> =>
 }
 
 export const runAssemble = async (ctx: ForgeContext, inputs: AssembleInputs): Promise<StepLine> => {
-  const target = modelFile(ctx.sheet)
+  const target = assembledFile(ctx.sheet)
   const r = await runLocalStep({
     store: ctx.store,
     key: 'assemblage',
@@ -130,6 +141,5 @@ export const runAssemble = async (ctx: ForgeContext, inputs: AssembleInputs): Pr
       return { outputs: { glb: ctx.store.put(target, writeGlb(glb)) } }
     },
   })
-  updateManifest(ctx, { glb: r.record.outputs.glb?.sha256 ?? null })
   return line(r.record, r.outcome)
 }

@@ -1,13 +1,13 @@
 {
   "key": "assemblage",
-  "fingerprint": "2dbf9a122d5cda632c66332a09a5942ea4aa1df0bf27d7e4c88177b266bf37ed",
+  "fingerprint": "0b574bfc273ffb220bb4bc5b5be8294be8fe0f20e7a60d25ffbacc9628613867",
   "status": "reussi",
   "credits": 0,
   "outputs": {
     "glb": {
-      "file": "public/models/confesseur.glb",
+      "file": "art/forge/.cache/confesseur/files/assemblage.glb",
       "sha256": "8f8c9c78ace25d88c2755b8857b95d1ca1993dcbbec441f6c121571c4dbf93b2"
     }
   },
-  "updatedAt": "2026-10-12T04:35:59.358Z"
+  "updatedAt": "2026-10-12T04:59:03.334Z"
 }

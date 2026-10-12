@@ -3,7 +3,7 @@
 
 import { type AssetSheet, parseAsset, SchemaError } from '../schema'
 import type { Manifest, ManifestEntry } from '../stages/manifest'
-import type { ValidationReport } from '../validate/checks'
+import type { ValidationFile } from '../stages/validate'
 
 const fiches = import.meta.glob<unknown>('/art/forge/*/asset.json', { eager: true, import: 'default' })
 const planches = import.meta.glob<string>('/art/forge/*/planche-modele.png', {
@@ -11,7 +11,7 @@ const planches = import.meta.glob<string>('/art/forge/*/planche-modele.png', {
   query: '?url',
   import: 'default',
 })
-const rapports = import.meta.glob<ValidationReport & { glbSha256: string }>('/art/forge/*/validation.json', {
+const rapports = import.meta.glob<ValidationFile>('/art/forge/*/validation.json', {
   eager: true,
   import: 'default',
 })
@@ -29,7 +29,7 @@ export interface GalleryAsset {
   readonly erreur: string | null
   readonly planche: string | null
   readonly reference: string | null
-  readonly rapport: (ValidationReport & { glbSha256: string }) | null
+  readonly rapport: ValidationFile | null
   readonly manifeste: ManifestEntry | null
 }
 

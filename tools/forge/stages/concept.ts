@@ -11,7 +11,16 @@ import { type ForgeContext, line, plancheFile, type StageReport, type StepLine }
 
 export const SPLIT_VERSION = 1
 
-const plancheInputs = (ctx: ForgeContext) => ({ ...imageDescriptor(ctx.sheet), gabarit: SHEET_TEMPLATE })
+export const plancheInputs = (ctx: ForgeContext) => ({
+  ...imageDescriptor(ctx.sheet),
+  gabarit: SHEET_TEMPLATE,
+})
+export const vuesInputs = (plancheSha: string | undefined) => ({
+  planche: plancheSha,
+  decoupe: SPLIT_VERSION,
+  tolerance: BG_TOLERANCE,
+  vues: SHEET_VIEWS,
+})
 
 export const runConcept = async (ctx: ForgeContext): Promise<StageReport> => {
   const { sheet, store } = ctx
@@ -55,7 +64,7 @@ export const runConcept = async (ctx: ForgeContext): Promise<StageReport> => {
   const vues = await runLocalStep({
     store,
     key: 'vues',
-    inputs: { planche: plancheSha, decoupe: SPLIT_VERSION, tolerance: BG_TOLERANCE, vues: SHEET_VIEWS },
+    inputs: vuesInputs(plancheSha),
     force: ctx.force,
     now: ctx.now,
     produce: async () => {

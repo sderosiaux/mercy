@@ -64,6 +64,25 @@ export const walkInPlace = (name = 'marche', period = 1, amplitude = 0.45): Clip
   },
 })
 
+// Même marche, genoux pliés (cuisses en avant, tibias en arrière) : les jambes ont de la marge pour allonger le pas.
+export const crouchWalk = (name = 'marche', period = 1, amplitude = 0.45): ClipDef => {
+  const base = walkInPlace(name, period, amplitude)
+  const x = (v?: { readonly rot?: readonly [number, number, number] }): number => v?.rot?.[0] ?? 0
+  return {
+    ...base,
+    pose: (t) => {
+      const p = base.pose(t)
+      return {
+        ...p,
+        thighL: { rot: [x(p.thighL) - 0.5, 0, 0] },
+        shinL: { rot: [x(p.shinL) + 1.0, 0, 0] },
+        thighR: { rot: [x(p.thighR) - 0.5, 0, 0] },
+        shinR: { rot: [x(p.shinR) + 1.0, 0, 0] },
+      }
+    },
+  }
+}
+
 // Marche qui avance d'elle-même : le bassin part de 0 et finit à `drift` m devant.
 export const walkWithRootMotion = (name = 'marche', drift = 1.2): ClipDef => {
   const base = walkInPlace(name)

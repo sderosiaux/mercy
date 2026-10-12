@@ -7,11 +7,18 @@ import {
   type AnimationAction,
   type AnimationClip,
   AnimationMixer,
+  type Bone,
   Box3,
+  BufferAttribute,
+  BufferGeometry,
   CircleGeometry,
+  Color,
   DirectionalLight,
   Fog,
+  Group,
   HemisphereLight,
+  Line,
+  LineBasicMaterial,
   Mesh,
   MeshStandardMaterial,
   NoToneMapping,
@@ -19,6 +26,8 @@ import {
   PCFSoftShadowMap,
   PerspectiveCamera,
   PointLight,
+  Points,
+  PointsMaterial,
   Scene,
   SRGBColorSpace,
   Vector3,
@@ -26,9 +35,87 @@ import {
 } from 'three'
 import { cameraPose } from '../../../src/render/camera'
 import { type ClipRecipe, FRAME_S, freeze, interrupt, playClip } from '../playback'
-import { flicker, LIGHTS, SCENE } from './theme'
+import { findBone } from '../validate/rig'
+import { FOOT_CONTACT_M } from '../validate/thresholds'
+import { flicker, LIGHTS, SCENE, TRACE } from './theme'
 
-export type CameraMode = 'jeu' | 'tour'
+// tour : orbite lente ; jeu : caméra du §20 ; fixe : trois-quarts face, immobile ; pieds : gros plan sur les pieds
+// et leurs traces (comparaisons, captures)
+export type CameraMode = 'jeu' | 'tour' | 'fixe' | 'pieds'
+
+// Trace au sol d'un pied sur les dernières TRACE.images images : appui (à moins de FOOT_CONTACT_M du plus bas de la
+// fenêtre, la définition de la validation) en couleur vive, vol en couleur sourde. Un pied qui glisse en appui
+// dessine un trait ; un pied tenu, un point.
+class FootTrace {
+  readonly line = new Group()
+  private readonly xs: number[] = []
+  private readonly ys: number[] = []
+  private readonly zs: number[] = []
+  private readonly geometry = new BufferGeometry()
+  private readonly positions = new Float32Array(TRACE.images * 3)
+  private readonly colors = new Float32Array(TRACE.images * 3)
+  private readonly positionAttr = new BufferAttribute(this.positions, 3)
+  private readonly colorAttr = new BufferAttribute(this.colors, 3)
+  private readonly on = new Color(TRACE.appui)
+  private readonly off = new Color(TRACE.vol)
+  private readonly v = new Vector3()
+
+  constructor(private readonly bone: Bone) {
+    this.geometry.setAttribute('position', this.positionAttr)
+    this.geometry.setAttribute('color', this.colorAttr)
+    this.geometry.setDrawRange(0, 0)
+    const path = new Line(
+      this.geometry,
+      new LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false }),
+    )
+    const dots = new Points(
+      this.geometry,
+      new PointsMaterial({
+        vertexColors: true,
+        size: TRACE.point,
+        sizeAttenuation: false,
+        depthWrite: false,
+      }),
+    )
+    for (const o of [path, dots]) {
+      o.renderOrder = 2
+      o.frustumCulled = false
+      this.line.add(o)
+    }
+  }
+
+  reset(): void {
+    this.xs.length = 0
+    this.ys.length = 0
+    this.zs.length = 0
+    this.geometry.setDrawRange(0, 0)
+  }
+
+  sample(): void {
+    this.bone.getWorldPosition(this.v)
+    this.xs.push(this.v.x)
+    this.ys.push(this.v.y)
+    this.zs.push(this.v.z)
+    if (this.xs.length > TRACE.images) {
+      this.xs.shift()
+      this.ys.shift()
+      this.zs.shift()
+    }
+  }
+
+  draw(): void {
+    const n = this.xs.length
+    const low = Math.min(...this.ys)
+    for (let i = 0; i < n; i++) {
+      this.positions.set([this.xs[i] as number, TRACE.hauteur, this.zs[i] as number], i * 3)
+      const c = (this.ys[i] as number) <= low + FOOT_CONTACT_M ? this.on : this.off
+      this.colors.set([c.r, c.g, c.b], i * 3)
+    }
+    this.positionAttr.needsUpdate = true
+    this.colorAttr.needsUpdate = true
+    this.geometry.setDrawRange(0, n)
+  }
+}
 export type LightMode = 'da' | 'neutre'
 
 export interface ViewerState {
@@ -65,6 +152,8 @@ export class Viewer {
   private mixer: AnimationMixer | null = null
   private current: { action: AnimationAction; recipe: ClipRecipe; clip: AnimationClip } | null = null
   private frozen = false
+  private traces: FootTrace[] = []
+  private showTraces = false
   private cameraMode: CameraMode = 'tour'
   private height = 1.8
   private clock = 0
@@ -112,6 +201,8 @@ export class Viewer {
 
   setModel(input: ModelInput | null): void {
     if (this.model) this.scene.remove(this.model.root)
+    for (const t of this.traces) this.scene.remove(t.line)
+    this.traces = []
     this.mixer?.stopAllAction()
     this.mixer = null
     this.current = null
@@ -137,6 +228,23 @@ export class Viewer {
     this.height = b2.max.y - b2.min.y || 1.8
     this.scene.add(root)
     this.mixer = new AnimationMixer(root)
+    const bones: Bone[] = []
+    root.traverse((o) => {
+      if ((o as Bone).isBone) bones.push(o as Bone)
+    })
+    this.traces = (['piedGauche', 'piedDroit'] as const)
+      .map((e) => bones[findBone({ bones }, e)])
+      .filter((b): b is Bone => b !== undefined)
+      .map((b) => new FootTrace(b))
+    for (const t of this.traces) {
+      t.line.visible = this.showTraces
+      this.scene.add(t.line)
+    }
+  }
+
+  setTraces(on: boolean): void {
+    this.showTraces = on
+    for (const t of this.traces) t.line.visible = on
   }
 
   play(name: string): void {
@@ -148,6 +256,7 @@ export class Viewer {
     const recipe = recipeOr(this.model.recipes, clip)
     this.current = { action: playClip(this.mixer.clipAction(clip), recipe), recipe, clip }
     this.mixer.update(0)
+    for (const t of this.traces) t.reset()
   }
 
   // Un coup qui touche : la recette d'interruption bascule vers la réaction (2 images à 60 i/s).
@@ -210,6 +319,20 @@ export class Viewer {
       this.camera.fov = pose.fovDeg
       this.camera.position.set(...pose.position)
       this.camera.lookAt(...pose.target)
+    } else if (this.cameraMode === 'pieds') {
+      // gros plan trois-quarts sur les pieds : un glissement de 2 cm s'y voit
+      const a = -0.6
+      const r = Math.max(1.4, this.height * 0.95)
+      this.camera.fov = 30
+      this.camera.position.set(Math.sin(a) * r, this.height * 0.62, Math.cos(a) * r)
+      this.camera.lookAt(0, this.height * 0.12, 0)
+    } else if (this.cameraMode === 'fixe') {
+      // trois-quarts face, côté gauche du personnage, assez haut pour lire les traces au sol
+      const r = Math.max(3, this.height * 2.3)
+      const a = -0.6
+      this.camera.fov = 30
+      this.camera.position.set(Math.sin(a) * r, this.height * 1.25, Math.cos(a) * r)
+      this.camera.lookAt(0, this.height * 0.38, 0)
     } else {
       const r = Math.max(3, this.height * 2.7)
       const a = this.clock * 0.35
@@ -229,7 +352,9 @@ export class Viewer {
       this.acc -= FRAME_S
       this.clock += FRAME_S
       this.mixer?.update(FRAME_S)
+      if (this.showTraces && this.current) for (const t of this.traces) t.sample()
     }
+    if (this.showTraces) for (const t of this.traces) t.draw()
     const f = flicker(this.clock)
     this.torch.intensity = LIGHTS.torche * f
     this.torch2.intensity = LIGHTS.torcheLointaine * flicker(this.clock + 3.1)

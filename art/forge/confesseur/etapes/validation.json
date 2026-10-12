@@ -1,16 +1,16 @@
 {
   "key": "validation",
-  "fingerprint": "5a16125ed016436529fba6d7e14e284f0c2da957617a0e0e82ba62f73cc19ee7",
+  "fingerprint": "16d853af73d5d46972205382d2fe1e2f3dd1ec2d5cec682874e30ab1cd85f2de",
   "status": "reussi",
   "credits": 0,
   "outputs": {
     "rapport": {
       "file": "art/forge/confesseur/validation.json",
-      "sha256": "3a4ac9ed0b629b1629a10b0c20a1262525116e2ba2b07ea67ccc26bec672345d"
+      "sha256": "812863e9e3fc700d8f473f8b54401306eabc34ea8d4a2e552c1eccd032941cd0"
     }
   },
   "meta": {
     "verdict": "refuse"
   },
-  "updatedAt": "2026-10-12T04:35:59.455Z"
+  "updatedAt": "2026-10-12T04:59:04.872Z"
 }

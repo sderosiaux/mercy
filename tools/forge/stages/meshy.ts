@@ -15,9 +15,38 @@ import {
   type MeshyRequest,
 } from '../meshy/requests'
 import { producedClips } from '../schema'
-import { blocked, type ForgeContext, line, type StageName, type StageReport, type StepLine } from './context'
+import {
+  blocked,
+  type ForgeContext,
+  line,
+  StageBlocked,
+  type StageReport,
+  type StaleStep,
+  type StepLine,
+} from './context'
+import { staleMessage, staleUpstream } from './freshness'
 
 export const NO_KEY = 'MESHY_API_KEY absente : appel Meshy non fait (non vérifié)'
+
+// Une étape qui doit appeler Meshy sans clé est bloquée (pas en erreur) : la chaîne s'arrête proprement.
+export class NoKeyError extends StageBlocked {
+  constructor() {
+    super(NO_KEY)
+  }
+}
+
+// Une étape qui créerait une tâche alors qu'une étape amont ne correspond plus à la fiche.
+export class StaleUpstreamError extends StageBlocked {}
+
+interface Guard {
+  readonly stage: 'model' | 'rig' | 'anim'
+  readonly stale: readonly StaleStep[]
+}
+const guardOf = (ctx: ForgeContext, stage: Guard['stage']): Guard => ({
+  stage,
+  stale: staleUpstream(ctx, stage),
+})
+const staleOf = (g: Guard): Pick<StageReport, 'perimees'> => (g.stale.length > 0 ? { perimees: g.stale } : {})
 
 const needRecord = (ctx: ForgeContext, key: string, stage: string): StageRecord | string => {
   const rec = ctx.store.read(key)
@@ -28,13 +57,16 @@ const needRecord = (ctx: ForgeContext, key: string, stage: string): StageRecord 
 
 const planOrRun = async (
   ctx: ForgeContext,
+  guard: Guard,
   key: string,
   request: MeshyRequest,
   collect: (task: MeshyTask) => Promise<Readonly<Record<string, OutputRef>>>,
 ): Promise<{ step: StepLine; record: StageRecord | null }> => {
   if (ctx.dryRun) {
+    // amont périmé : le pas sera refait sur le nouvel amont, donc repayé, même s'il est en cache aujourd'hui
     const rec = ctx.store.read(key)
     const cached =
+      guard.stale.length === 0 &&
       !ctx.force &&
       rec?.fingerprint === stepFingerprint(request) &&
       (rec.status === 'reussi' || rec.status === 'cree')
@@ -47,7 +79,25 @@ const planOrRun = async (
       record: null,
     }
   }
-  if (!ctx.meshy) throw new Error(NO_KEY)
+  // Créer une tâche (payer) sur un amont périmé : refusé avant tout appel.
+  const known = ctx.store.read(key)
+  const creates = !(
+    !ctx.force &&
+    known?.fingerprint === stepFingerprint(request) &&
+    (known.status === 'reussi' || known.status === 'cree' || known.status === 'incertain')
+  )
+  if (creates && guard.stale.length > 0) throw new StaleUpstreamError(staleMessage(guard.stage, guard.stale))
+  if (!ctx.meshy) {
+    // Sans clé, une tâche déjà payée et dont les fichiers sont intacts se relit du cache : rien à appeler.
+    const rec = ctx.store.read(key)
+    const cached =
+      !ctx.force &&
+      rec?.fingerprint === stepFingerprint(request) &&
+      rec.status === 'reussi' &&
+      ctx.store.intact(rec)
+    if (cached) return { step: line(rec, 'cache'), record: rec }
+    throw new NoKeyError()
+  }
   const r = await runMeshyStep({
     store: ctx.store,
     client: ctx.meshy,
@@ -67,12 +117,7 @@ const downloadTo = async (ctx: ForgeContext, url: unknown, name: string): Promis
   return ctx.store.put(cacheFile(ctx.sheet.id, name), bytes)
 }
 
-const guard = (ctx: ForgeContext, etape: StageName): StageReport | null =>
-  !ctx.meshy && !ctx.dryRun ? blocked(etape, NO_KEY) : null
-
 export const runModel = async (ctx: ForgeContext): Promise<StageReport> => {
-  const g = guard(ctx, 'model')
-  if (g) return g
   const vues = needRecord(ctx, 'vues', 'concept')
   if (typeof vues === 'string') return blocked('model', vues)
   const names = ctx.sheet.modele.source === 'multi-image' ? SHEET_VIEWS : SHEET_VIEWS.slice(0, 1)
@@ -87,15 +132,14 @@ export const runModel = async (ctx: ForgeContext): Promise<StageReport> => {
   } catch (e) {
     return blocked('model', (e as Error).message)
   }
-  const r = await planOrRun(ctx, 'modele', request, async (task) => ({
+  const guard = guardOf(ctx, 'model')
+  const r = await planOrRun(ctx, guard, 'modele', request, async (task) => ({
     glb: await downloadTo(ctx, task.model_urls?.glb, 'modele.glb'),
   }))
-  return { etape: 'model', statut: ctx.dryRun ? 'prevu' : 'fait', pas: [r.step] }
+  return { etape: 'model', statut: ctx.dryRun ? 'prevu' : 'fait', pas: [r.step], ...staleOf(guard) }
 }
 
 export const runRig = async (ctx: ForgeContext): Promise<StageReport> => {
-  const g = guard(ctx, 'rig')
-  if (g) return g
   const model = needRecord(ctx, 'modele', 'model')
   if (typeof model === 'string') return blocked('rig', model)
   let request: MeshyRequest
@@ -104,10 +148,11 @@ export const runRig = async (ctx: ForgeContext): Promise<StageReport> => {
   } catch (e) {
     return blocked('rig', (e as Error).message)
   }
-  const r = await planOrRun(ctx, 'rig', request, async (task) => ({
+  const guard = guardOf(ctx, 'rig')
+  const r = await planOrRun(ctx, guard, 'rig', request, async (task) => ({
     glb: await downloadTo(ctx, task.result?.rigged_character_glb_url, 'rig.glb'),
   }))
-  return { etape: 'rig', statut: ctx.dryRun ? 'prevu' : 'fait', pas: [r.step] }
+  return { etape: 'rig', statut: ctx.dryRun ? 'prevu' : 'fait', pas: [r.step], ...staleOf(guard) }
 }
 
 export interface AnimRecords {
@@ -150,8 +195,6 @@ export const libraryMismatches = <W extends { readonly actionId: number; readonl
 export const runAnimTasks = async (
   ctx: ForgeContext,
 ): Promise<{ report: StageReport; records: AnimRecords | null }> => {
-  const g = guard(ctx, 'anim')
-  if (g) return { report: g, records: null }
   const rig = needRecord(ctx, 'rig', 'rig')
   if (typeof rig === 'string') return { report: blocked('anim', rig), records: null }
   const rigTask = rig.taskId as string
@@ -162,14 +205,16 @@ export const runAnimTasks = async (
       ctx.force || !rec || rec.fingerprint !== fp || rec.status === 'echoue' || rec.status === 'incertain'
     )
   })
+  const guard = guardOf(ctx, 'anim')
   if (!ctx.dryRun && libraryToPay) {
+    if (guard.stale.length > 0) throw new StaleUpstreamError(staleMessage('anim', guard.stale))
     const mismatch = await checkLibrary(ctx)
     if (mismatch) return { report: blocked('anim', mismatch), records: null }
   }
   const steps: StepLine[] = []
   const bibliotheque: StageRecord[] = []
   for (const { key, ids } of libraryKeys(ctx)) {
-    const r = await planOrRun(ctx, key, buildLibraryAnimRequest(rigTask, ids), async (task) => ({
+    const r = await planOrRun(ctx, guard, key, buildLibraryAnimRequest(rigTask, ids), async (task) => ({
       glb: await downloadTo(ctx, task.result?.animation_glb_url, `${key}.glb`),
     }))
     steps.push(r.step)
@@ -180,6 +225,7 @@ export const runAnimTasks = async (
     if (clip.source.kind !== 'mouvement') continue
     const motion = await planOrRun(
       ctx,
+      guard,
       `mouvement-${clip.etat}`,
       buildMotionRequest(clip.source),
       async () => ({}),
@@ -192,6 +238,7 @@ export const runAnimTasks = async (
     const motionTask = motion.record?.taskId as string
     const apply = await planOrRun(
       ctx,
+      guard,
       `applique-${clip.etat}`,
       buildMotionApplyRequest(rigTask, motionTask),
       async (task) => ({
@@ -202,7 +249,7 @@ export const runAnimTasks = async (
     if (apply.record) applications.set(clip.etat, apply.record)
   }
   return {
-    report: { etape: 'anim', statut: ctx.dryRun ? 'prevu' : 'fait', pas: steps },
+    report: { etape: 'anim', statut: ctx.dryRun ? 'prevu' : 'fait', pas: steps, ...staleOf(guard) },
     records: ctx.dryRun ? null : { bibliotheque, applications },
   }
 }

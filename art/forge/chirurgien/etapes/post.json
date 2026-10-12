@@ -1,0 +1,22 @@
+{
+  "key": "post",
+  "fingerprint": "e49953c5fac6f0039f6b094a96b6b6f19da0cbeb90b66dffd27f16465eec91c5",
+  "status": "reussi",
+  "credits": 0,
+  "outputs": {
+    "glb": {
+      "file": "public/models/chirurgien.glb",
+      "sha256": "ac123f51bbe482b7480ddb47d36459d84165dcc02a15d427dc643d9510185366"
+    },
+    "rapport": {
+      "file": "art/forge/chirurgien/post-traitements.json",
+      "sha256": "2121ba172b63ed51c9a9a13d1e1b75082b2bf63a6480606c9b3f443d942e8c63"
+    }
+  },
+  "meta": {
+    "avant": 11,
+    "apres": 0,
+    "regressions": 0
+  },
+  "updatedAt": "2026-10-12T04:59:02.039Z"
+}

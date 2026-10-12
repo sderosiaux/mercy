@@ -1,0 +1,1312 @@
+{
+  "id": "bourreau",
+  "validateur": 1,
+  "echelle": {
+    "hauteurModele": 1.95,
+    "hauteurFiche": 1.95,
+    "facteur": 1
+  },
+  "triangles": 25750,
+  "textures": [
+    {
+      "index": 0,
+      "name": "Material_0_baseColor",
+      "height": 2048,
+      "width": 2048,
+      "mime": "image/jpeg"
+    }
+  ],
+  "os": 24,
+  "controles": [
+    {
+      "controle": "squelette",
+      "verdict": "ok",
+      "mesure": 24,
+      "unite": "os",
+      "detail": "24 os, 1 maillage(s) skinné(s)"
+    },
+    {
+      "controle": "pistes",
+      "verdict": "ok",
+      "mesure": 0,
+      "detail": "toutes les pistes visent un nœud du modèle"
+    },
+    {
+      "controle": "triangles",
+      "verdict": "echec",
+      "mesure": 25750,
+      "seuil": 25000,
+      "detail": "25750 triangles pour 25000"
+    },
+    {
+      "controle": "textures",
+      "verdict": "ok",
+      "mesure": 2048,
+      "seuil": 2048,
+      "unite": "px",
+      "detail": "1 texture(s), plus grand côté 2048 px"
+    },
+    {
+      "controle": "clip",
+      "clip": "repos",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "repos",
+      "verdict": "ok",
+      "mesure": 4,
+      "unite": "s",
+      "detail": "4 s"
+    },
+    {
+      "controle": "boucle",
+      "clip": "repos",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.036,
+      "unite": "m",
+      "detail": "écart dernière/première image 0.1 mm, seuil 35.6 mm (1,5 × pas p95, plancher ½ px)"
+    },
+    {
+      "controle": "pieds",
+      "clip": "repos",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 0.0 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "clip",
+      "clip": "course",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "course",
+      "verdict": "ok",
+      "mesure": 0.733,
+      "unite": "s",
+      "detail": "0.733 s"
+    },
+    {
+      "controle": "boucle",
+      "clip": "course",
+      "verdict": "ok",
+      "mesure": 0.129,
+      "seuil": 0.133,
+      "unite": "m",
+      "detail": "écart dernière/première image 129.4 mm, seuil 133.4 mm (1,5 × pas p95, plancher ½ px)"
+    },
+    {
+      "controle": "sur-place",
+      "clip": "course",
+      "verdict": "ok",
+      "mesure": 0.029,
+      "seuil": 0.1,
+      "unite": "m/s",
+      "detail": "dérive du bassin 0.029 m/s : la simulation déplace déjà la créature"
+    },
+    {
+      "controle": "vitesse",
+      "clip": "course",
+      "verdict": "ok",
+      "mesure": 1.812,
+      "seuil": 2,
+      "unite": "×",
+      "detail": "foulée du clip 2.759 m/s calée sur 5 m/s (playerSpeed) ; bornes 0.5 à 2"
+    },
+    {
+      "controle": "clip",
+      "clip": "frappe.couperet.1",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "frappe.couperet.1",
+      "verdict": "ok",
+      "mesure": 1.5,
+      "unite": "s",
+      "detail": "1.5 s"
+    },
+    {
+      "controle": "impact",
+      "clip": "frappe.couperet.1",
+      "verdict": "ok",
+      "mesure": 0.567,
+      "unite": "s",
+      "detail": "repère d'impact à 0.567 s dans [0 ; 1.5]"
+    },
+    {
+      "controle": "pieds",
+      "clip": "frappe.couperet.1",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 0.0 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "recuperation",
+      "clip": "frappe.couperet.1",
+      "verdict": "ok",
+      "mesure": 0.933,
+      "seuil": 0.35,
+      "unite": "s",
+      "detail": "anticipation sautée (impact au tick de départ, TUNING:impact debut+weapons.couperet.period) ; 0.933 s de clip après l'impact pour 0.35 s d'action"
+    },
+    {
+      "controle": "clip",
+      "clip": "frappe.couperet.2",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "frappe.couperet.2",
+      "verdict": "ok",
+      "mesure": 3.167,
+      "unite": "s",
+      "detail": "3.167 s"
+    },
+    {
+      "controle": "impact",
+      "clip": "frappe.couperet.2",
+      "verdict": "ok",
+      "mesure": 0.783,
+      "unite": "s",
+      "detail": "repère d'impact à 0.783 s dans [0 ; 3.167]"
+    },
+    {
+      "controle": "pieds",
+      "clip": "frappe.couperet.2",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 0.0 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "recuperation",
+      "clip": "frappe.couperet.2",
+      "verdict": "ok",
+      "mesure": 2.384,
+      "seuil": 0.35,
+      "unite": "s",
+      "detail": "anticipation sautée (impact au tick de départ, TUNING:impact debut+weapons.couperet.period) ; 2.384 s de clip après l'impact pour 0.35 s d'action"
+    },
+    {
+      "controle": "clip",
+      "clip": "frappe.couperet.3",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "frappe.couperet.3",
+      "verdict": "ok",
+      "mesure": 7.667,
+      "unite": "s",
+      "detail": "7.667 s"
+    },
+    {
+      "controle": "impact",
+      "clip": "frappe.couperet.3",
+      "verdict": "ok",
+      "mesure": 3.167,
+      "unite": "s",
+      "detail": "repère d'impact à 3.167 s dans [0 ; 7.667]"
+    },
+    {
+      "controle": "pieds",
+      "clip": "frappe.couperet.3",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 0.0 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "recuperation",
+      "clip": "frappe.couperet.3",
+      "verdict": "ok",
+      "mesure": 4.5,
+      "seuil": 0.35,
+      "unite": "s",
+      "detail": "anticipation sautée (impact au tick de départ, TUNING:impact debut+weapons.couperet.period) ; 4.5 s de clip après l'impact pour 0.35 s d'action"
+    },
+    {
+      "controle": "clip",
+      "clip": "frappe.masse.1",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "frappe.masse.1",
+      "verdict": "ok",
+      "mesure": 1.8,
+      "unite": "s",
+      "detail": "1.8 s"
+    },
+    {
+      "controle": "impact",
+      "clip": "frappe.masse.1",
+      "verdict": "ok",
+      "mesure": 1.55,
+      "unite": "s",
+      "detail": "repère d'impact à 1.55 s dans [0 ; 1.8]"
+    },
+    {
+      "controle": "pieds",
+      "clip": "frappe.masse.1",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 0.0 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "recuperation",
+      "clip": "frappe.masse.1",
+      "verdict": "echec",
+      "mesure": 0.25,
+      "seuil": 0.55,
+      "unite": "s",
+      "detail": "anticipation sautée (impact au tick de départ, TUNING:impact debut+weapons.masse.period) ; 0.25 s de clip après l'impact pour 0.55 s d'action"
+    },
+    {
+      "controle": "clip",
+      "clip": "frappe.masse.2",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "frappe.masse.2",
+      "verdict": "ok",
+      "mesure": 4.5,
+      "unite": "s",
+      "detail": "4.5 s"
+    },
+    {
+      "controle": "impact",
+      "clip": "frappe.masse.2",
+      "verdict": "ok",
+      "mesure": 3.083,
+      "unite": "s",
+      "detail": "repère d'impact à 3.083 s dans [0 ; 4.5]"
+    },
+    {
+      "controle": "pieds",
+      "clip": "frappe.masse.2",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 0.0 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "recuperation",
+      "clip": "frappe.masse.2",
+      "verdict": "ok",
+      "mesure": 1.417,
+      "seuil": 0.55,
+      "unite": "s",
+      "detail": "anticipation sautée (impact au tick de départ, TUNING:impact debut+weapons.masse.period) ; 1.417 s de clip après l'impact pour 0.55 s d'action"
+    },
+    {
+      "controle": "clip",
+      "clip": "frappe.masse.3",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "frappe.masse.3",
+      "verdict": "ok",
+      "mesure": 3,
+      "unite": "s",
+      "detail": "3 s"
+    },
+    {
+      "controle": "impact",
+      "clip": "frappe.masse.3",
+      "verdict": "ok",
+      "mesure": 1.65,
+      "unite": "s",
+      "detail": "repère d'impact à 1.65 s dans [0 ; 3]"
+    },
+    {
+      "controle": "pieds",
+      "clip": "frappe.masse.3",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 0.0 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "recuperation",
+      "clip": "frappe.masse.3",
+      "verdict": "ok",
+      "mesure": 1.35,
+      "seuil": 0.55,
+      "unite": "s",
+      "detail": "anticipation sautée (impact au tick de départ, TUNING:impact debut+weapons.masse.period) ; 1.35 s de clip après l'impact pour 0.55 s d'action"
+    },
+    {
+      "controle": "clip",
+      "clip": "esquive",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "esquive",
+      "verdict": "ok",
+      "mesure": 1.267,
+      "unite": "s",
+      "detail": "1.267 s"
+    },
+    {
+      "controle": "vitesse",
+      "clip": "esquive",
+      "verdict": "echec",
+      "mesure": 4.222,
+      "seuil": 2,
+      "unite": "×",
+      "detail": "clip calé sur la fenêtre de 18 ticks (TUNING:dodge.duration) ; bornes 0.5 à 2"
+    },
+    {
+      "controle": "clip",
+      "clip": "balayage",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "balayage",
+      "verdict": "ok",
+      "mesure": 5.667,
+      "unite": "s",
+      "detail": "5.667 s"
+    },
+    {
+      "controle": "impact",
+      "clip": "balayage",
+      "verdict": "ok",
+      "mesure": 1.6,
+      "unite": "s",
+      "detail": "repère d'impact à 1.6 s dans [0 ; 5.667]"
+    },
+    {
+      "controle": "pieds",
+      "clip": "balayage",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 0.0 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "recuperation",
+      "clip": "balayage",
+      "verdict": "ok",
+      "mesure": 4.067,
+      "seuil": 0.8,
+      "unite": "s",
+      "detail": "anticipation sautée (impact au tick de départ, TUNING:impact debut+balayage.duration) ; 4.067 s de clip après l'impact pour 0.8 s d'action"
+    },
+    {
+      "controle": "clip",
+      "clip": "charge",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "charge",
+      "verdict": "ok",
+      "mesure": 0.667,
+      "unite": "s",
+      "detail": "0.667 s"
+    },
+    {
+      "controle": "vitesse",
+      "clip": "charge",
+      "verdict": "ok",
+      "mesure": 0.833,
+      "seuil": 2,
+      "unite": "×",
+      "detail": "clip calé sur la fenêtre de 48 ticks (TUNING:charge.duration) ; bornes 0.5 à 2"
+    },
+    {
+      "controle": "clip",
+      "clip": "sentence.tranchant.petite",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "sentence.tranchant.petite",
+      "verdict": "ok",
+      "mesure": 1.967,
+      "unite": "s",
+      "detail": "1.967 s"
+    },
+    {
+      "controle": "impact",
+      "clip": "sentence.tranchant.petite",
+      "verdict": "ok",
+      "mesure": 1.633,
+      "unite": "s",
+      "detail": "repère d'impact à 1.633 s dans [0 ; 1.967]"
+    },
+    {
+      "controle": "pieds",
+      "clip": "sentence.tranchant.petite",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 0.0 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "vitesse",
+      "clip": "sentence.tranchant.petite",
+      "verdict": "echec",
+      "mesure": 2.722,
+      "seuil": 2,
+      "unite": "×",
+      "detail": "impact du clip à 1.633 s calé sur le tick actif (36 ticks, TUNING:impact sentence.durationOrdinaire+sentence.durationOrdinaire) ; bornes 0.5 à 2"
+    },
+    {
+      "controle": "clip",
+      "clip": "sentence.tranchant.grande",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "sentence.tranchant.grande",
+      "verdict": "ok",
+      "mesure": 1.967,
+      "unite": "s",
+      "detail": "1.967 s"
+    },
+    {
+      "controle": "impact",
+      "clip": "sentence.tranchant.grande",
+      "verdict": "ok",
+      "mesure": 0.733,
+      "unite": "s",
+      "detail": "repère d'impact à 0.733 s dans [0 ; 1.967]"
+    },
+    {
+      "controle": "pieds",
+      "clip": "sentence.tranchant.grande",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 0.0 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "vitesse",
+      "clip": "sentence.tranchant.grande",
+      "verdict": "ok",
+      "mesure": 1.222,
+      "seuil": 2,
+      "unite": "×",
+      "detail": "impact du clip à 0.733 s calé sur le tick actif (36 ticks, TUNING:impact sentence.durationOrdinaire+sentence.durationOrdinaire) ; bornes 0.5 à 2"
+    },
+    {
+      "controle": "clip",
+      "clip": "sentence.contondant.petite",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "sentence.contondant.petite",
+      "verdict": "ok",
+      "mesure": 1.967,
+      "unite": "s",
+      "detail": "1.967 s"
+    },
+    {
+      "controle": "impact",
+      "clip": "sentence.contondant.petite",
+      "verdict": "ok",
+      "mesure": 0.267,
+      "unite": "s",
+      "detail": "repère d'impact à 0.267 s dans [0 ; 1.967]"
+    },
+    {
+      "controle": "pieds",
+      "clip": "sentence.contondant.petite",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 0.0 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "vitesse",
+      "clip": "sentence.contondant.petite",
+      "verdict": "echec",
+      "mesure": 0.445,
+      "seuil": 2,
+      "unite": "×",
+      "detail": "impact du clip à 0.267 s calé sur le tick actif (36 ticks, TUNING:impact sentence.durationOrdinaire+sentence.durationOrdinaire) ; bornes 0.5 à 2"
+    },
+    {
+      "controle": "clip",
+      "clip": "sentence.contondant.grande",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "sentence.contondant.grande",
+      "verdict": "ok",
+      "mesure": 1.967,
+      "unite": "s",
+      "detail": "1.967 s"
+    },
+    {
+      "controle": "impact",
+      "clip": "sentence.contondant.grande",
+      "verdict": "ok",
+      "mesure": 0.7,
+      "unite": "s",
+      "detail": "repère d'impact à 0.7 s dans [0 ; 1.967]"
+    },
+    {
+      "controle": "pieds",
+      "clip": "sentence.contondant.grande",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 0.0 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "vitesse",
+      "clip": "sentence.contondant.grande",
+      "verdict": "ok",
+      "mesure": 1.167,
+      "seuil": 2,
+      "unite": "×",
+      "detail": "impact du clip à 0.7 s calé sur le tick actif (36 ticks, TUNING:impact sentence.durationOrdinaire+sentence.durationOrdinaire) ; bornes 0.5 à 2"
+    },
+    {
+      "controle": "gel",
+      "clip": "frappe.couperet.1",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.001,
+      "unite": "m",
+      "detail": "figé en plein fondu (horloge du mélangeur gelée), déplacement maximal sur 600 images : 0.0 mm"
+    }
+  ],
+  "clips": [
+    {
+      "etat": "repos",
+      "dureeS": 4,
+      "recette": {
+        "name": "repos",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "coutureM": 0,
+      "tremblementMinPx": 3.525,
+      "glissementM": 0
+    },
+    {
+      "etat": "course",
+      "dureeS": 0.733,
+      "recette": {
+        "name": "course",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1.812310797256864
+      },
+      "coutureM": 0.129,
+      "tremblementMinPx": 79.74,
+      "fouleeMps": 2.759
+    },
+    {
+      "etat": "frappe.couperet.1",
+      "dureeS": 1.5,
+      "recette": {
+        "name": "frappe.couperet.1",
+        "boucle": false,
+        "impactS": 0.567,
+        "startS": 0.567,
+        "rate": 1
+      },
+      "impactMesureS": 0.567,
+      "glissementM": 0
+    },
+    {
+      "etat": "frappe.couperet.2",
+      "dureeS": 3.167,
+      "recette": {
+        "name": "frappe.couperet.2",
+        "boucle": false,
+        "impactS": 0.783,
+        "startS": 0.783,
+        "rate": 1
+      },
+      "impactMesureS": 0.783,
+      "glissementM": 0
+    },
+    {
+      "etat": "frappe.couperet.3",
+      "dureeS": 7.667,
+      "recette": {
+        "name": "frappe.couperet.3",
+        "boucle": false,
+        "impactS": 3.167,
+        "startS": 3.167,
+        "rate": 1
+      },
+      "impactMesureS": 3.167,
+      "glissementM": 0
+    },
+    {
+      "etat": "frappe.masse.1",
+      "dureeS": 1.8,
+      "recette": {
+        "name": "frappe.masse.1",
+        "boucle": false,
+        "impactS": 1.55,
+        "startS": 1.55,
+        "rate": 1
+      },
+      "impactMesureS": 1.55,
+      "glissementM": 0
+    },
+    {
+      "etat": "frappe.masse.2",
+      "dureeS": 4.5,
+      "recette": {
+        "name": "frappe.masse.2",
+        "boucle": false,
+        "impactS": 3.083,
+        "startS": 3.083,
+        "rate": 1
+      },
+      "impactMesureS": 3.083,
+      "glissementM": 0
+    },
+    {
+      "etat": "frappe.masse.3",
+      "dureeS": 3,
+      "recette": {
+        "name": "frappe.masse.3",
+        "boucle": false,
+        "impactS": 1.65,
+        "startS": 1.65,
+        "rate": 1
+      },
+      "impactMesureS": 1.65,
+      "glissementM": 0
+    },
+    {
+      "etat": "esquive",
+      "dureeS": 1.267,
+      "recette": {
+        "name": "esquive",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 4.222222169240316
+      }
+    },
+    {
+      "etat": "balayage",
+      "dureeS": 5.667,
+      "recette": {
+        "name": "balayage",
+        "boucle": false,
+        "impactS": 1.6,
+        "startS": 1.6,
+        "rate": 1
+      },
+      "impactMesureS": 1.583,
+      "glissementM": 0
+    },
+    {
+      "etat": "charge",
+      "dureeS": 0.667,
+      "recette": {
+        "name": "charge",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 0.833333358168602
+      }
+    },
+    {
+      "etat": "sentence.tranchant.petite",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "sentence.tranchant.petite",
+        "boucle": false,
+        "impactS": 1.633,
+        "startS": 0,
+        "rate": 2.7216666666666667
+      },
+      "impactMesureS": 1.633,
+      "glissementM": 0
+    },
+    {
+      "etat": "sentence.tranchant.grande",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "sentence.tranchant.grande",
+        "boucle": false,
+        "impactS": 0.733,
+        "startS": 0,
+        "rate": 1.2216666666666667
+      },
+      "impactMesureS": 0.733,
+      "glissementM": 0
+    },
+    {
+      "etat": "sentence.contondant.petite",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "sentence.contondant.petite",
+        "boucle": false,
+        "impactS": 0.267,
+        "startS": 0,
+        "rate": 0.44500000000000006
+      },
+      "impactMesureS": 0.267,
+      "glissementM": 0
+    },
+    {
+      "etat": "sentence.contondant.grande",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "sentence.contondant.grande",
+        "boucle": false,
+        "impactS": 0.7,
+        "startS": 0,
+        "rate": 1.1666666666666667
+      },
+      "impactMesureS": 0.7,
+      "glissementM": 0
+    }
+  ],
+  "recetteGlobale": {
+    "interruptionFadeS": 0.033,
+    "mort": "mixer.timeScale = 0 (horloge du mélangeur gelée)"
+  },
+  "bilan": {
+    "ok": 70,
+    "echec": 5,
+    "nonMesurable": 0,
+    "verdict": "refuse"
+  },
+  "glbSha256": "a9430ebb9cd41ee01fcedc4eabdce4f2af4827b503ea7486cd8696c892c87f71",
+  "postTraitements": {
+    "version": 1,
+    "clips": [
+      {
+        "etat": "repos",
+        "traitements": [
+          {
+            "traitement": "pieds",
+            "detail": "2 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+            "avant": {
+              "glissementM": 0.0647,
+              "coutureM": 0.0001
+            },
+            "apres": {
+              "glissementM": 0,
+              "coutureM": 0.0001,
+              "correctionMaxM": 0.0503,
+              "ecartCibleMaxM": 0,
+              "bassinM": 0
+            }
+          }
+        ]
+      },
+      {
+        "etat": "course",
+        "traitements": []
+      },
+      {
+        "etat": "frappe.couperet.1",
+        "traitements": [
+          {
+            "traitement": "pieds",
+            "detail": "3 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+            "avant": {
+              "glissementM": 0.0694
+            },
+            "apres": {
+              "glissementM": 0,
+              "correctionMaxM": 0.1013,
+              "ecartCibleMaxM": 0,
+              "bassinM": 0
+            }
+          }
+        ]
+      },
+      {
+        "etat": "frappe.couperet.2",
+        "traitements": [
+          {
+            "traitement": "pieds",
+            "detail": "5 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation ; bassin abaissé de 30.1 mm au plus là où la jambe n'atteignait pas",
+            "avant": {
+              "glissementM": 0.0902
+            },
+            "apres": {
+              "glissementM": 0,
+              "correctionMaxM": 0.0829,
+              "ecartCibleMaxM": 0,
+              "bassinM": 0.0301
+            }
+          }
+        ]
+      },
+      {
+        "etat": "frappe.couperet.3",
+        "traitements": [
+          {
+            "traitement": "pieds",
+            "detail": "3 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+            "avant": {
+              "glissementM": 0.0638
+            },
+            "apres": {
+              "glissementM": 0,
+              "correctionMaxM": 0.057,
+              "ecartCibleMaxM": 0,
+              "bassinM": 0
+            }
+          }
+        ]
+      },
+      {
+        "etat": "frappe.masse.1",
+        "traitements": [
+          {
+            "traitement": "pieds",
+            "detail": "2 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+            "avant": {
+              "glissementM": 0.0667
+            },
+            "apres": {
+              "glissementM": 0,
+              "correctionMaxM": 0.0544,
+              "ecartCibleMaxM": 0,
+              "bassinM": 0
+            }
+          }
+        ]
+      },
+      {
+        "etat": "frappe.masse.2",
+        "traitements": [
+          {
+            "traitement": "racine",
+            "detail": "dérive horizontale nette du bassin retirée (tendance linéaire) : 977.6 mm sur 4.5 s",
+            "avant": {
+              "deriveMps": 0.2172,
+              "seuilMps": 0.1
+            },
+            "apres": {
+              "deriveMps": 0
+            }
+          },
+          {
+            "traitement": "pieds",
+            "detail": "10 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation ; bassin abaissé de 10.6 mm au plus là où la jambe n'atteignait pas",
+            "avant": {
+              "glissementM": 0.3039
+            },
+            "apres": {
+              "glissementM": 0,
+              "correctionMaxM": 0.1971,
+              "ecartCibleMaxM": 0,
+              "bassinM": 0.0106
+            }
+          }
+        ]
+      },
+      {
+        "etat": "frappe.masse.3",
+        "traitements": [
+          {
+            "traitement": "pieds",
+            "detail": "4 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+            "avant": {
+              "glissementM": 0.072
+            },
+            "apres": {
+              "glissementM": 0,
+              "correctionMaxM": 0.072,
+              "ecartCibleMaxM": 0,
+              "bassinM": 0
+            }
+          }
+        ]
+      },
+      {
+        "etat": "esquive",
+        "traitements": []
+      },
+      {
+        "etat": "balayage",
+        "traitements": [
+          {
+            "traitement": "racine",
+            "detail": "dérive horizontale nette du bassin retirée (tendance linéaire) : 1877.8 mm sur 5.6667 s",
+            "avant": {
+              "deriveMps": 0.3314,
+              "seuilMps": 0.1
+            },
+            "apres": {
+              "deriveMps": 0
+            }
+          },
+          {
+            "traitement": "pieds",
+            "detail": "3 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+            "avant": {
+              "glissementM": 0.1622
+            },
+            "apres": {
+              "glissementM": 0,
+              "correctionMaxM": 0.1987,
+              "ecartCibleMaxM": 0,
+              "bassinM": 0
+            }
+          }
+        ]
+      },
+      {
+        "etat": "charge",
+        "traitements": []
+      },
+      {
+        "etat": "sentence.tranchant.petite",
+        "traitements": [
+          {
+            "traitement": "pieds",
+            "detail": "7 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation ; bassin abaissé de 17.4 mm au plus là où la jambe n'atteignait pas",
+            "avant": {
+              "glissementM": 0.1943
+            },
+            "apres": {
+              "glissementM": 0,
+              "correctionMaxM": 0.2204,
+              "ecartCibleMaxM": 0,
+              "bassinM": 0.0174
+            }
+          }
+        ]
+      },
+      {
+        "etat": "sentence.tranchant.grande",
+        "traitements": [
+          {
+            "traitement": "pieds",
+            "detail": "4 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation ; bassin abaissé de 5.0 mm au plus là où la jambe n'atteignait pas",
+            "avant": {
+              "glissementM": 0.1254
+            },
+            "apres": {
+              "glissementM": 0,
+              "correctionMaxM": 0.136,
+              "ecartCibleMaxM": 0,
+              "bassinM": 0.005
+            }
+          }
+        ]
+      },
+      {
+        "etat": "sentence.contondant.petite",
+        "traitements": [
+          {
+            "traitement": "racine",
+            "detail": "dérive horizontale nette du bassin retirée (tendance linéaire) : 666.7 mm sur 1.9667 s",
+            "avant": {
+              "deriveMps": 0.339,
+              "seuilMps": 0.1
+            },
+            "apres": {
+              "deriveMps": 0
+            }
+          },
+          {
+            "traitement": "pieds",
+            "detail": "6 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+            "avant": {
+              "glissementM": 0.282
+            },
+            "apres": {
+              "glissementM": 0,
+              "correctionMaxM": 0.2114,
+              "ecartCibleMaxM": 0,
+              "bassinM": 0
+            }
+          }
+        ]
+      },
+      {
+        "etat": "sentence.contondant.grande",
+        "traitements": [
+          {
+            "traitement": "pieds",
+            "detail": "5 appui(s) tenus par cinématique inverse (cuisse, tibia), pied gardé dans son orientation",
+            "avant": {
+              "glissementM": 0.0999
+            },
+            "apres": {
+              "glissementM": 0,
+              "correctionMaxM": 0.0774,
+              "ecartCibleMaxM": 0,
+              "bassinM": 0
+            }
+          }
+        ]
+      }
+    ],
+    "clipsAvant": [
+      {
+        "etat": "repos",
+        "dureeS": 4,
+        "recette": {
+          "name": "repos",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        "coutureM": 0,
+        "tremblementMinPx": 3.525,
+        "glissementM": 0.065
+      },
+      {
+        "etat": "course",
+        "dureeS": 0.733,
+        "recette": {
+          "name": "course",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1.812310797256864
+        },
+        "coutureM": 0.129,
+        "tremblementMinPx": 79.74,
+        "fouleeMps": 2.759
+      },
+      {
+        "etat": "frappe.couperet.1",
+        "dureeS": 1.5,
+        "recette": {
+          "name": "frappe.couperet.1",
+          "boucle": false,
+          "impactS": 0.567,
+          "startS": 0.567,
+          "rate": 1
+        },
+        "impactMesureS": 0.567,
+        "glissementM": 0.069
+      },
+      {
+        "etat": "frappe.couperet.2",
+        "dureeS": 3.167,
+        "recette": {
+          "name": "frappe.couperet.2",
+          "boucle": false,
+          "impactS": 0.783,
+          "startS": 0.783,
+          "rate": 1
+        },
+        "impactMesureS": 0.783,
+        "glissementM": 0.09
+      },
+      {
+        "etat": "frappe.couperet.3",
+        "dureeS": 7.667,
+        "recette": {
+          "name": "frappe.couperet.3",
+          "boucle": false,
+          "impactS": 3.167,
+          "startS": 3.167,
+          "rate": 1
+        },
+        "impactMesureS": 3.167,
+        "glissementM": 0.064
+      },
+      {
+        "etat": "frappe.masse.1",
+        "dureeS": 1.8,
+        "recette": {
+          "name": "frappe.masse.1",
+          "boucle": false,
+          "impactS": 1.55,
+          "startS": 1.55,
+          "rate": 1
+        },
+        "impactMesureS": 1.55,
+        "glissementM": 0.067
+      },
+      {
+        "etat": "frappe.masse.2",
+        "dureeS": 4.5,
+        "recette": {
+          "name": "frappe.masse.2",
+          "boucle": false,
+          "impactS": 3.083,
+          "startS": 3.083,
+          "rate": 1
+        },
+        "impactMesureS": 3.083,
+        "glissementM": 0.121
+      },
+      {
+        "etat": "frappe.masse.3",
+        "dureeS": 3,
+        "recette": {
+          "name": "frappe.masse.3",
+          "boucle": false,
+          "impactS": 1.65,
+          "startS": 1.65,
+          "rate": 1
+        },
+        "impactMesureS": 1.65,
+        "glissementM": 0.072
+      },
+      {
+        "etat": "esquive",
+        "dureeS": 1.267,
+        "recette": {
+          "name": "esquive",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 4.222222169240316
+        }
+      },
+      {
+        "etat": "balayage",
+        "dureeS": 5.667,
+        "recette": {
+          "name": "balayage",
+          "boucle": false,
+          "impactS": 1.6,
+          "startS": 1.6,
+          "rate": 1
+        },
+        "impactMesureS": 1.6,
+        "glissementM": 0.185
+      },
+      {
+        "etat": "charge",
+        "dureeS": 0.667,
+        "recette": {
+          "name": "charge",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 0.833333358168602
+        }
+      },
+      {
+        "etat": "sentence.tranchant.petite",
+        "dureeS": 1.967,
+        "recette": {
+          "name": "sentence.tranchant.petite",
+          "boucle": false,
+          "impactS": 1.633,
+          "startS": 0,
+          "rate": 2.7216666666666667
+        },
+        "impactMesureS": 1.633,
+        "glissementM": 0.194
+      },
+      {
+        "etat": "sentence.tranchant.grande",
+        "dureeS": 1.967,
+        "recette": {
+          "name": "sentence.tranchant.grande",
+          "boucle": false,
+          "impactS": 0.733,
+          "startS": 0,
+          "rate": 1.2216666666666667
+        },
+        "impactMesureS": 0.733,
+        "glissementM": 0.125
+      },
+      {
+        "etat": "sentence.contondant.petite",
+        "dureeS": 1.967,
+        "recette": {
+          "name": "sentence.contondant.petite",
+          "boucle": false,
+          "impactS": 0.267,
+          "startS": 0,
+          "rate": 0.44500000000000006
+        },
+        "impactMesureS": 0.267,
+        "glissementM": 0.31
+      },
+      {
+        "etat": "sentence.contondant.grande",
+        "dureeS": 1.967,
+        "recette": {
+          "name": "sentence.contondant.grande",
+          "boucle": false,
+          "impactS": 0.7,
+          "startS": 0,
+          "rate": 1.1666666666666667
+        },
+        "impactMesureS": 0.7,
+        "glissementM": 0.1
+      }
+    ],
+    "avant": {
+      "ok": 58,
+      "echec": 17,
+      "nonMesurable": 0,
+      "verdict": "refuse"
+    },
+    "apres": {
+      "ok": 70,
+      "echec": 5,
+      "nonMesurable": 0,
+      "verdict": "refuse"
+    },
+    "regressions": [],
+    "echecsRestants": [
+      "triangles",
+      "recuperation frappe.masse.1",
+      "vitesse esquive",
+      "vitesse sentence.tranchant.petite",
+      "vitesse sentence.contondant.petite"
+    ],
+    "nonCorriges": [],
+    "source": {
+      "file": "art/forge/.cache/bourreau/files/assemblage.glb",
+      "sha256": "ffdb0a210b17c03356ce7499027fcef32340d084067f6ef821d175d19d940f09"
+    }
+  }
+}

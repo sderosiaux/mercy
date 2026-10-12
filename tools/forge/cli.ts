@@ -1,4 +1,4 @@
-// pnpm forge <id> [--stage concept|model|rig|anim|validate|all] [--force] [--dry-run]
+// pnpm forge <id> [--stage concept|model|rig|anim|post|validate|all] [--force] [--dry-run]
 // Sortie standard : un résumé JSON sur une ligne. Progression (attente des tâches) sur la sortie d'erreur.
 // Codes : 0 fait, 1 erreur ou validation refusée, 2 bloqué (clé absente, entrée manquante, valeur demandée).
 import { existsSync, readFileSync } from 'node:fs'
@@ -33,7 +33,7 @@ const main = async (): Promise<void> => {
   if (!id)
     return fail(
       1,
-      'usage : pnpm forge <id> [--stage concept|model|rig|anim|validate|all] [--force] [--dry-run]',
+      'usage : pnpm forge <id> [--stage concept|model|rig|anim|post|validate|all] [--force] [--dry-run]',
     )
   const stage = values.stage as string
   if (stage !== 'all' && !(STAGES as readonly string[]).includes(stage))

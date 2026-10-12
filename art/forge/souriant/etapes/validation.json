@@ -1,16 +1,16 @@
 {
   "key": "validation",
-  "fingerprint": "1b49715ce0058e7a7ed504e35b8e1edc9ca84b281cc814f9d9acd95df97df81b",
+  "fingerprint": "035f7dace592a2dd5136906c191d8eb351c281fe6236528f5d07233f2ccd73c9",
   "status": "reussi",
   "credits": 0,
   "outputs": {
     "rapport": {
       "file": "art/forge/souriant/validation.json",
-      "sha256": "415601c8bae4b42b3ae4ffd2eac9f9589f8f44f8b3f2777d19388abf979fb4a8"
+      "sha256": "5f26198363ab3a641c1cf70dd2417aa247f8276cda5b412aa23501575bbd88c6"
     }
   },
   "meta": {
-    "verdict": "refuse"
+    "verdict": "valide"
   },
-  "updatedAt": "2026-10-12T04:04:54.915Z"
+  "updatedAt": "2026-10-12T04:59:00.406Z"
 }

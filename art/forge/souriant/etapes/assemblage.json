@@ -1,13 +1,13 @@
 {
   "key": "assemblage",
-  "fingerprint": "e998a984da644781ec0c9ea79dcdad8479d53be4abc6849080cd1137fc181309",
+  "fingerprint": "c0dd73ddd56205b139627e55eae6c0d7fac0303fee6821cb5ffcac2fb14c14ba",
   "status": "reussi",
   "credits": 0,
   "outputs": {
     "glb": {
-      "file": "public/models/souriant.glb",
+      "file": "art/forge/.cache/souriant/files/assemblage.glb",
       "sha256": "29d18586ee424525ffae884615eea3ce10bd6707df4d698894b78450396d47bb"
     }
   },
-  "updatedAt": "2026-10-12T04:04:54.840Z"
+  "updatedAt": "2026-10-12T04:58:58.973Z"
 }

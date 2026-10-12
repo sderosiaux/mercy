@@ -6,8 +6,8 @@ import type { CommandRunner } from '../gptimage'
 import type { MeshyClient } from '../meshy/client'
 import type { AssetSheet } from '../schema'
 
-export type StageName = 'concept' | 'model' | 'rig' | 'anim' | 'validate'
-export const STAGES: readonly StageName[] = ['concept', 'model', 'rig', 'anim', 'validate']
+export type StageName = 'concept' | 'model' | 'rig' | 'anim' | 'post' | 'validate'
+export const STAGES: readonly StageName[] = ['concept', 'model', 'rig', 'anim', 'post', 'validate']
 
 export interface ForgeContext {
   readonly root: string
@@ -31,13 +31,26 @@ export interface StepLine {
   readonly creditsEstimes?: number
 }
 
+// Étape amont enregistrée qui ne correspond plus à la fiche (freshness.ts).
+export interface StaleStep {
+  readonly etape: StageName
+  readonly cle: string
+  readonly creditsEstimes: number | null // null : service qui ne rapporte pas son coût (GPT Image)
+  readonly raison: string
+}
+
 export interface StageReport {
   readonly etape: StageName
   readonly statut: StageStatus
   readonly pas: readonly StepLine[]
   readonly detail?: string
   readonly sorties?: readonly string[]
+  readonly perimees?: readonly StaleStep[] // étapes amont qui ne correspondent plus à la fiche
 }
+
+// Une étape qui ne peut pas tourner sans danger (clé absente, amont périmé) : bloquée, pas en erreur ; la chaîne
+// s'arrête proprement et rien n'est payé.
+export class StageBlocked extends Error {}
 
 export const line = (record: StageRecord, issue: StepOutcome): StepLine => ({
   cle: record.key,
@@ -58,4 +71,8 @@ export const assetDir = (sheet: AssetSheet): string => join('art', 'forge', shee
 export const plancheFile = (sheet: AssetSheet): string => join(assetDir(sheet), 'planche-modele.png')
 export const validationFile = (sheet: AssetSheet): string => join(assetDir(sheet), 'validation.json')
 export const modelFile = (sheet: AssetSheet): string => join('public', 'models', `${sheet.id}.glb`)
+// Assemblage brut (clips tels que Meshy les rend, avant post-traitements) : gros binaire, dans le cache.
+export const assembledFile = (sheet: AssetSheet): string =>
+  join('art', 'forge', '.cache', sheet.id, 'files', 'assemblage.glb')
+export const postReportFile = (sheet: AssetSheet): string => join(assetDir(sheet), 'post-traitements.json')
 export const MANIFEST_FILE = join('public', 'models', 'manifest.json')
