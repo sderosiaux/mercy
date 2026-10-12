@@ -1,8 +1,9 @@
 // Graphe Web Audio et journal I1. Chaque commande du directeur est appliquée ici, et le journal est écrit par
 // ces mêmes fonctions, au moment où elles programment le graphe (B5 I1) : il n'existe pas de modèle parallèle.
 //
-//   voix k : fichiers → fondu (fins douces) → coupure (mort) → panoramique → bus des créatures → master
-//                                             └→ prise de l'emplacement k (avant spatialisation)
+//   voix k : fichiers → fondu (fins douces) → coupure (mort) → panoramique → étage des voix → bus des créatures
+//                                             └→ prise de l'emplacement k (avant spatialisation)   → master
+//   (étage des voix : ducking des autres voix après une mort, D-fix3 ; commun à toutes les voix, après les prises)
 //   source : fichiers → fondu → coupure → panoramique → bus des créatures ; coupure → prise « autres sources »
 //   nappe → bus de nappe ─┐
 //   vent ─────────────────┴→ ambiance avant atténuation → étage d'atténuation → master
@@ -12,6 +13,7 @@ import {
   CUT_RAMP_S,
   DUCK_DB,
   dbToGain,
+  MASTER_DB,
   N_MAX,
   NAPPE_OFF_S,
   nappeOffShape,
@@ -19,6 +21,9 @@ import {
   SOFT_END_MIN_S,
   SOFT_FADE_FLOOR_DB,
   SOFT_FADE_S,
+  VOICE_DUCK_ATTACK_S,
+  VOICE_DUCK_DB,
+  VOICE_DUCK_RELEASE_S,
   VOICE_SLOTS,
   XFADE_S,
 } from './constants'
@@ -38,6 +43,10 @@ export interface LogPhase {
   readonly phase: Phase | null
   readonly file: string
   readonly muffled: boolean
+  // Sources hors voix : vitesse de lecture et offset de départ (s), pour retrouver le point de lecture du fichier
+  // (B5 amendement A1, enveloppe de gain). Une entrée par changement de vitesse.
+  readonly rate?: number
+  readonly offsetS?: number
 }
 
 export interface LogSource {
@@ -80,7 +89,13 @@ export interface AudioLog {
   readonly sources: LogSource[]
   readonly frames: LogFrame[]
   readonly oneshots: LogOneShot[]
-  readonly ducks: { tick: Tick; time: number; t: 'duck-down' | 'duck-extend'; releaseAt: number }[]
+  // Atténuations programmées : ambiance (duck-*) et étage des voix (voice-duck-*, D-fix3), dans un même journal.
+  readonly ducks: {
+    tick: Tick
+    time: number
+    t: 'duck-down' | 'duck-extend' | 'voice-duck-down' | 'voice-duck-extend'
+    releaseAt: number
+  }[]
   readonly nappe: { tick: Tick; time: number; n: number; prev: number; gain: number; rampS: number }[]
   readonly warnings: string[]
 }
@@ -89,6 +104,7 @@ export interface Taps {
   readonly slots: readonly GainNode[]
   readonly others: GainNode
   readonly creatures: GainNode
+  readonly voices: GainNode // étage des voix (ducking des autres voix), entre les panoramiques et le bus des créatures
   readonly nappe: GainNode
   readonly ambPre: GainNode
   readonly ambPost: GainNode
@@ -147,6 +163,7 @@ const curve = (n: number, f: (x: number) => number): Float32Array =>
 const FADE_IN = curve(64, (x) => Math.sin((x * Math.PI) / 2))
 const FADE_OUT = curve(64, (x) => Math.cos((x * Math.PI) / 2))
 const DUCK_GAIN = dbToGain(DUCK_DB)
+const VOICE_DUCK_GAIN = dbToGain(VOICE_DUCK_DB)
 const NAPPE_OFF_CURVE = curve(512, nappeOffShape)
 
 // Valeur d'une rampe linéaire programmée (v0 à t0 → v1 à t1) à l'instant t : pour repartir du niveau réel.
@@ -200,10 +217,16 @@ export const createGraph = (
 
   const gain = (v = 1): GainNode => new GainNode(ctx, { gain: v })
   // Master en stéréo explicite : les mesures gauche et droite existent même quand seule l'ambiance (mono) sonne.
-  const master = new GainNode(ctx, { gain: 1, channelCount: 2, channelCountMode: 'explicit' })
+  const master = new GainNode(ctx, {
+    gain: dbToGain(MASTER_DB),
+    channelCount: 2,
+    channelCountMode: 'explicit',
+  })
   master.connect(ctx.destination)
   const creatures = gain()
   creatures.connect(master)
+  const voicesBus = gain()
+  voicesBus.connect(creatures)
   const impacts = gain()
   impacts.connect(master)
   const ambPre = gain()
@@ -261,8 +284,14 @@ export const createGraph = (
   // même tick (B5.O1, O8 b) ; la voix suivante y démarre un quantum après cette fin, pour que l'emplacement montre la
   // coupure (rampe, puis un quantum muet) avant la nouvelle voix (B5.O3, mesuré par emplacement).
   const slotCutEnd = new Map<number, number>()
+  // Fin du fondu de la dernière voix volée ou relevée de chaque emplacement : la voix suivante n'y démarre pas avant
+  // (B5.O8 a). Au banc, le fondu tient toujours dans ses 18 ticks (SOFT_FADE_S) ; en direct, l'horloge des images
+  // peut rapprocher deux ticks de quelques millisecondes.
+  const slotFadeEnd = new Map<number, number>()
   let nappeRamp: Ramp = { v0: 0, t0: 0, v1: 0, t1: 0 }
   let duckRamps: Ramp[] = []
+  // Étage des voix : descente puis remontée programmées (rampes linéaires), pour repartir du gain réel.
+  let voiceDuckRamps: Ramp[] = []
 
   const newChain = (
     kind: 'voix' | SourceKind,
@@ -279,7 +308,7 @@ export const createGraph = (
     const pan = new PannerNode(ctx, { positionX: pos.x, positionY: 0, positionZ: pos.z })
     fade.connect(cut)
     cut.connect(pan)
-    pan.connect(creatures)
+    pan.connect(kind === 'voix' ? voicesBus : creatures)
     cut.connect(tap)
     const entryLog: LogSource = {
       uid: uid++,
@@ -307,7 +336,10 @@ export const createGraph = (
     ch.cut.gain.linearRampToValueAtTime(0, now + CUT_RAMP_S)
     for (const p of ch.parts) stopPart(p, now + CUT_RAMP_S)
     ch.stopAt = now + CUT_RAMP_S
-    if (ch.log.kind === 'voix' && ch.log.slot !== null) slotCutEnd.set(ch.log.slot, now + CUT_RAMP_S)
+    if (ch.log.kind === 'voix' && ch.log.slot !== null) {
+      slotCutEnd.set(ch.log.slot, now + CUT_RAMP_S)
+      slotFadeEnd.delete(ch.log.slot)
+    }
   }
 
   // Fondu enchaîné, côté sortant : la lecture descend de son gain réel à `now` (elle peut être encore en train de
@@ -348,6 +380,7 @@ export const createGraph = (
     for (const p of ch.parts) stopPart(p, end + CUT_RAMP_S)
     ch.stopAt = end + CUT_RAMP_S
     ch.log.endDurationS = SOFT_FADE_S
+    if (ch.log.kind === 'voix' && ch.log.slot !== null) slotFadeEnd.set(ch.log.slot, end)
     if (strangle) {
       // §8.10 : le chant s'éteint en fondu sur un étranglement, hors de l'étage de fondu, coupé si la mort suit.
       const p = play(roleFile.etranglement, now, ch.cut)
@@ -355,6 +388,12 @@ export const createGraph = (
       const len =
         (p.src.buffer?.duration ?? 0) -
         entry(roleFile.etranglement).startOffset / entry(roleFile.etranglement).sampleRate
+      // La fin de l'étranglement est elle-même une fin sans mort : fondu programmé sur ses SOFT_FADE_S dernières
+      // secondes, quel que soit le contenu généré (B5.O6, enveloppe de gain de l'amendement A1).
+      const fadeFrom = now + Math.max(0, len - SOFT_FADE_S)
+      p.gain.gain.setValueAtTime(p.level, fadeFrom)
+      p.gain.gain.exponentialRampToValueAtTime(p.level * dbToGain(SOFT_FADE_FLOOR_DB), now + len)
+      p.gain.gain.setValueAtTime(0, now + len)
       ch.stopAt = Math.max(ch.stopAt, now + len)
       ch.log.strangle = true
       // La fin dure jusqu'au bout de l'étranglement : le journal le dit (I1), sinon un mesureur croit le bus libre.
@@ -415,6 +454,11 @@ export const createGraph = (
     for (const r of duckRamps) if (t >= r.t0) v = rampAt(r, t)
     return v
   }
+  const voiceDuckAt = (t: number): number => {
+    let v = 1
+    for (const r of voiceDuckRamps) if (t >= r.t0) v = rampAt(r, t)
+    return v
+  }
 
   const apply: Graph['apply'] = (cmds, tick, now, familyOf) => {
     for (const c of cmds) {
@@ -440,7 +484,12 @@ export const createGraph = (
         }
         case 'voice-start': {
           const cutEnd = slotCutEnd.get(c.slot)
-          const at = cutEnd !== undefined && cutEnd > now ? cutEnd + QUANTUM_S : now
+          const fadeEnd = slotFadeEnd.get(c.slot)
+          const at = Math.max(
+            now,
+            cutEnd !== undefined && cutEnd > now ? cutEnd + QUANTUM_S : now,
+            fadeEnd !== undefined && fadeEnd > now ? fadeEnd : now,
+          )
           const ch = newChain(
             'voix',
             c.id,
@@ -478,13 +527,32 @@ export const createGraph = (
         case 'src-start': {
           const ch = newChain(c.kind, c.id, null, tick, now, c.pos, familyOf(c.id), others)
           ch.parts.push(play(roleFile[c.kind], now, ch.fade, { rate: c.rate, offsetS: c.offsetS }))
-          ch.log.phases.push({ tick, time: now, phase: null, file: roleFile[c.kind], muffled: false })
+          ch.log.phases.push({
+            tick,
+            time: now,
+            phase: null,
+            file: roleFile[c.kind],
+            muffled: false,
+            rate: c.rate,
+            offsetS: c.offsetS,
+          })
           srcChains.set(c.key, ch)
           break
         }
         case 'src-rate': {
           const ch = srcChains.get(c.key)
-          if (ch) for (const p of ch.parts) p.src.playbackRate.setValueAtTime(c.rate, now)
+          if (!ch) break
+          for (const p of ch.parts) p.src.playbackRate.setValueAtTime(c.rate, now)
+          const first = ch.log.phases[0]
+          ch.log.phases.push({
+            tick,
+            time: now,
+            phase: null,
+            file: first?.file ?? '',
+            muffled: false,
+            rate: c.rate,
+            offsetS: first?.offsetS ?? 0,
+          })
           break
         }
         case 'pos': {
@@ -530,6 +598,47 @@ export const createGraph = (
             ...duckRamps.slice(0, 1),
             { v0: DUCK_GAIN, t0: c.releaseAt, v1: 1, t1: c.releaseAt + DUCK_RAMP_S },
           ]
+          log.ducks.push({ tick, time: now, t: c.t, releaseAt: c.releaseAt })
+          break
+        }
+        case 'voice-duck-down': {
+          // Descente en VOICE_DUCK_ATTACK_S depuis le gain courant (repos ou remontée en cours), tenue, remontée.
+          const from = voiceDuckAt(c.at)
+          const down: Ramp = { v0: from, t0: c.at, v1: VOICE_DUCK_GAIN, t1: c.at + VOICE_DUCK_ATTACK_S }
+          const up: Ramp = {
+            v0: VOICE_DUCK_GAIN,
+            t0: c.releaseAt,
+            v1: 1,
+            t1: c.releaseAt + VOICE_DUCK_RELEASE_S,
+          }
+          const g = voicesBus.gain
+          g.cancelScheduledValues(c.at)
+          g.setValueAtTime(from, c.at)
+          g.linearRampToValueAtTime(down.v1, down.t1)
+          g.setValueAtTime(up.v0, up.t0)
+          g.linearRampToValueAtTime(up.v1, up.t1)
+          voiceDuckRamps = [down, up]
+          log.ducks.push({ tick, time: now, t: c.t, releaseAt: c.releaseAt })
+          break
+        }
+        case 'voice-duck-extend': {
+          // Même grappe : la descente en cours finit comme prévue, seule la remontée recule. Le gain est reposé à
+          // sa valeur courante avant toute nouvelle rampe : aucune discontinuité, même au milieu de la descente.
+          const down = voiceDuckRamps[0]
+          const cur = voiceDuckAt(now)
+          const up: Ramp = {
+            v0: VOICE_DUCK_GAIN,
+            t0: c.releaseAt,
+            v1: 1,
+            t1: c.releaseAt + VOICE_DUCK_RELEASE_S,
+          }
+          const g = voicesBus.gain
+          g.cancelScheduledValues(now)
+          g.setValueAtTime(cur, now)
+          if (down && now < down.t1) g.linearRampToValueAtTime(down.v1, down.t1)
+          g.setValueAtTime(up.v0, up.t0)
+          g.linearRampToValueAtTime(up.v1, up.t1)
+          voiceDuckRamps = down ? [down, up] : [up]
           log.ducks.push({ tick, time: now, t: c.t, releaseAt: c.releaseAt })
           break
         }
@@ -620,11 +729,12 @@ export const createGraph = (
     endingChains.length = 0
     retired.length = 0
     oneshotParts = []
-    for (const n of [master, creatures, impacts, ambPre, ambPost, nappe, others, ...slotTaps]) n.disconnect()
+    for (const n of [master, creatures, voicesBus, impacts, ambPre, ambPost, nappe, others, ...slotTaps])
+      n.disconnect()
   }
 
   return {
-    taps: { slots: slotTaps, others, creatures, nappe, ambPre, ambPost, master, impacts },
+    taps: { slots: slotTaps, others, creatures, voices: voicesBus, nappe, ambPre, ambPost, master, impacts },
     log,
     apply,
     frame,

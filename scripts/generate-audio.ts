@@ -20,13 +20,14 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { BENCH_RATE, QUANTUM } from '../src/audio/constants'
 import type { Manifest, ManifestEntry, Role } from '../src/audio/manifest'
-import { analyseFile, nonSilentMedian, playedOnce } from '../src/audio/o11'
+import { analyseFile, nonSilentMedian, playedLooped, playedOnce, shapeOf } from '../src/audio/o11'
 import { encodeWav, fromPcm16, quantize16 } from '../src/audio/wav'
 import { TICK_HZ, TUNING } from '../src/sim/index'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const outDir = path.join(root, 'public', 'audio')
-const manifestPath = path.join(outDir, 'manifest.json')
+// Dossier de la banque : public/audio, ou --out <dossier> (retraitement d'essai sur une copie).
+let outDir = path.join(root, 'public', 'audio')
+const manifestPath = () => path.join(outDir, 'manifest.json')
 const rawDir = path.join(os.tmpdir(), 'mercy-audio-raw')
 const API = 'https://api.elevenlabs.io/v1'
 const MODEL = 'eleven_text_to_sound_v2'
@@ -34,9 +35,9 @@ const MAX_ATTEMPTS = 3
 
 // Niveau visé du fichier : M_f (médiane des quanta non silencieux) ou crête pour les sons brefs.
 // Ce ne sont pas des valeurs du spec (B5 §7, O10) : ce sont des choix de mixage, consignés ici et dans le manifeste.
-type Level = { readonly mf: number } | { readonly peak: number }
+export type Level = { readonly mf: number } | { readonly peak: number }
 
-interface Asset {
+export interface Asset {
   readonly id: string
   readonly role: Role
   readonly prompt: string
@@ -68,7 +69,7 @@ const BREATHERS = ['a wounded man', 'a wounded woman', 'a wounded old man', 'a w
 const n2 = (i: number) => String(i + 1).padStart(2, '0')
 const channelS = (ticks: number) => ticks / TICK_HZ
 
-const ASSETS: readonly Asset[] = [
+export const ASSETS: readonly Asset[] = [
   ...CRY_VOICES.map(
     (v, i): Asset => ({
       id: `cri-${n2(i)}`,
@@ -239,6 +240,7 @@ interface Args {
   readonly reprocess: boolean
   readonly useAttempt: number | null // --reprocess : réponse brute d'une autre génération déjà faite
   readonly reason: string | null // consigné dans l'historique quand --force remplace un fichier accepté
+  readonly out: string | null // dossier de la banque, public/audio par défaut
 }
 
 const parseArgs = (argv: readonly string[]): Args => {
@@ -246,12 +248,14 @@ const parseArgs = (argv: readonly string[]): Args => {
   const only = i >= 0 ? (argv[i + 1] ?? '').split(',').filter(Boolean) : null
   const ua = argv.indexOf('--use-attempt')
   const rs = argv.indexOf('--reason')
+  const o = argv.indexOf('--out')
   return {
     only,
     force: argv.includes('--force'),
     reprocess: argv.includes('--reprocess'),
     useAttempt: ua >= 0 ? Number(argv[ua + 1]) : null,
     reason: rs >= 0 ? (argv[rs + 1] ?? null) : null,
+    out: o >= 0 ? (argv[o + 1] ?? null) : null,
   }
 }
 
@@ -575,8 +579,26 @@ const process1 = (a: Asset, mono: Float32Array, retouches: string[]): Processed 
     )
   }
 
-  // Niveau.
-  const lv = playedOnce([x], startOffset)
+  // Offset de départ, repris sur le fichier tel que joué (requête D-fix2) : premier quantum à M_f − 20 dB, M_f étant
+  // celui de la lecture réelle (offset, boucle sur trois tours, comme l'I9) et non celui du tampon entier. Un tampon
+  // dont la fin non jouée est faible plaçait l'offset trop tôt (inspire-04 : 5888 éch., attaque jouée de 53 ms).
+  for (let pass = 0; pass < 2; pass++) {
+    const shape = { loopStart, loopEnd, startOffset }
+    const head = a.loop ? loopEnd : x.length
+    const lvp = a.loop ? playedLooped([x], shape, 3) : playedOnce([x], startOffset)
+    const mfp = nonSilentMedian(lvp)
+    const q = lvp.findIndex((l) => l >= mfp - 20)
+    const next = startOffset + Math.max(0, q) * QUANTUM
+    if (q <= 0 || next >= head) break
+    retouches.push(
+      `offset de départ ${startOffset} → ${next} éch. : premier quantum à M_f − 20 dB du fichier tel que joué (M_f ${mfp.toFixed(2)} dBFS)`,
+    )
+    startOffset = next
+  }
+
+  // Niveau, mesuré sur le fichier tel que joué (requête D-fix2 : cri-07 était normalisé de l'offset à la fin du
+  // tampon, contenu jamais joué compris, et joué 3,33 dB trop fort).
+  const lv = a.loop ? playedLooped([x], { loopStart, loopEnd, startOffset }, 3) : playedOnce([x], startOffset)
   const curMf = nonSilentMedian(lv)
   const pk = peakDb(x)
   const want = 'mf' in a.level ? a.level.mf - curMf : a.level.peak - pk
@@ -591,25 +613,72 @@ const process1 = (a: Asset, mono: Float32Array, retouches: string[]): Processed 
 
 interface Built {
   readonly entry: ManifestEntry
+  readonly wav: Uint8Array
   readonly failures: string[]
 }
 
-const build = (a: Asset, raw: Raw, attempt: number, history: readonly string[]): Built => {
-  const { channels, srcChannels, note } = decode(raw, a)
-  const retouches: string[] = [note]
-  if (srcChannels > 1) retouches.push(`passage en mono : moyenne de ${srcChannels} canaux`)
-  const mono = channels[0] as Float32Array
-  const p = process1(a, mono, retouches)
+// Son décodé (mono 48 kHz) et réponse brute dont il vient.
+export interface Decoded {
+  readonly mono: Float32Array
+  readonly srcChannels: number
+  readonly note: string
+  readonly rawFormat: string
+  readonly rawSha256: string
+}
+
+// Fichier que l'entrée régénérée remplace : son entrée au manifeste et ses échantillons tels qu'écrits.
+export interface PrevFile {
+  readonly entry: ManifestEntry
+  readonly samples: Float32Array
+}
+
+type PlayShape = Pick<ManifestEntry, 'loop' | 'loopStart' | 'loopEnd' | 'startOffset'>
+
+// Niveau d'un fichier tel que joué, sans gain de lecture : M_f (offset, boucle sur trois tours, comme l'I9) ou
+// crête de la partie jouée, selon le niveau que l'asset vise.
+const playedLevelDb = (level: Level, x: Float32Array, s: PlayShape): number =>
+  'mf' in level
+    ? nonSilentMedian(s.loop ? playedLooped([x], s, 3) : playedOnce([x], s.startOffset))
+    : peakDb(x.subarray(s.startOffset, s.loop ? s.loopEnd : x.length))
+
+// Gain de lecture d'une entrée régénérée (requête D-fix2). Un gainDb au manifeste est une décision de lecture
+// (correction de niveau comme cri-07, ou choix de mixage) : la régénération garde le niveau auquel le fichier est
+// joué, gain compris, et recalcule le gain sur le nouveau fichier. Sans gainDb, rien n'est gardé : le fichier
+// régénéré est joué au niveau visé par l'asset.
+export const keptGainDb = (
+  a: Asset,
+  prev: PrevFile | null,
+  x: Float32Array,
+  s: PlayShape,
+): number | undefined => {
+  const g0 = prev?.entry.gainDb
+  if (prev === null || g0 === undefined || g0 === 0) return undefined
+  const was = playedLevelDb(a.level, prev.samples, prev.entry) + g0
+  const g = Math.round((was - playedLevelDb(a.level, x, s)) * 100) / 100
+  return g === 0 ? undefined : g
+}
+
+// Construction pure d'une entrée du manifeste et du WAV à écrire, depuis le son décodé.
+export const buildEntry = (
+  a: Asset,
+  d: Decoded,
+  attempt: number,
+  history: readonly string[],
+  generatedAt: string,
+  prev: PrevFile | null = null,
+): Built => {
+  const retouches: string[] = [d.note]
+  if (d.srcChannels > 1) retouches.push(`passage en mono : moyenne de ${d.srcChannels} canaux`)
+  const p = process1(a, d.mono, retouches)
   const wav = encodeWav([p.samples], BENCH_RATE)
   const file = `${a.id}.wav`
-  fs.writeFileSync(path.join(outDir, file), wav)
-  const shape = {
-    role: a.role,
-    loop: a.loop,
-    loopStart: p.loopStart,
-    loopEnd: p.loopEnd,
-    startOffset: p.startOffset,
-  }
+  const play = { loop: a.loop, loopStart: p.loopStart, loopEnd: p.loopEnd, startOffset: p.startOffset }
+  const gainDb = keptGainDb(a, prev, p.samples, play)
+  if (gainDb !== undefined && prev)
+    retouches.push(
+      `lecture : gain ${gainDb > 0 ? '+' : ''}${gainDb.toFixed(2)} dB, recalculé pour garder le niveau joué de l'entrée remplacée (gain ${prev.entry.gainDb} dB sur l'ancien fichier)`,
+    )
+  const shape = { role: a.role, ...play, gainDb: gainDb ?? 0 }
   const check = analyseFile(a.id, shape, [p.samples], BENCH_RATE)
   const strict = strictRole(a.role)
   const failures = check.rows
@@ -623,7 +692,7 @@ const build = (a: Asset, raw: Raw, attempt: number, history: readonly string[]):
     role: a.role,
     prompt: a.prompt,
     model: MODEL,
-    apiOutputFormat: raw.format,
+    apiOutputFormat: d.rawFormat,
     promptInfluence: a.influence,
     requestedDurationS: a.seconds,
     apiLoop: a.apiLoop,
@@ -633,20 +702,49 @@ const build = (a: Asset, raw: Raw, attempt: number, history: readonly string[]):
     loopStart: p.loopStart,
     loopEnd: p.loopEnd,
     startOffset: p.startOffset,
+    ...(gainDb === undefined ? {} : { gainDb }),
     channels: 1,
     sampleRate: BENCH_RATE,
     format: 'wav-pcm16',
     sha256: sha256(wav),
-    rawSha256: sha256(raw.bytes),
+    rawSha256: d.rawSha256,
     retouches: [...history, ...p.retouches],
-    generatedAt: new Date().toISOString(),
+    generatedAt,
     attempt,
   }
-  return { entry, failures }
+  return { entry, wav, failures }
+}
+
+// Échantillons d'un WAV PCM 16 bits mono de la banque (en-tête de 44 octets, écrit par encodeWav).
+const readBankWav = (file: string): Float32Array => {
+  const buf = fs.readFileSync(file)
+  const x = new Float32Array((buf.length - 44) / 2)
+  for (let i = 0; i < x.length; i++) x[i] = fromPcm16(buf.readInt16LE(44 + 2 * i))
+  return x
+}
+
+const build = (
+  a: Asset,
+  raw: Raw,
+  attempt: number,
+  history: readonly string[],
+  prev: PrevFile | null,
+): Built => {
+  const { channels, srcChannels, note } = decode(raw, a)
+  const decoded: Decoded = {
+    mono: channels[0] as Float32Array,
+    srcChannels,
+    note,
+    rawFormat: raw.format,
+    rawSha256: sha256(raw.bytes),
+  }
+  const built = buildEntry(a, decoded, attempt, history, new Date().toISOString(), prev)
+  fs.writeFileSync(path.join(outDir, built.entry.file), built.wav)
+  return built
 }
 
 const readManifest = (): Manifest | null =>
-  fs.existsSync(manifestPath) ? (JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as Manifest) : null
+  fs.existsSync(manifestPath()) ? (JSON.parse(fs.readFileSync(manifestPath(), 'utf8')) as Manifest) : null
 
 const writeManifest = (entries: readonly ManifestEntry[]): void => {
   const files = [...entries].sort((x, y) => (x.id < y.id ? -1 : 1))
@@ -661,12 +759,17 @@ const writeManifest = (entries: readonly ManifestEntry[]): void => {
     bankSha256,
     files,
   }
-  fs.writeFileSync(manifestPath, `${JSON.stringify(m, null, 2)}\n`)
+  fs.writeFileSync(manifestPath(), `${JSON.stringify(m, null, 2)}\n`)
 }
 
 const runAsset = async (a: Asset, args: Args, prev: ManifestEntry | undefined): Promise<ManifestEntry> => {
   const out = path.join(outDir, `${a.id}.wav`)
   if (fs.existsSync(out) && !args.force) throw new Error(`${a.id}: existe déjà (--force pour le réécrire)`)
+  // Fichier remplacé, lu avant toute réécriture : son niveau joué guide le gain de lecture de la nouvelle entrée.
+  const prevFile: PrevFile | null =
+    prev && fs.existsSync(path.join(outDir, prev.file))
+      ? { entry: prev, samples: readBankWav(path.join(outDir, prev.file)) }
+      : null
   if (args.reprocess) {
     const attempt = args.useAttempt ?? prev?.attempt ?? 1
     const raw = readCachedRaw(a.id, attempt)
@@ -675,7 +778,7 @@ const runAsset = async (a: Asset, args: Args, prev: ManifestEntry | undefined): 
     if (args.reason) history.push(`génération ${prev?.attempt ?? attempt} : ${args.reason}`)
     if (args.useAttempt !== null)
       history.push(`génération ${attempt} retenue parmi celles déjà faites (réponse brute en cache)`)
-    const { entry, failures } = build(a, raw, attempt, history)
+    const { entry, failures } = build(a, raw, attempt, history, prevFile)
     console.log(
       `${a.id}: retraité depuis le cache (génération ${attempt}) ${failures.length ? `ÉCHECS ${failures.join(' | ')}` : 'contrôles O11 ok'}`,
     )
@@ -688,7 +791,7 @@ const runAsset = async (a: Asset, args: Args, prev: ManifestEntry | undefined): 
     if (attempt > MAX_ATTEMPTS)
       throw new Error(`${a.id}: ${MAX_ATTEMPTS} générations déjà faites, plus de régénération`)
     const raw = await generate(a, attempt)
-    const { entry, failures } = build(a, raw, attempt, history)
+    const { entry, failures } = build(a, raw, attempt, history, prevFile)
     if (failures.length === 0) {
       console.log(`${a.id}: génération ${attempt}, ${entry.durationMs} ms, contrôles O11 ok`)
       return entry
@@ -723,6 +826,7 @@ const pool = async <T, R>(items: readonly T[], n: number, f: (t: T) => Promise<R
 
 const main = async (): Promise<void> => {
   const args = parseArgs(process.argv.slice(2))
+  if (args.out) outDir = path.resolve(args.out)
   const known = new Set(ASSETS.map((a) => a.id))
   const unknown = (args.only ?? []).filter((id) => !known.has(id))
   if (unknown.length) throw new Error(`ids inconnus : ${unknown.join(', ')}`)
@@ -760,17 +864,19 @@ const main = async (): Promise<void> => {
   )
   // Contrôle global O11 (g) sur les cris, mêmes fonctions que analyseBank.
   const cries = entries.filter((e) => e.role === 'cri')
-  const mfs = cries.map((e) => {
-    const buf = fs.readFileSync(path.join(outDir, e.file))
-    const x = new Float32Array((buf.length - 44) / 2)
-    for (let i = 0; i < x.length; i++) x[i] = fromPcm16(buf.readInt16LE(44 + 2 * i))
-    return nonSilentMedian(playedOnce([x], e.startOffset))
-  })
+  // M_f du fichier tel que joué (offset, boucle, gain de lecture), comme l'I9.
+  const mfs = cries.map(
+    (e) => analyseFile(e.id, shapeOf(e), [readBankWav(path.join(outDir, e.file))], BENCH_RATE).mf,
+  )
   if (mfs.length) console.log(`M_f des cris : ${mfs.map((m) => m.toFixed(2)).join(' ')}`)
   if (failed) process.exitCode = 1
 }
 
-main().catch((e: unknown) => {
-  console.error(e instanceof Error ? e.message : String(e))
-  process.exit(1)
-})
+// Lancé comme script seulement : les tests importent les fonctions pures sans rien générer ni écrire.
+const isMain =
+  process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+if (isMain)
+  main().catch((e: unknown) => {
+    console.error(e instanceof Error ? e.message : String(e))
+    process.exit(1)
+  })

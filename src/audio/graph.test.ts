@@ -4,13 +4,25 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { CUT_RAMP_S, QUANTUM_S, XFADE_S } from './constants'
-import type { Cmd, Phase } from './director'
+import {
+  CUT_RAMP_S,
+  dbToGain,
+  MASTER_DB,
+  QUANTUM_S,
+  SOFT_FADE_S,
+  VOICE_DUCK_ATTACK_S,
+  VOICE_DUCK_DB,
+  VOICE_DUCK_RELEASE_S,
+  XFADE_S,
+} from './constants'
+import { type Cmd, FADE_TICKS, type Phase } from './director'
 import { type Bank, createGraph, type Graph } from './graph'
 import type { Manifest } from './manifest'
 import {
   type FakeContext,
   FakeGainNode,
+  type FakeNode,
+  FakePannerNode,
   type FakeParam,
   FakeSourceNode,
   fakeBuffer,
@@ -33,6 +45,9 @@ beforeEach(() => {
   graph = createGraph(ctx as unknown as BaseAudioContext, { manifest, buffers } as unknown as Bank)
 })
 afterEach(() => fake.restore())
+
+// Gain de lecture d'un fichier selon le manifeste (gainDb, 0 dB si absent).
+const levelOf = (id: string): number => 10 ** ((manifest.files.find((f) => f.id === id)?.gainDb ?? 0) / 20)
 
 const at = (tick: number, now: number, cmds: readonly Cmd[]): void => {
   ctx.currentTime = now
@@ -87,10 +102,10 @@ describe('drapeau 1 B5 : changements de fichier rapprochés sur une même voix',
     expect(etouffe?.gain.valueAt(t2)).toBeGreaterThan(0.9)
     expect(etouffe?.gain.valueAt(t2 + XFADE_S)).toBeCloseTo(0, 9)
     expect(etouffe?.src.stopAt).toBeCloseTo(t2 + XFADE_S, 9)
-    // La nouvelle lecture monte de 0 à 1.
+    // La nouvelle lecture monte de 0 à son gain de lecture (manifeste).
     const neuf = partOf('cri-02', t2)
     expect(neuf?.gain.valueAt(t2)).toBe(0)
-    expect(neuf?.gain.valueAt(t2 + XFADE_S)).toBeCloseTo(1, 6)
+    expect(neuf?.gain.valueAt(t2 + XFADE_S)).toBeCloseTo(levelOf('cri-02'), 6)
   })
 
   it('deux changements au même instant (plusieurs pas dans une image) : pas d’exception, la lecture intermédiaire reste muette', () => {
@@ -101,7 +116,7 @@ describe('drapeau 1 B5 : changements de fichier rapprochés sur une même voix',
     for (const dt of [0, XFADE_S / 3, XFADE_S]) expect(mid?.gain.valueAt(1.5 + dt)).toBeCloseTo(0, 9)
     expect(mid?.src.stopAt).toBeCloseTo(1.5 + XFADE_S, 9)
     const last = partOf('cri-03')
-    expect(last?.gain.valueAt(1.5 + XFADE_S)).toBeCloseTo(1, 6)
+    expect(last?.gain.valueAt(1.5 + XFADE_S)).toBeCloseTo(levelOf('cri-03'), 6)
     // Trois changements dans la même fenêtre, à 1 ms d'écart.
     expect(() => at(42, 1.501, [phase(0, 1, 'cri-04')])).not.toThrow()
     expect(() => at(43, 1.502, [phase(0, 1, 'cri-05', true)])).not.toThrow()
@@ -173,13 +188,17 @@ describe('emplacement coupé et réattribué au même tick (B5.O1, O8 b)', () =>
 })
 
 describe('gain de lecture du manifeste (B5.O11 g, cri-07)', () => {
-  const level = 10 ** ((manifest.files.find((f) => f.id === 'cri-07')?.gainDb ?? 0) / 20)
+  const level = levelOf('cri-07')
 
-  it('le manifeste porte le gain de cri-07, et le lecteur l’applique au début de voix comme au fondu enchaîné', () => {
-    expect(level).toBeLessThan(1)
-    at(10, 1.0, [start(0, 1, 'cri-07'), start(1, 2, 'cri-01')])
+  it('cri-07 garde sa correction de −3,33 dB sur les autres cris, et le lecteur applique chaque gain au début de voix comme au fondu enchaîné', () => {
+    // D-fix2 : −3,33 dB ramènent cri-07 au niveau des cris ; D-fix3 (tour 1) monte tous les cris du même gain.
+    expect(20 * Math.log10(level / levelOf('cri-01'))).toBeCloseTo(-3.33, 2)
+    at(10, 1.0, [start(0, 1, 'cri-07'), start(1, 2, 'cri-01'), start(2, 3, 'halete-01', 'halètement')])
     expect(partOf('cri-07')?.gain.valueAt(1.0)).toBeCloseTo(level, 9)
-    expect(partOf('cri-01')?.gain.valueAt(1.0)).toBe(1)
+    expect(partOf('cri-01')?.gain.valueAt(1.0)).toBeCloseTo(levelOf('cri-01'), 9)
+    // Sans gain au manifeste, le fichier est joué tel quel.
+    expect(manifest.files.find((f) => f.id === 'halete-01')?.gainDb).toBeUndefined()
+    expect(partOf('halete-01')?.gain.valueAt(1.0)).toBe(1)
     at(20, 2.0, [phase(1, 2, 'cri-07')])
     const p = partOf('cri-07', 2.0)
     expect(p?.gain.valueAt(2.0)).toBe(0)
@@ -204,13 +223,13 @@ describe('journal I1 : durée de fin programmée', () => {
     expect(s?.endDurationS).toBeCloseTo(len, 9)
   })
 
-  it('fin douce sans étranglement : 0,3 s ; coupure : un quantum', () => {
+  it('fin douce sans étranglement : SOFT_FADE_S (112 quanta) ; coupure : un quantum', () => {
     at(5, 1.0, [start(0, 1, 'cri-01'), start(1, 2, 'cri-02')])
     at(6, 1.1, [
       { t: 'voice-end', slot: 0, id: 1, mode: 'fade', cause: 'vol' },
       { t: 'voice-end', slot: 1, id: 2, mode: 'cut', cause: 'mort' },
     ])
-    expect(graph.log.sources.find((x) => x.id === 1)?.endDurationS).toBeCloseTo(0.3, 9)
+    expect(graph.log.sources.find((x) => x.id === 1)?.endDurationS).toBeCloseTo(SOFT_FADE_S, 9)
     expect(graph.log.sources.find((x) => x.id === 2)?.endDurationS).toBeCloseTo(CUT_RAMP_S, 9)
   })
 })
@@ -269,5 +288,158 @@ describe('revue de code M5 : journal I1 borné en jeu, complet au banc', () => {
     run(g, 6010)
     expect(g.log.frames).toHaveLength(6010)
     expect(g.log.sources).toHaveLength(101)
+  })
+})
+
+describe('ducking des autres voix après une mort (D-fix3, tour 2 de B5.O10)', () => {
+  const G = dbToGain(VOICE_DUCK_DB)
+  const voices = () => graph.taps.voices as unknown as FakeGainNode
+  // Panoramique d'une lecture : source → gain de lecture → fondu → coupure → (panoramique, prise).
+  const pannerOf = (file: string): FakePannerNode | undefined => {
+    let n: FakeNode | undefined = sourcesOf(file)[0]
+    for (let k = 0; k < 3 && n; k++) n = [...n.outputs][0]
+    return n ? [...n.outputs].find((x): x is FakePannerNode => x instanceof FakePannerNode) : undefined
+  }
+
+  it('les voix passent par un étage commun, après les prises des emplacements ; les autres sources n’y passent pas', () => {
+    at(10, 1.0, [
+      start(0, 1, 'cri-01'),
+      { t: 'src-start', key: '9:chant:10', id: 9, kind: 'chant', rate: 1, offsetS: 0, pos },
+    ])
+    const vp = pannerOf('cri-01')
+    expect(vp && [...vp.outputs]).toEqual([voices()])
+    expect([...voices().outputs]).toEqual([graph.taps.creatures])
+    const cp = pannerOf('chant')
+    expect(cp && [...cp.outputs]).toEqual([graph.taps.creatures])
+    // La prise de l'emplacement 0 est alimentée avant le panoramique (avant spatialisation et ducking).
+    const slotTap = graph.taps.slots[0] as unknown as FakeGainNode
+    const feeders = ctx.nodes.filter((n) => n.outputs.has(slotTap as never))
+    expect(feeders.length).toBe(1)
+    expect([...(feeders[0]?.outputs ?? [])]).toContain(vp)
+  })
+
+  it('une mort : la voix qui meurt est coupée net, les autres descendent de VOICE_DUCK_DB en VOICE_DUCK_ATTACK_S, tiennent jusqu’à la remontée puis reviennent', () => {
+    at(10, 1.0, [start(0, 1, 'cri-01'), start(1, 2, 'cri-02')])
+    at(70, 2.0, [
+      { t: 'voice-end', slot: 0, id: 1, mode: 'cut', cause: 'mort' },
+      { t: 'voice-duck-down', at: 2.0, releaseAt: 2.4 },
+    ])
+    const g = voices().gain
+    expect(g.valueAt(2.0)).toBeCloseTo(1, 9)
+    expect(g.valueAt(2.0 + VOICE_DUCK_ATTACK_S / 2)).toBeLessThan(1)
+    expect(g.valueAt(2.0 + VOICE_DUCK_ATTACK_S / 2)).toBeGreaterThan(G)
+    expect(g.valueAt(2.0 + VOICE_DUCK_ATTACK_S)).toBeCloseTo(G, 6)
+    expect(g.valueAt(2.4)).toBeCloseTo(G, 6)
+    expect(g.valueAt(2.4 + VOICE_DUCK_RELEASE_S)).toBeCloseTo(1, 6)
+    // La voix morte : coupure nette sur sa propre chaîne ; la voix baissée n'a ni fin ni vol au journal.
+    const dead = graph.log.sources.find((x) => x.id === 1)
+    const alive = graph.log.sources.find((x) => x.id === 2)
+    expect(dead?.endMode).toBe('cut')
+    expect(alive?.endTick).toBeNull()
+    expect(alive?.endCause).toBeNull()
+    expect(sourcesOf('cri-02')[0]?.stopAt).toBeNull()
+    expect(graph.log.ducks).toEqual([{ tick: 70, time: 2.0, t: 'voice-duck-down', releaseAt: 2.4 }])
+  })
+
+  it('une grappe pendant la descente : pas de saut, la descente finit comme prévu et la remontée recule', () => {
+    at(70, 2.0, [{ t: 'voice-duck-down', at: 2.0, releaseAt: 2.4 }])
+    const g = voices().gain
+    const t1 = 2.0 + VOICE_DUCK_ATTACK_S / 4
+    const v1 = g.valueAt(t1)
+    at(72, t1, [{ t: 'voice-duck-extend', releaseAt: t1 + 0.4 }])
+    expect(g.valueAt(t1)).toBeCloseTo(v1, 9)
+    expect(g.valueAt(2.0 + VOICE_DUCK_ATTACK_S)).toBeCloseTo(G, 6)
+    expect(g.valueAt(2.41)).toBeCloseTo(G, 6) // l’ancienne remontée (2,4 s) a reculé à t1 + 0,4 s
+    expect(g.valueAt(t1 + 0.4 + VOICE_DUCK_RELEASE_S)).toBeCloseTo(1, 6)
+  })
+
+  it('une mort pendant la remontée redescend depuis le niveau courant', () => {
+    at(70, 2.0, [{ t: 'voice-duck-down', at: 2.0, releaseAt: 2.4 }])
+    const g = voices().gain
+    const t2 = 2.4 + VOICE_DUCK_RELEASE_S / 2
+    const v2 = g.valueAt(t2)
+    expect(v2).toBeGreaterThan(G)
+    expect(v2).toBeLessThan(1)
+    at(95, t2, [{ t: 'voice-duck-down', at: t2, releaseAt: t2 + 0.4 }])
+    expect(g.valueAt(t2)).toBeCloseTo(v2, 9)
+    expect(g.valueAt(t2 + VOICE_DUCK_ATTACK_S)).toBeCloseTo(G, 6)
+  })
+})
+
+describe('emplacement d’une voix volée réattribué (B5.O8 a)', () => {
+  // Instant d'un tick au banc : t/60 s arrondi à la frontière de quantum suivante (B5, T_d).
+  const tickTime = (t: number) => (Math.ceil(((t / 60) * 48_000) / 128) * 128) / 48_000
+
+  it('la voix suivante démarre quand le fondu de la voix volée est fini, quelle que soit la phase du tick sur la grille des quanta', () => {
+    for (let ts = 1; ts <= 12; ts++) {
+      const g = createGraph(ctx as unknown as BaseAudioContext, { manifest, buffers } as unknown as Bank)
+      const run = (tick: number, cmds: readonly Cmd[]) => {
+        ctx.currentTime = tickTime(tick)
+        g.apply(cmds, tick, tickTime(tick), () => 'souriant')
+      }
+      run(ts - 1, [start(7, 100 + ts, 'cri-01')])
+      run(ts, [{ t: 'voice-end', slot: 7, id: 100 + ts, mode: 'fade', cause: 'vol' }])
+      run(ts + FADE_TICKS, [start(7, 200 + ts, 'cri-02')])
+      const old = g.log.sources.find((x) => x.id === 100 + ts)
+      const neu = g.log.sources.find((x) => x.id === 200 + ts)
+      // Le journal I1 (fin + durée de fin programmée) et le son disent la même chose : aucun chevauchement.
+      expect(neu?.startTime).toBeGreaterThanOrEqual((old?.endTime ?? 0) + (old?.endDurationS ?? 0) - 1e-12)
+      g.dispose()
+    }
+  })
+})
+
+describe('journal I1 : lecture d’une source hors voix (B5 amendement A1)', () => {
+  // L'enveloppe de gain se mesure contre le fichier tel que joué au même point de lecture : le journal doit dire où
+  // la lecture commence et à quelle vitesse elle avance (gargouillis : un ton par stade).
+  it('offset de départ, vitesse et chaque changement de vitesse sont au journal', () => {
+    at(5, 1.0, [
+      { t: 'src-start', key: '9:gargouillis:5', id: 9, kind: 'gargouillis', rate: 1, offsetS: 0.25, pos },
+    ])
+    at(30, 1.5, [{ t: 'src-rate', key: '9:gargouillis:5', rate: 2 ** (2 / 12) }])
+    const s = graph.log.sources.find((x) => x.id === 9)
+    expect(s?.phases).toEqual([
+      { tick: 5, time: 1.0, phase: null, file: 'gargouillis', muffled: false, rate: 1, offsetS: 0.25 },
+      {
+        tick: 30,
+        time: 1.5,
+        phase: null,
+        file: 'gargouillis',
+        muffled: false,
+        rate: 2 ** (2 / 12),
+        offsetS: 0.25,
+      },
+    ])
+  })
+})
+
+describe('prière interrompue : l’étranglement finit en fondu (B5.O6, fin sans mort)', () => {
+  // Le fichier d'étranglement s'éteint de lui-même, mais une fin sans mort ne doit pas dépendre du contenu généré :
+  // le lecteur programme un fondu de SOFT_FADE_S à la fin de l'étranglement (enveloppe de gain, amendement A1).
+  it('le gain de l’étranglement tient, puis descend de 60 dB sur les SOFT_FADE_S dernières secondes, puis 0', () => {
+    const e = manifest.files.find((f) => f.id === 'etranglement')
+    const len = ((e?.frames ?? 0) - (e?.startOffset ?? 0)) / (e?.sampleRate ?? 1)
+    at(5, 1.0, [{ t: 'src-start', key: '9:chant:5', id: 9, kind: 'chant', rate: 1, offsetS: 0, pos }])
+    at(50, 2.0, [
+      { t: 'src-end', key: '9:chant:5', id: 9, mode: 'fade', cause: 'fin-action', strangle: true },
+    ])
+    const g = partOf('etranglement')?.gain
+    const lvl = levelOf('etranglement')
+    expect(g?.valueAt(2.0)).toBeCloseTo(lvl, 9)
+    expect(g?.valueAt(2.0 + len - SOFT_FADE_S)).toBeCloseTo(lvl, 9)
+    expect(g?.valueAt(2.0 + len - SOFT_FADE_S / 2)).toBeLessThan(lvl * 0.1)
+    expect(g?.valueAt(2.0 + len - 1e-6)).toBeLessThan(lvl * 0.0011)
+    expect(g?.valueAt(2.0 + len)).toBe(0)
+  })
+})
+
+describe('marge du master (crêtes au-dessus de 0 dBFS au banc de B5)', () => {
+  // Au banc (403 rendus), la somme des voix proches, des sources et de la nappe dépassait 0 dBFS : jusqu'à +7,4 dBFS
+  // après le tour 1 et la lecture unique des impacts. En direct, tout ce qui dépasse écrête. Le master porte un gain
+  // fixe qui ramène la crête la plus haute mesurée sous −1 dBFS ; toutes les prises de mesure sont en amont.
+  it('le master applique MASTER_DB, une marge d’au moins 8 dB', () => {
+    const m = graph.taps.master as unknown as FakeGainNode
+    expect(MASTER_DB).toBeLessThanOrEqual(-8.4)
+    expect(m.gain.valueAt(0)).toBeCloseTo(dbToGain(MASTER_DB), 12)
   })
 })

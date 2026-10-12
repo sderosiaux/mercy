@@ -2,7 +2,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { BENCH_RATE, QUANTUM } from '../audio/constants'
+import { BENCH_RATE, QUANTUM, VOICE_DUCK_HOLD_S } from '../audio/constants'
 import { type Cmd, type DirectorState, direct, initialDirector } from '../audio/director'
 import { vocalising } from '../audio/ends'
 import { poolsOf } from '../audio/engine'
@@ -85,6 +85,16 @@ describe('directeur sur S1 (B5 §6)', () => {
     ])
   })
 
+  it('S1-cri : les autres voix sont baissées au tick de la mort (D-fix3, tour 2 de B5.O10), jusqu’à VOICE_DUCK_HOLD_S après', () => {
+    const { ticks, events } = runDirector(s1Scene('S1-cri'))
+    const death = evTick(events, 'death') as number
+    const down = cmdsOf(ticks, 'voice-duck-down')
+    expect(down.map((x) => x.tick)).toEqual([death])
+    expect(down[0]?.c.at).toBeCloseTo(tickTime(death), 12)
+    expect(down[0]?.c.releaseAt).toBeCloseTo(tickTime(death) + VOICE_DUCK_HOLD_S, 12)
+    expect(cmdsOf(ticks, 'voice-duck-extend')).toEqual([])
+  })
+
   it('S1-sent : le cri tient jusqu’au coup fatal de la Sentence, puis coupure', () => {
     const { ticks, events } = runDirector(s1Scene('S1-sent'))
     const start = evTick(events, 'sentence-start') as number
@@ -118,6 +128,7 @@ describe('directeur sur S1 (B5 §6)', () => {
     )
     expect(ends.every((x) => x.c.mode === 'fade')).toBe(true)
     expect(cmdsOf(ticks, 'duck-down')).toEqual([])
+    expect(cmdsOf(ticks, 'voice-duck-down')).toEqual([])
   })
 
   it('aucune source ne démarre pour un id après sa mort, et deux exécutions donnent les mêmes commandes', () => {
@@ -218,5 +229,38 @@ describe('emplacement coupé par une mort, réattribué au même tick (B5.O1, O8
 
   it('ces parties réattribuent bien des emplacements coupés au tick de la coupure', () => {
     expect(reusedSameTick).toBeGreaterThan(0)
+  })
+})
+
+describe('sons d’impact (B5.O10, crêtes du master)', () => {
+  // Un coup qui touche plusieurs cibles : les impacts ne sont pas spatialisés et partent au même échantillon. N
+  // copies du même fichier s'additionnent en phase (+20 log N dB) sans rien dire de plus : une seule lecture par
+  // type et par tick.
+  it('un seul impact par type et par tick, quel que soit le nombre de cibles touchées ou tuées', () => {
+    const w0 = s1Scene('S1-cri').world0
+    const hit = (target: number): SimEvent => ({
+      type: 'hit',
+      tick: 50,
+      target,
+      amount: 1,
+      damageType: 'tranchant',
+      by: 'player',
+    })
+    const w: World = {
+      ...w0,
+      tick: 50,
+      events: [
+        hit(11),
+        hit(12),
+        hit(13),
+        { type: 'death', tick: 50, id: 14, by: 'achevement' },
+        { type: 'death', tick: 50, id: 15, by: 'achevement' },
+        { type: 'clang', tick: 50, id: 16 },
+        { type: 'clang', tick: 50, id: 17 },
+      ],
+    }
+    const r = direct(initialDirector(), w, w.player.pos, tickTime(50), pools)
+    const shots = r.cmds.flatMap((c) => (c.t === 'oneshot' ? [c.kind] : []))
+    expect(shots.sort()).toEqual(['clang', 'impact-tranchant'])
   })
 })

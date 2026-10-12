@@ -14,7 +14,7 @@ import {
   type World,
 } from '../sim/index'
 import { allocate, emptySlots, rankBodies, type Slot } from './alloc'
-import { SOFT_FADE_S } from './constants'
+import { SOFT_FADE_S, VOICE_DUCK_HOLD_S, VOICE_DUCK_RELEASE_S } from './constants'
 import { DUCK_IDLE, type DuckCmd, type DuckState, duckStep } from './duck'
 import {
   deathIdsOf,
@@ -91,6 +91,9 @@ export type Cmd =
     }
   | { readonly t: 'nappe'; readonly n: number; readonly prev: number }
   | DuckCmd
+  // Ducking des autres voix (D-fix3) : même grappe de morts que l'ambiance, tenue et remontée propres.
+  | { readonly t: 'voice-duck-down'; readonly at: number; readonly releaseAt: number }
+  | { readonly t: 'voice-duck-extend'; readonly releaseAt: number }
 
 interface VoiceRec {
   readonly slot: number
@@ -114,6 +117,7 @@ export interface DirectorState {
   readonly sources: ReadonlyMap<string, SourceRec> // clé : `${id}:${kind}`
   readonly fadingSources: ReadonlyMap<string, { readonly id: EntityId; readonly until: Tick }>
   readonly duck: DuckState
+  readonly voiceDuck: DuckState
   readonly nappeN: number
 }
 
@@ -125,6 +129,7 @@ export const initialDirector = (): DirectorState => ({
   sources: new Map(),
   fadingSources: new Map(),
   duck: DUCK_IDLE,
+  voiceDuck: DUCK_IDLE,
   nappeN: -1,
 })
 
@@ -173,27 +178,32 @@ const wantedSources = (c: Creature): { kind: SourceKind; rate: number }[] => {
 const weaponImpact = (w: World): OneShotKind =>
   TUNING.weapons[w.player.weapon].type === 'tranchant' ? 'impact-tranchant' : 'impact-contondant'
 
+// Sons ponctuels d'un tick. Ils ne sont pas spatialisés (bus des impacts) : un coup qui touche N cibles jouerait N
+// copies du même fichier au même échantillon, qui s'additionnent en phase (+20 log N dB : +15,6 dB pour 6 cibles,
+// crêtes du master jusqu'à +26 dBFS au banc de B5) sans rien apprendre de plus au joueur. Une lecture par type et
+// par tick ; le journal garde l'id de la première cible.
 const oneShots = (w: World, byId: ReadonlyMap<EntityId, Creature>, events: readonly SimEvent[]): Cmd[] => {
   const out: Cmd[] = []
   const impacted = new Set<EntityId>()
+  const played = new Set<OneShotKind>()
   const posOf = (id: EntityId): Vec2 | null => byId.get(id)?.pos ?? null
+  const shot = (kind: OneShotKind, id: EntityId | null, pos: Vec2 | null): void => {
+    if (played.has(kind)) return
+    played.add(kind)
+    out.push({ t: 'oneshot', kind, id, pos })
+  }
   for (const e of events) {
     if (e.type === 'hit' && e.by === 'player' && e.target !== 'player' && !impacted.has(e.target)) {
       if (e.damageType !== 'tranchant' && e.damageType !== 'contondant') continue
       impacted.add(e.target)
-      out.push({
-        t: 'oneshot',
-        kind: e.damageType === 'tranchant' ? 'impact-tranchant' : 'impact-contondant',
-        id: e.target,
-        pos: posOf(e.target),
-      })
+      shot(e.damageType === 'tranchant' ? 'impact-tranchant' : 'impact-contondant', e.target, posOf(e.target))
     } else if (e.type === 'death' && e.by !== 'union' && !impacted.has(e.id)) {
       impacted.add(e.id)
-      out.push({ t: 'oneshot', kind: weaponImpact(w), id: e.id, pos: posOf(e.id) })
+      shot(weaponImpact(w), e.id, posOf(e.id))
     } else if (e.type === 'clang') {
-      out.push({ t: 'oneshot', kind: 'clang', id: e.id, pos: posOf(e.id) })
+      shot('clang', e.id, posOf(e.id))
     } else if (e.type === 'sentence-none') {
-      out.push({ t: 'oneshot', kind: 'mat', id: null, pos: null })
+      shot('mat', null, null)
     }
   }
   return out
@@ -359,13 +369,30 @@ export const direct = (s: DirectorState, w: World, listener: Vec2, now: number, 
 
   const d = duckStep(s.duck, deaths.size > 0, now)
   if (d.cmd) cmds.push(d.cmd)
+  const vd = duckStep(s.voiceDuck, deaths.size > 0, now, VOICE_DUCK_HOLD_S, VOICE_DUCK_RELEASE_S)
+  if (vd.cmd)
+    cmds.push(
+      vd.cmd.t === 'duck-down'
+        ? { t: 'voice-duck-down', at: vd.cmd.at, releaseAt: vd.cmd.releaseAt }
+        : { t: 'voice-duck-extend', releaseAt: vd.cmd.releaseAt },
+    )
 
   // Nappe : N créatures non mortes (§19, §26).
   const n = w.creatures.filter((c) => c.state.kind !== 'mort').length
   if (n !== s.nappeN) cmds.push({ t: 'nappe', n, prev: s.nappeN })
 
   return {
-    state: { tick: t, slots, voices, phases, sources, fadingSources: fading, duck: d.state, nappeN: n },
+    state: {
+      tick: t,
+      slots,
+      voices,
+      phases,
+      sources,
+      fadingSources: fading,
+      duck: d.state,
+      voiceDuck: vd.state,
+      nappeN: n,
+    },
     cmds,
     ranked,
     n,

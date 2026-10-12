@@ -15,16 +15,20 @@ export const DUCK_IDLE: DuckState = { kind: 'idle' }
 // Rampe d'un quantum à chaque bord : la plus courte qui évite le clic, bien sous l'image que B5.O5 tolère.
 export const DUCK_RAMP_S = QUANTUM_S
 
+// `hold` et `release` : tenue après la dernière mort et durée de la remontée (ambiance par défaut ; les voix ont
+// les leurs, D-fix3).
 export const duckStep = (
   s: DuckState,
   deaths: boolean,
   now: number,
+  hold: number = DUCK_HOLD_S,
+  release: number = DUCK_RAMP_S,
 ): { state: DuckState; cmd: DuckCmd | null } => {
   if (!deaths) {
-    if (s.kind === 'held' && now >= s.releaseAt + DUCK_RAMP_S) return { state: DUCK_IDLE, cmd: null }
+    if (s.kind === 'held' && now >= s.releaseAt + release) return { state: DUCK_IDLE, cmd: null }
     return { state: s, cmd: null }
   }
-  const releaseAt = now + DUCK_HOLD_S
+  const releaseAt = now + hold
   if (s.kind === 'held' && now < s.releaseAt) {
     // Même grappe : pas d'empilement, seule la remontée recule.
     return { state: { kind: 'held', since: s.since, releaseAt }, cmd: { t: 'duck-extend', releaseAt } }

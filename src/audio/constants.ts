@@ -20,7 +20,10 @@ export const SOFT_END_MIN_S = 0.08
 // de la durée, soit 150 ms nominaux. Marge mesurée : avec 240 ms (120 ms nominaux), un vol de voix de S-sat est
 // tombé à 90,7 ms, les variations de niveau du cri d'un quantum à l'autre mangeant jusqu'à 30 ms. Pendant ce
 // fondu, l'emplacement reste occupé (B5.O8 a) : 18 ticks ; sur S-sat, aucun corps des 20 premiers n'attend.
-export const SOFT_FADE_S = 0.3
+// Durée exacte : 112 quanta (298,7 ms). Au banc, l'instant d'un tick est arrondi au quantum supérieur, si bien que
+// 18 ticks séparent deux instants de 112 ou 113 quanta ; un fondu de 300 ms (112,5 quanta) débordait de 1,33 ms
+// sur la voix suivante du même emplacement une fois sur deux (B5.O8 a, 16 ticks à 25 voix au verdict B5 v2).
+export const SOFT_FADE_S = (112 * QUANTUM) / BENCH_RATE
 export const SOFT_FADE_FLOOR_DB = -60
 // Changement de fichier d'une voix (halètement → cri → inspiration, étouffée ↔ libre) : fondu enchaîné à
 // puissance constante, de la durée minimale d'une fin douce (aucune fin de fichier n'est plus brève).
@@ -31,6 +34,27 @@ export const CUT_RAMP_S = QUANTUM / BENCH_RATE
 // §8.2 et §19 : ambiance −6 dB pendant 0,4 s après la dernière mort d'une grappe.
 export const DUCK_DB = -6
 export const DUCK_HOLD_S = 0.4
+
+// Ducking des autres voix (décision du concepteur du 2026-10-12, D-fix3, tour 2 de B5.O10) : après une mort, les voix
+// des autres corps baissent aussi, sur un étage commun placé après les prises des emplacements (avant le bus des
+// créatures). Ni coupure ni vol : la voix continue, son emplacement et son journal ne changent pas. Valeurs choisies
+// par la mesure de O10 (rapport D-fix3) ; ce ne sont pas des valeurs du spec.
+export const VOICE_DUCK_DB = -12
+// Descente : la durée minimale d'une fin douce (§19, 80 ms). Seule la voix qui meurt tombe net au tick de la mort ;
+// les autres descendent en fondu et ont atteint la profondeur avant la fenêtre de O10 (T_d + 100 ms).
+export const VOICE_DUCK_ATTACK_S = SOFT_END_MIN_S
+// Tenue : comme l'ambiance, jusqu'à 0,4 s après la dernière mort d'une grappe (fin de la fenêtre de O10).
+export const VOICE_DUCK_HOLD_S = DUCK_HOLD_S
+// Remontée en fondu, pour que les voix ne reviennent pas toutes d'un coup.
+export const VOICE_DUCK_RELEASE_S = SOFT_END_MIN_S
+
+// Marge du master (D-fix3). Les fichiers sont normalisés près de la pleine échelle (crêtes à −1 dBFS pour les
+// halètements, le gargouillis, les coutures ; nappe pleine à N = 40) et sommés à gain 1 ; à moins d'un mètre, une
+// voix n'est pas atténuée par la distance. Au banc de B5 (403 rendus), la crête du master montait jusqu'à +7,4 dBFS
+// (115 rendus au-dessus de 0 dBFS), ce qui écrête en direct. Gain fixe du master : crête la plus haute mesurée
+// ramenée sous −1 dBFS. Toutes les prises de mesure (emplacements, autres sources, créatures, nappe, ambiance) sont
+// en amont : seul le niveau absolu du master change, réglé une fois par le volume du joueur (protocole B5 §11).
+export const MASTER_DB = -8.5
 
 // §26 : la nappe s'éteint en 2 s quand la zone est vidée.
 export const NAPPE_OFF_S = 2

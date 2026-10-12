@@ -120,10 +120,12 @@
         "PCM s16le 2 canal(aux) 48 kHz",
         "passage en mono : moyenne de 2 canaux",
         "boucle native de l'API, de 0 à 288000",
-        "niveau -11.02 dB (M_f visé -24 dBFS)"
+        "niveau -11.02 dB (M_f visé -24 dBFS)",
+        "lecture : gain 0,00 → +6,00 dB (D-fix3, tour 1 de B5.O10, +6,00 dB) : B5.O10 : avant la mort, l'ambiance (nappe) pèse autant que le cri du corps de rang 1 (46 % contre 39 % de l'énergie en classe 1) ; le cri le plus proche passe au-dessus de la nappe. Écart entre cris (O11 g) inchangé ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:02.763Z",
-      "attempt": 1
+      "attempt": 1,
+      "gainDb": 6
     },
     {
       "id": "cri-02",
@@ -150,10 +152,12 @@
         "PCM s16le 2 canal(aux) 48 kHz",
         "passage en mono : moyenne de 2 canaux",
         "boucle native de l'API, de 0 à 288000",
-        "niveau -17.13 dB (M_f visé -24 dBFS)"
+        "niveau -17.13 dB (M_f visé -24 dBFS)",
+        "lecture : gain 0,00 → +6,00 dB (D-fix3, tour 1 de B5.O10, +6,00 dB) : B5.O10 : avant la mort, l'ambiance (nappe) pèse autant que le cri du corps de rang 1 (46 % contre 39 % de l'énergie en classe 1) ; le cri le plus proche passe au-dessus de la nappe. Écart entre cris (O11 g) inchangé ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:02.917Z",
-      "attempt": 1
+      "attempt": 1,
+      "gainDb": 6
     },
     {
       "id": "cri-03",
@@ -180,10 +184,12 @@
         "PCM s16le 2 canal(aux) 48 kHz",
         "passage en mono : moyenne de 2 canaux",
         "boucle native de l'API, de 0 à 288000",
-        "niveau -9.38 dB (M_f visé -24 dBFS)"
+        "niveau -9.38 dB (M_f visé -24 dBFS)",
+        "lecture : gain 0,00 → +6,00 dB (D-fix3, tour 1 de B5.O10, +6,00 dB) : B5.O10 : avant la mort, l'ambiance (nappe) pèse autant que le cri du corps de rang 1 (46 % contre 39 % de l'énergie en classe 1) ; le cri le plus proche passe au-dessus de la nappe. Écart entre cris (O11 g) inchangé ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:03.064Z",
-      "attempt": 1
+      "attempt": 1,
+      "gainDb": 6
     },
     {
       "id": "cri-04",
@@ -211,10 +217,12 @@
         "PCM s16le 2 canal(aux) 48 kHz",
         "passage en mono : moyenne de 2 canaux",
         "boucle native de l'API, de 0 à 288000",
-        "niveau -13.23 dB (M_f visé -24 dBFS)"
+        "niveau -13.23 dB (M_f visé -24 dBFS)",
+        "lecture : gain 0,00 → +6,00 dB (D-fix3, tour 1 de B5.O10, +6,00 dB) : B5.O10 : avant la mort, l'ambiance (nappe) pèse autant que le cri du corps de rang 1 (46 % contre 39 % de l'énergie en classe 1) ; le cri le plus proche passe au-dessus de la nappe. Écart entre cris (O11 g) inchangé ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:03.209Z",
-      "attempt": 2
+      "attempt": 2,
+      "gainDb": 6
     },
     {
       "id": "cri-05",
@@ -241,10 +249,12 @@
         "PCM s16le 2 canal(aux) 48 kHz",
         "passage en mono : moyenne de 2 canaux",
         "boucle native de l'API, de 0 à 288000",
-        "niveau -12.75 dB (M_f visé -24 dBFS)"
+        "niveau -12.75 dB (M_f visé -24 dBFS)",
+        "lecture : gain 0,00 → +6,00 dB (D-fix3, tour 1 de B5.O10, +6,00 dB) : B5.O10 : avant la mort, l'ambiance (nappe) pèse autant que le cri du corps de rang 1 (46 % contre 39 % de l'énergie en classe 1) ; le cri le plus proche passe au-dessus de la nappe. Écart entre cris (O11 g) inchangé ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:03.354Z",
-      "attempt": 1
+      "attempt": 1,
+      "gainDb": 6
     },
     {
       "id": "cri-06",
@@ -271,10 +281,12 @@
         "PCM s16le 2 canal(aux) 48 kHz",
         "passage en mono : moyenne de 2 canaux",
         "boucle native de l'API, de 0 à 288000",
-        "niveau -11.00 dB (M_f visé -24 dBFS)"
+        "niveau -11.00 dB (M_f visé -24 dBFS)",
+        "lecture : gain 0,00 → +6,00 dB (D-fix3, tour 1 de B5.O10, +6,00 dB) : B5.O10 : avant la mort, l'ambiance (nappe) pèse autant que le cri du corps de rang 1 (46 % contre 39 % de l'énergie en classe 1) ; le cri le plus proche passe au-dessus de la nappe. Écart entre cris (O11 g) inchangé ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:03.501Z",
-      "attempt": 1
+      "attempt": 1,
+      "gainDb": 6
     },
     {
       "id": "cri-07",
@@ -292,7 +304,7 @@
       "loopStart": 199680,
       "loopEnd": 229120,
       "startOffset": 195840,
-      "gainDb": -3.33,
+      "gainDb": 2.67,
       "channels": 1,
       "sampleRate": 48000,
       "format": "wav-pcm16",
@@ -306,7 +318,8 @@
         "passage en mono : moyenne de 2 canaux",
         "point de boucle : région tenue 199680–229120, départ 195840, jonction en fondu enchaîné de 3840 éch. (boucle native refusée par les contrôles)",
         "niveau -12.90 dB (M_f visé -24 dBFS)",
-        "lecture : gain −3,33 dB (D-fix2, B5.O11 g) : M_f du fichier tel que joué (boucle 199680–229120) −20,67 → −24,00 dBFS, niveau visé des cris ; WAV inchangé"
+        "lecture : gain −3,33 dB (D-fix2, B5.O11 g) : M_f du fichier tel que joué (boucle 199680–229120) −20,67 → −24,00 dBFS, niveau visé des cris ; WAV inchangé",
+        "lecture : gain −3,33 → +2,67 dB (D-fix3, tour 1 de B5.O10, +6,00 dB) : B5.O10 : avant la mort, l'ambiance (nappe) pèse autant que le cri du corps de rang 1 (46 % contre 39 % de l'énergie en classe 1) ; le cri le plus proche passe au-dessus de la nappe. Écart entre cris (O11 g) inchangé ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:03.638Z",
       "attempt": 2
@@ -336,10 +349,12 @@
         "PCM s16le 2 canal(aux) 48 kHz",
         "passage en mono : moyenne de 2 canaux",
         "boucle native de l'API, de 0 à 288000",
-        "niveau -13.63 dB (M_f visé -24 dBFS)"
+        "niveau -13.63 dB (M_f visé -24 dBFS)",
+        "lecture : gain 0,00 → +6,00 dB (D-fix3, tour 1 de B5.O10, +6,00 dB) : B5.O10 : avant la mort, l'ambiance (nappe) pèse autant que le cri du corps de rang 1 (46 % contre 39 % de l'énergie en classe 1) ; le cri le plus proche passe au-dessus de la nappe. Écart entre cris (O11 g) inchangé ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:03.787Z",
-      "attempt": 1
+      "attempt": 1,
+      "gainDb": 6
     },
     {
       "id": "cri-09",
@@ -367,10 +382,12 @@
         "PCM s16le 2 canal(aux) 48 kHz",
         "passage en mono : moyenne de 2 canaux",
         "boucle native de l'API, de 0 à 288000",
-        "niveau -10.73 dB (M_f visé -24 dBFS)"
+        "niveau -10.73 dB (M_f visé -24 dBFS)",
+        "lecture : gain 0,00 → +6,00 dB (D-fix3, tour 1 de B5.O10, +6,00 dB) : B5.O10 : avant la mort, l'ambiance (nappe) pèse autant que le cri du corps de rang 1 (46 % contre 39 % de l'énergie en classe 1) ; le cri le plus proche passe au-dessus de la nappe. Écart entre cris (O11 g) inchangé ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:03.929Z",
-      "attempt": 2
+      "attempt": 2,
+      "gainDb": 6
     },
     {
       "id": "cri-10",
@@ -397,10 +414,12 @@
         "PCM s16le 2 canal(aux) 48 kHz",
         "passage en mono : moyenne de 2 canaux",
         "boucle native de l'API, de 0 à 288000",
-        "niveau -4.66 dB (M_f visé -24 dBFS)"
+        "niveau -4.66 dB (M_f visé -24 dBFS)",
+        "lecture : gain 0,00 → +6,00 dB (D-fix3, tour 1 de B5.O10, +6,00 dB) : B5.O10 : avant la mort, l'ambiance (nappe) pèse autant que le cri du corps de rang 1 (46 % contre 39 % de l'énergie en classe 1) ; le cri le plus proche passe au-dessus de la nappe. Écart entre cris (O11 g) inchangé ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:04.069Z",
-      "attempt": 1
+      "attempt": 1,
+      "gainDb": 6
     },
     {
       "id": "cri-11",
@@ -427,10 +446,12 @@
         "PCM s16le 2 canal(aux) 48 kHz",
         "passage en mono : moyenne de 2 canaux",
         "boucle native de l'API, de 0 à 288000",
-        "niveau -11.83 dB (M_f visé -24 dBFS)"
+        "niveau -11.83 dB (M_f visé -24 dBFS)",
+        "lecture : gain 0,00 → +6,00 dB (D-fix3, tour 1 de B5.O10, +6,00 dB) : B5.O10 : avant la mort, l'ambiance (nappe) pèse autant que le cri du corps de rang 1 (46 % contre 39 % de l'énergie en classe 1) ; le cri le plus proche passe au-dessus de la nappe. Écart entre cris (O11 g) inchangé ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:04.212Z",
-      "attempt": 1
+      "attempt": 1,
+      "gainDb": 6
     },
     {
       "id": "cri-12",
@@ -457,10 +478,12 @@
         "PCM s16le 2 canal(aux) 48 kHz",
         "passage en mono : moyenne de 2 canaux",
         "boucle native de l'API, de 0 à 288000",
-        "niveau -10.66 dB (M_f visé -24 dBFS)"
+        "niveau -10.66 dB (M_f visé -24 dBFS)",
+        "lecture : gain 0,00 → +6,00 dB (D-fix3, tour 1 de B5.O10, +6,00 dB) : B5.O10 : avant la mort, l'ambiance (nappe) pèse autant que le cri du corps de rang 1 (46 % contre 39 % de l'énergie en classe 1) ; le cri le plus proche passe au-dessus de la nappe. Écart entre cris (O11 g) inchangé ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:04.358Z",
-      "attempt": 1
+      "attempt": 1,
+      "gainDb": 6
     },
     {
       "id": "cri-etouffe-01",
@@ -488,10 +511,12 @@
         "PCM s16le 2 canal(aux) 48 kHz",
         "passage en mono : moyenne de 2 canaux",
         "boucle native de l'API, de 0 à 288000",
-        "niveau -21.66 dB (M_f visé -32 dBFS)"
+        "niveau -21.66 dB (M_f visé -32 dBFS)",
+        "lecture : gain 0,00 → +6,00 dB (D-fix3, tour 1 de B5.O10, +6,00 dB comme les cris libres) : garde l'écart entre cri libre et cri étouffé au passage dans le sac (B5.O6, fin d'une voix absorbée) ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:04.808Z",
-      "attempt": 2
+      "attempt": 2,
+      "gainDb": 6
     },
     {
       "id": "cri-etouffe-02",
@@ -518,10 +543,12 @@
         "PCM s16le 2 canal(aux) 48 kHz",
         "passage en mono : moyenne de 2 canaux",
         "boucle native de l'API, de 0 à 288000",
-        "niveau -21.33 dB (M_f visé -32 dBFS)"
+        "niveau -21.33 dB (M_f visé -32 dBFS)",
+        "lecture : gain 0,00 → +6,00 dB (D-fix3, tour 1 de B5.O10, +6,00 dB comme les cris libres) : garde l'écart entre cri libre et cri étouffé au passage dans le sac (B5.O6, fin d'une voix absorbée) ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:04.947Z",
-      "attempt": 1
+      "attempt": 1,
+      "gainDb": 6
     },
     {
       "id": "cri-etouffe-03",
@@ -548,10 +575,12 @@
         "PCM s16le 2 canal(aux) 48 kHz",
         "passage en mono : moyenne de 2 canaux",
         "boucle native de l'API, de 0 à 288000",
-        "niveau -13.46 dB (M_f visé -32 dBFS)"
+        "niveau -13.46 dB (M_f visé -32 dBFS)",
+        "lecture : gain 0,00 → +6,00 dB (D-fix3, tour 1 de B5.O10, +6,00 dB comme les cris libres) : garde l'écart entre cri libre et cri étouffé au passage dans le sac (B5.O6, fin d'une voix absorbée) ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:05.082Z",
-      "attempt": 1
+      "attempt": 1,
+      "gainDb": 6
     },
     {
       "id": "etranglement",
@@ -756,10 +785,12 @@
         "PCM s16le 2 canal(aux) 48 kHz",
         "passage en mono : moyenne de 2 canaux",
         "offset de départ 128 éch. (2.7 ms de silence de tête sauté)",
-        "niveau -6.01 dB (crête visée -3 dBFS)"
+        "niveau -6.01 dB (crête visée -3 dBFS)",
+        "lecture : gain 0,00 → −18,00 dB (D-fix3, tour 1 de B5.O10, −18,00 dB) : B5.O10 : l'impact du coup suivant (+350 à +400 ms) remplit le trou dans 475 des 611 morts de classe 1 qui échouent, et les impacts portent les crêtes du master (médiane +11 dBFS, 395 rendus sur 403 au-dessus de 0 dBFS) ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:05.952Z",
-      "attempt": 1
+      "attempt": 1,
+      "gainDb": -18
     },
     {
       "id": "impact-tranchant",
@@ -786,10 +817,12 @@
         "PCM s16le 2 canal(aux) 48 kHz",
         "passage en mono : moyenne de 2 canaux",
         "queue rognée : fondu de pic + 50 ms à pic + 90 ms (queue mesurée 25.6 dB sous le pic)",
-        "niveau +21.74 dB (crête visée -3 dBFS)"
+        "niveau +21.74 dB (crête visée -3 dBFS)",
+        "lecture : gain 0,00 → −18,00 dB (D-fix3, tour 1 de B5.O10, −18,00 dB) : B5.O10 : l'impact du coup suivant (+350 à +400 ms) remplit le trou dans 475 des 611 morts de classe 1 qui échouent, et les impacts portent les crêtes du master (médiane +11 dBFS, 395 rendus sur 403 au-dessus de 0 dBFS) ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:05.925Z",
-      "attempt": 1
+      "attempt": 1,
+      "gainDb": -18
     },
     {
       "id": "inspire-01",
