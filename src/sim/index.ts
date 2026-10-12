@@ -39,3 +39,4 @@ export const IDLE_COMMANDS: PlayerCommands = {
   rite: null,
   swapWeapon: false,
 }
+export { FAMILIES } from './families/registry'

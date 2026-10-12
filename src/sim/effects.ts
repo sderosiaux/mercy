@@ -197,7 +197,7 @@ export const applyEffects = (d: Draft, self: MCreature, effects: readonly Effect
       }
       case 'repair': {
         const c = byId(d, e.id)
-        if (!c || c.state.kind !== 'abattu') break
+        if (c?.state.kind !== 'abattu') break
         if (c.state.claimedBy !== null && c.state.claimedBy !== self.id) break
         if (c.family === 'membre') reattach(d, c, self.id)
         else rise(d, c, 'chirurgien')

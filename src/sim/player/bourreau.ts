@@ -220,11 +220,13 @@ const startSentence = (d: Draft, aim: Vec2): boolean => {
   const p = d.player
   const targetId = sentenceTargetOf(d as unknown as World, aim)
   const t = targetId === null ? undefined : byId(d, targetId)
-  if (!t || t.state.kind !== 'abattu') {
+  if (t?.state.kind !== 'abattu') {
     emit(d, { type: 'sentence-none', tick: d.tick })
     return false
   }
   const duration = t.resistant ? TUNING.sentence.durationResistant : TUNING.sentence.durationOrdinaire
+  // La saisie interrompt une canalisation de la cible (un Confesseur qui prie à terre).
+  if (t.action?.kind === 'canalisation') interrupt(d, t, 'player')
   // La cible est réservée ; un corps encore muet le reste : l'exécution est silencieuse.
   const cryAt = t.state.cryAt !== null && t.state.cryAt > d.tick ? null : t.state.cryAt
   t.state = { ...t.state, claimedBy: 'player', cryAt }
@@ -238,7 +240,7 @@ const startSentence = (d: Draft, aim: Vec2): boolean => {
 
 const finishSentence = (d: Draft, targetId: number): void => {
   const t = byId(d, targetId)
-  if (!t || t.state.kind !== 'abattu') return
+  if (t?.state.kind !== 'abattu') return
   const resistant = t.resistant
   kill(d, t, 'sentence')
   heal(d, resistant ? TUNING.sentence.healResistant : TUNING.sentence.healOrdinaire, 'sentence')
