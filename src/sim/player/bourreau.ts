@@ -299,6 +299,7 @@ const startDodge = (d: Draft, cmds: PlayerCommands, aim: Vec2): boolean => {
   p.dodgeCharges -= 1
   if (p.dodgeRechargeAt === null) p.dodgeRechargeAt = d.tick + TUNING.dodge.recharge
   const dir = len(cmds.move) > 0 ? norm(cmds.move) : fromAngle(facingToward(p.pos, aim, p.facing))
+  p.facing = angleOf({ x: 0, z: 0 }, dir) // il roule face à sa roulade
   p.action = { kind: 'esquive', start: d.tick, end: d.tick + TUNING.dodge.duration, dir }
   p.invulnerableUntil = Math.max(p.invulnerableUntil, d.tick + TUNING.dodge.iframes)
   emit(d, { type: 'player-dodge', tick: d.tick })
@@ -318,6 +319,7 @@ const tryStart = (d: Draft, cmd: BufferedCommand, cmds: PlayerCommands, aim: Vec
       return true
     case 'balayage':
       if (p.ferveur < TUNING.balayage.cost) return true
+      p.facing = facingToward(p.pos, aim, p.facing) // il se tourne vers le curseur au début du geste
       startBalayage(d)
       return true
     case 'charge':
@@ -370,8 +372,12 @@ export const playerTick = (d: Draft, cmds: PlayerCommands): void => {
   // 4. Mouvement.
   const a = p.action
   if (!a) {
-    p.facing = facingToward(p.pos, cmds.aim, p.facing)
-    if (len(cmds.move) > 0) p.pos = add(p.pos, scale(norm(cmds.move), TUNING.playerSpeed / 60))
+    // Décision du 2026-10-12 : en marchant, il fait face à sa marche ; à l'arrêt, il garde son orientation. Il ne se
+    // tourne vers le curseur qu'au début d'un geste (startStrike et les autres départs d'action).
+    if (len(cmds.move) > 0) {
+      p.facing = angleOf({ x: 0, z: 0 }, cmds.move)
+      p.pos = add(p.pos, scale(norm(cmds.move), TUNING.playerSpeed / 60))
+    }
   } else if (a.kind === 'esquive' && a.dir) {
     p.pos = add(p.pos, scale(a.dir, TUNING.dodge.distance / TUNING.dodge.duration))
   } else if (a.kind === 'charge') {

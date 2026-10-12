@@ -313,3 +313,38 @@ describe("Changement d'arme", () => {
     expect(run(far, 1, cmd({ swapWeapon: true })).world.player.weapon).toBe('masse')
   })
 })
+
+describe('Orientation du Bourreau (décision du 2026-10-12)', () => {
+  it('en marchant, il fait face à sa direction de marche, pas au curseur', () => {
+    const { world } = run(scene([]), 10, cmd({ move: vec(0, 1), aim: vec(10, 0) }))
+    expect(world.player.facing).toBeCloseTo(Math.PI / 2, 6)
+  })
+
+  it('à l’arrêt, il garde son orientation quand le curseur bouge', () => {
+    const walked = run(scene([]), 10, cmd({ move: vec(0, 1), aim: vec(10, 0) })).world
+    const { world } = run(walked, 10, cmd({ aim: vec(-10, 0) }))
+    expect(world.player.facing).toBeCloseTo(Math.PI / 2, 6)
+  })
+
+  it('au début d’une Frappe, il se tourne vers le curseur, même en marchant', () => {
+    const { world } = run(scene([]), 1, cmd({ move: vec(0, 1), aim: vec(-10, 0), strike: true }))
+    expect(world.player.action?.kind).toBe('frappe')
+    expect(Math.abs(world.player.facing)).toBeCloseTo(Math.PI, 6)
+  })
+})
+
+describe('Orientation du Bourreau aux gestes (décision du 2026-10-12)', () => {
+  it('au début d’un Balayage, il se tourne vers le curseur', () => {
+    const w = withPlayer(scene([]), { ferveur: 100, facing: 0 })
+    const { world } = run(w, 1, cmd({ aim: vec(0, -10), rite: 'balayage' }))
+    expect(world.player.action?.kind).toBe('balayage')
+    expect(world.player.facing).toBeCloseTo(-Math.PI / 2, 6)
+  })
+
+  it('une Esquive le tourne dans le sens de la roulade', () => {
+    const w = withPlayer(scene([]), { facing: 0 })
+    const { world } = run(w, 1, cmd({ move: vec(-1, 0), aim: vec(10, 0), dodge: true }))
+    expect(world.player.action?.kind).toBe('esquive')
+    expect(Math.abs(world.player.facing)).toBeCloseTo(Math.PI, 6)
+  })
+})
