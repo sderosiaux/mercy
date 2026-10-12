@@ -19,7 +19,6 @@ import {
   PMREMGenerator,
   RGBAFormat,
   Scene,
-  type ShaderMaterial,
   SRGBColorSpace,
   type Texture,
   UnsignedByteType,
@@ -35,6 +34,7 @@ import { RENDER } from './constants'
 import { buildDecor, WALL_HALF } from './decor'
 import { GoreMemory, SPARK_TICKS } from './gore'
 import { GoreLayer } from './goreview'
+import { idMaterialFor } from './idpass'
 import { DEAD_PROXY_LAYER, LightRig } from './lightrig'
 import { entityLights, type LightSource } from './lights'
 import { cutUniforms, fixedLightUniforms, overlayUniforms, pbr, skinMaterial, TextureBank } from './materials'
@@ -467,12 +467,19 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     const p = post as PostPipeline
     p.renderScene(gl, scene, camera)
     p.compose(gl, camera, t, frame.fog, true)
+    drawOverlays()
+    lastCpu = performance.now() - t0
+  }
+
+  // Couche des signaux, par-dessus la scène, dans la cible courante : profondeur et gabarit effacés (chaque objet se
+  // teste contre la profondeur de la scène dans son shader), puis sol, morts, télégraphes, signaux des corps. La
+  // passe couleur et la passe d'identification passent toutes deux par ici (B2 I1 : même ordre, même profondeur).
+  const drawOverlays = (): void => {
     gl.autoClear = false
     gl.clearDepth()
     gl.clearStencil()
     for (const o of overlays) gl.render(o, camera)
     gl.autoClear = true
-    lastCpu = performance.now() - t0
   }
 
   // Lecture et passe d'identification ---------------------------------------------------------------------
@@ -514,35 +521,27 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     const swap = (root: Object3D): void =>
       root.traverse((o) => {
         if (!(o instanceof Mesh) || !o.visible) return
-        const idm = o.userData.idMaterial as ShaderMaterial | undefined
+        const idm = idMaterialFor(o)
         if (!idm) {
           o.visible = false
           hiddenObjs.push(o)
           return
         }
         swapped.push({ o, m: o.material })
-        // Même résolution de profondeur que la passe couleur (décalques et objets au sol décalés).
-        const src = o.material as Material
-        idm.polygonOffset = src.polygonOffset
-        idm.polygonOffsetFactor = src.polygonOffsetFactor
-        idm.polygonOffsetUnits = src.polygonOffsetUnits
-        idm.depthWrite = src.depthWrite
-        // Le masque de silhouette du liseré (E2) ne teste pas la profondeur, ni en couleur ni ici.
-        idm.depthTest = o.userData.idDepthTest ?? true
-        idm.side = src.side
         o.material = idm
       })
     swap(scene)
     for (const o of overlays) swap(o)
     const auto = gl.shadowMap.autoUpdate
     gl.shadowMap.autoUpdate = false
+    // Même ordre que la passe couleur : la scène, puis la couche des signaux, qui se teste contre la profondeur de la
+    // scène de l'image qu'on vient de rendre (uSceneDepth), pas contre celle de cette cible.
     gl.setRenderTarget(idTarget)
     gl.setClearColor(PALETTE.technique.fondId, 1)
     gl.clear(true, true, true)
     gl.autoClear = false
     gl.render(scene, camera)
-    for (const o of overlays) gl.render(o, camera)
-    gl.autoClear = true
+    drawOverlays()
     const buf = new Uint8Array(w * h * 4)
     gl.readRenderTargetPixels(idTarget, 0, 0, w, h, buf)
     gl.setRenderTarget(null)

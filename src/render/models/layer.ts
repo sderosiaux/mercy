@@ -40,9 +40,11 @@ import {
   deadIdMaterial,
   deadMaterial,
   idMaterial,
+  livingFloorUniform,
   type ModelUniforms,
   markMaterial,
   modelUniforms,
+  NO_FLOOR,
   rimMaterial,
   setStencil,
   silhouetteMaterial,
@@ -110,13 +112,17 @@ const HALO_GLOW = 0.6 // halo en prière
 
 const wrap = (a: number): number => Math.atan2(Math.sin(a), Math.cos(a))
 
+// Plancher de la chair (E4) : les créatures et les Membres errants ; pas le Bourreau.
+const floorOf = (assetId: string): { value: number } =>
+  assetId === 'bourreau' ? NO_FLOOR : livingFloorUniform
+
 const idVec = (u: { value: Vector3 }, id: number, role: number): void => {
   const [r, g, b] = encodeId(id, role)
   u.value.set(r / 255, g / 255, b / 255)
 }
 
 // Liseré d'un corps : masque de sa silhouette (gabarit) puis coque, dessinés l'un après l'autre.
-interface Rim {
+export interface Rim {
   readonly mask: Mesh
   readonly hull: Mesh
   readonly materials: ShaderMaterial[] // ceux dont la valeur de gabarit change à chaque image
@@ -144,12 +150,12 @@ interface Membre {
   key: string
 }
 
-const makeRim = (u: ModelUniforms, build: (m: Material, id: Material) => Mesh): Rim => {
+export const makeRim = (u: ModelUniforms, build: (m: Material, id: Material) => Mesh): Rim => {
   const sil = silhouetteMaterial(u)
   const hullM = rimMaterial(u)
   const hullId = idMaterial(u, 'rim')
+  // Le masque est sa propre matière d'identification : il n'écrit que le gabarit, dans les deux passes.
   const mask = build(sil, sil)
-  mask.userData.idDepthTest = false
   return { mask, hull: build(hullM, hullId), materials: [sil, hullM, hullId] }
 }
 
@@ -277,7 +283,14 @@ export class ModelLayer {
   private createLiving(asset: ModelAsset): Living {
     const inst = new ModelInstance(asset)
     const u = modelUniforms(asset.regions.sacCenter)
-    const body = bodyMaterial(asset.map, asset.roughness, u, this.shift(asset.id), asset.meanLum)
+    const body = bodyMaterial(
+      asset.map,
+      asset.roughness,
+      u,
+      this.shift(asset.id),
+      asset.meanLum,
+      floorOf(asset.id),
+    )
     this.applyEnv(body)
     inst.mesh.material = body
     // L'ombre portée vient de la doublure grossière ; le corps reçoit les ombres.
@@ -715,7 +728,14 @@ export class ModelLayer {
     if (!mb || mb.key !== key) {
       if (mb) this.dropMembre(c.id, mb)
       const u = modelUniforms(new Vector3())
-      const body = bodyMaterial(asset.map, asset.roughness, u, this.shift(asset.id), asset.meanLum)
+      const body = bodyMaterial(
+        asset.map,
+        asset.roughness,
+        u,
+        this.shift(asset.id),
+        asset.meanLum,
+        floorOf(asset.id),
+      )
       this.applyEnv(body)
       const bodyId = idMaterial(u, 'body')
       const piece3 = (mat: Material, id: Material): Mesh => {

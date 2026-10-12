@@ -25,7 +25,16 @@ import {
 } from 'three'
 import { PALETTE } from './palette'
 import { fogUniforms, gradeUniforms } from './post'
-import { DEPTH_TEST_GLSL, FOG_GLSL, GRADE_GLSL, MAX_FIXED_LIGHTS, NOISE_GLSL, TONEMAP_GLSL } from './shaders'
+import {
+  CUT_GLSL,
+  DEPTH_TEST_GLSL,
+  FOG_GLSL,
+  GRADE_GLSL,
+  MAX_FIXED_LIGHTS,
+  NOISE_GLSL,
+  SCENE_DEPTH_CALL,
+  TONEMAP_GLSL,
+} from './shaders'
 
 export type TextureSet = 'boue' | 'terre' | 'pierre' | 'bois' | 'fer' | 'cuir' | 'tissu'
 export const TEXTURE_SETS: readonly TextureSet[] = ['boue', 'terre', 'pierre', 'bois', 'fer', 'cuir', 'tissu']
@@ -163,22 +172,7 @@ const CUT: Patch = (s) => {
   Object.assign(s.uniforms, cutUniforms)
   s.fragmentShader = s.fragmentShader.replace(
     'void main() {',
-    `uniform vec3 uCutTarget;
-uniform vec3 uCutCam;
-uniform float uCutRadius;
-void main() {
-  {
-    vec3 axis = uCutTarget - uCutCam;
-    float L = length( axis );
-    axis /= L;
-    vec3 rel = vE1World - uCutCam;
-    float s = dot( rel, axis );
-    float r = length( rel - axis * s );
-    float k = smoothstep( uCutRadius, uCutRadius * 0.55, r ) * smoothstep( L - 0.4, L - 1.6, s );
-    vec2 q = floor( gl_FragCoord.xy );
-    float bayer = fract( dot( q, vec2( 0.5, 0.25 ) ) + fract( q.y * 0.5 ) * 0.5 );
-    if ( k > bayer + 0.02 ) discard;
-  }`,
+    `${CUT_GLSL}\nvoid main() {\n  e1Cut( vE1World );`,
   )
 }
 
@@ -281,6 +275,7 @@ export const groundMaterial = (maps: SetMaps, wallHalf: number, wallRadius: numb
 // Décor découpé près de l'axe caméra-joueur (murs, rebords, pieux, silhouettes du bord).
 export const cutMaterial = (m: MeshStandardMaterial, key: string): MeshStandardMaterial => {
   applyPatches(m, `e1-cut-${key}`, [WORLD_POS_VERT, CUT])
+  m.userData.cut = true // passe d'identification : même découpe (idpass.ts)
   return m
 }
 
@@ -301,7 +296,7 @@ const DEPTH_PATCH: Patch = (s) => {
   Object.assign(s.uniforms, overlayUniforms)
   s.fragmentShader = s.fragmentShader.replace(
     'void main() {',
-    `${DEPTH_TEST_GLSL}\nvoid main() {\n  e1DepthTest();`,
+    `${DEPTH_TEST_GLSL}\nvoid main() {\n  ${SCENE_DEPTH_CALL.signal}`,
   )
 }
 
@@ -380,7 +375,7 @@ ${TONEMAP_GLSL}
 ${GRADE_GLSL}
 ${FOG_GLSL}
 void main() {
-  e1DepthTest();
+  ${SCENE_DEPTH_CALL.signal}
   vec3 n = normalize( vNormalW );
   if ( ! gl_FrontFacing ) n = - n;
   float lum = uDeadAmbient * ( 0.6 + 0.4 * n.y ) + uMoonLum * max( dot( n, uMoonDir ), 0.0 );

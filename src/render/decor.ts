@@ -327,7 +327,7 @@ const instanced = (
   m.receiveShadow = receive
   m.instanceMatrix.needsUpdate = true
   m.computeBoundingSphere()
-  m.userData.idMaterial = uniformIdMaterial(0, ROLE.autre)
+  m.userData.idMaterial = uniformIdMaterial(0, ROLE.autre, { cut: mat.userData.cut === true })
   return m
 }
 
@@ -393,7 +393,7 @@ export const buildDecor = (bank: TextureBank, q: QualitySpec): Decor => {
   const wall = add(new Mesh(wallGeometry(path, H, 8), wallMat))
   wall.receiveShadow = true
   wall.castShadow = true
-  wall.userData.idMaterial = uniformIdMaterial(0, ROLE.autre)
+  wall.userData.idMaterial = uniformIdMaterial(0, ROLE.autre, { cut: wallMat.userData.cut === true })
 
   // Bord supérieur : terrain au niveau du bord, percé du carré arrondi.
   {
@@ -403,7 +403,7 @@ export const buildDecor = (bank: TextureBank, q: QualitySpec): Decor => {
     )
     const top = add(new Mesh(g, topMat))
     top.receiveShadow = true
-    top.userData.idMaterial = uniformIdMaterial(0, ROLE.autre)
+    top.userData.idMaterial = uniformIdMaterial(0, ROLE.autre, { cut: topMat.userData.cut === true })
   }
 
   // Ossuaire : crânes et os enchâssés dans le mur, par travées.
@@ -648,7 +648,7 @@ export const buildDecor = (bank: TextureBank, q: QualitySpec): Decor => {
     bell = add(new Mesh(bellGeometry(), ironMat))
     bell.position.set(gx, H + 2.25, gz)
     bell.castShadow = true
-    bell.userData.idMaterial = uniformIdMaterial(0, ROLE.autre)
+    bell.userData.idMaterial = uniformIdMaterial(0, ROLE.autre, { cut: ironMat.userData.cut === true })
   }
 
   // Croix et pieux plantés sur le bord, au fond.
@@ -699,10 +699,17 @@ export const buildDecor = (bank: TextureBank, q: QualitySpec): Decor => {
       poles.push(compose(x, H + 1.6, z, 0, 0.07, 3.2, 0.07))
       const g = new PlaneGeometry(1.1, 1.85)
       g.translate(0, -0.92, 0)
-      const m = new Mesh(g, bannerMats[i % 2] as Material)
+      const bm = bannerMats[i % 2] as MeshStandardMaterial
+      const m = new Mesh(g, bm)
       m.position.set(x - Math.sin(yaw) * 0.08, H + 3.0, z - Math.cos(yaw) * 0.08)
       m.rotation.set(0, yaw, 0)
       m.castShadow = true
+      // Passe d'identification : même seuil d'alpha que la toile déchirée.
+      if (bm.map)
+        m.userData.idMaterial = uniformIdMaterial(0, ROLE.autre, {
+          side: bm.side,
+          alphaMap: { map: bm.map, test: bm.alphaTest },
+        })
       add(m)
       banners.push({ mesh: m, seed: i * 1.7 })
     })

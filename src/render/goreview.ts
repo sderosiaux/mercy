@@ -166,7 +166,8 @@ export class GoreLayer {
         roughness: 0.15,
         emissive: 0x000000,
       }),
-      idMaterial: null,
+      // Opaques : une gouttelette qui passe devant un corps le cache à l'écran, donc aussi dans I1 (rôle « autre »).
+      idMaterial: instancedIdMaterial(),
       capacity: 256,
       cast: false,
       receive: false,

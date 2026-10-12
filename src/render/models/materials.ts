@@ -23,7 +23,15 @@ import {
 import { fixedLightUniforms, overlayUniforms } from '../materials'
 import { PALETTE } from '../palette'
 import { fogUniforms, gradeUniforms } from '../post'
-import { DEPTH_TEST_GLSL, FOG_GLSL, GRADE_GLSL, MAX_FIXED_LIGHTS, TONEMAP_GLSL } from '../shaders'
+import { urlParam } from '../quality'
+import {
+  DEPTH_TEST_GLSL,
+  FOG_GLSL,
+  GRADE_GLSL,
+  MAX_FIXED_LIGHTS,
+  SCENE_DEPTH_CALL,
+  TONEMAP_GLSL,
+} from '../shaders'
 import { CLASS_SHIFT_GLSL, type ClassShift, classShiftUniforms } from './classes'
 
 // Uniformes d'une instance, partagés par toutes ses matières (mêmes objets).
@@ -104,17 +112,29 @@ const patchVertex: Patch = (s) => {
 // ---------------------------------------------------------------------------------------------------------
 // Corps vivant (scène éclairée)
 
+// Plancher de la chair vivante (E4, B2.O1 dans le noir) : loin de toute flamme, un corps vivant ne descend pas sous
+// cette part de son albédo (translucidité de la chair, ART_DIRECTION « Matières »). C'est une lumière propre à la chair
+// qui ne s'ajoute que dans le noir : un corps éclairé au-dessus du plancher ne change pas, le sol reste noir, les morts
+// (couche des morts) n'y passent jamais. Forme, réglée sur S1b et S1d (rapport E4) : le Recousu Résistant s10 de S1b,
+// à 11 m du Bourreau dans le coin de l'image, est le plus sombre (C* du corps 6,5 sans plancher) ; 0,35 lui donne
+// une marge d'au moins 2 sur B2.O1. Instrument : `plancher=<part>`.
+export const LIVING_FLOOR = 0.35
+const floorFromUrl = Number(urlParam('plancher') ?? Number.NaN)
+export const livingFloorUniform = { value: Number.isFinite(floorFromUrl) ? floorFromUrl : LIVING_FLOOR }
+export const NO_FLOOR = { value: 0 } // le Bourreau : sombre, il vit dans sa propre lumière
+
 export const bodyMaterial = (
   map: Texture | null,
   roughness: number,
   u: ModelUniforms,
   shift: ClassShift,
   meanLum: number,
+  floor: { value: number },
 ): MeshStandardMaterial => {
   const m = new MeshStandardMaterial({ map, roughness, metalness: 0, envMapIntensity: 0.25 })
   const cs = classShiftUniforms(shift, meanLum)
   m.onBeforeCompile = (s) => {
-    Object.assign(s.uniforms, u, cs)
+    Object.assign(s.uniforms, u, cs, { uLivingFloor: floor })
     patchVertex(s)
     s.fragmentShader = s.fragmentShader
       .replace(
@@ -126,6 +146,7 @@ uniform float uSacGlow;
 uniform vec3 uHaloTint;
 uniform float uHaloGlow;
 uniform float uSeams;
+uniform float uLivingFloor;
 ${CLASS_SHIFT_GLSL}`,
       )
       .replace('void main() {', 'void main() {\n  if ( vHide > 0.5 ) discard;')
@@ -155,7 +176,19 @@ ${CLASS_SHIFT_GLSL}`,
       )
       // Masque des personnages (E3) : alpha 0 dans la scène (matière opaque, sans mélange), lu par la composition pour
       // leur laisser la couleur que l'étalonnage froid retire au décor (post.ts, LOOK.modelSaturation).
-      .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n  gl_FragColor.a = 0.0;')
+      // Plancher de la chair (E4) : la luminance ne descend pas sous celle de l'albédo × uLivingFloor ; ce qui manque
+      // est rendu dans la couleur de l'albédo (la chair, pas la lumière froide de la nuit). Au-dessus : rien ne change.
+      .replace(
+        '#include <opaque_fragment>',
+        `{
+    vec3 e4Floor = diffuseColor.rgb * uLivingFloor;
+    float e4Lf = dot( e4Floor, vec3( 0.2126, 0.7152, 0.0722 ) );
+    float e4Lo = dot( outgoingLight, vec3( 0.2126, 0.7152, 0.0722 ) );
+    outgoingLight += e4Floor * clamp( 1.0 - e4Lo / max( e4Lf, 1e-6 ), 0.0, 1.0 );
+  }
+  #include <opaque_fragment>
+  gl_FragColor.a = 0.0;`,
+      )
   }
   m.customProgramCacheKey = () => 'e2-body'
   return m
@@ -196,41 +229,29 @@ void main() {
 }
 `
 
-// Liseré : la coque n'apparaît que hors du corps. Sans la tolérance du jalon 1 (pensée pour des boîtes convexes), les
-// faces arrière de la coque d'un vêtement mince ou d'un pli passeraient devant la surface du corps et dessineraient
-// des lignes à l'intérieur de la silhouette.
-const RIM_DEPTH_GLSL = /* glsl */ `
-void e2RimDepthTest() {
-  float sd = texture2D( uSceneDepth, gl_FragCoord.xy / uViewport ).x;
-  if ( e1ViewDist( gl_FragCoord.z ) > e1ViewDist( sd ) ) discard;
-}
-// Marques : collées à leur propre corps (même géométrie) ; 1 cm de tolérance, pas plus, sinon les marques d'un corps
-// à terre transparaîtraient à travers une créature debout qui l'enjambe.
-void e2MarkDepthTest() {
-  float sd = texture2D( uSceneDepth, gl_FragCoord.xy / uViewport ).x;
-  if ( e1ViewDist( gl_FragCoord.z ) > e1ViewDist( sd ) + 0.01 ) discard;
-}
-`
-
+// Test contre la profondeur de la scène (shaders.ts) : liseré sans tolérance (la coque n'apparaît que hors du corps),
+// marques à 1 cm. La matière d'identification de chacun appelle le même test (B2 I1, arbitrage E4).
 const SIGNAL_FRAG = (marks: boolean): string => /* glsl */ `
 uniform vec3 uColor;
 ${FRAG_PARS}
 ${DEPTH_TEST_GLSL}
-${RIM_DEPTH_GLSL}
 void main() {
   if ( vHide > 0.5 ) discard;
-  ${marks ? 'if ( vMark < 0.5 ) discard;\n  e2MarkDepthTest();' : 'e2RimDepthTest();'}
+  ${marks ? `if ( vMark < 0.5 ) discard;\n  ${SCENE_DEPTH_CALL.marque}` : SCENE_DEPTH_CALL.liseré}
   gl_FragColor = vec4( uColor, 1.0 );
   #include <colorspace_fragment>
 }
 `
 
-const ID_FRAG = (marks: boolean): string => /* glsl */ `
+// Corps (scène) : aucun test de scène. Liseré et marques (couche des signaux) : le leur.
+const ID_FRAG = (which: 'body' | 'rim' | 'mark'): string => /* glsl */ `
 uniform vec3 uId;
 ${FRAG_PARS}
+${which === 'body' ? '' : DEPTH_TEST_GLSL}
 void main() {
   if ( vHide > 0.5 ) discard;
-  ${marks ? 'if ( vMark < 0.5 ) discard;' : ''}
+  ${which === 'mark' ? `if ( vMark < 0.5 ) discard;\n  ${SCENE_DEPTH_CALL.marque}` : ''}
+  ${which === 'rim' ? SCENE_DEPTH_CALL.liseré : ''}
   gl_FragColor = vec4( uId, 1.0 );
 }
 `
@@ -292,8 +313,9 @@ export const markMaterial = (u: ModelUniforms): ShaderMaterial =>
 export const idMaterial = (u: ModelUniforms, which: 'body' | 'rim' | 'mark'): ShaderMaterial => {
   const m = new ShaderMaterial({
     vertexShader: OVERLAY_VERT(which === 'rim'),
-    fragmentShader: ID_FRAG(which === 'mark'),
+    fragmentShader: ID_FRAG(which),
     uniforms: {
+      ...(which === 'body' ? {} : overlayUniforms),
       ...u,
       uId: which === 'body' ? u.uIdBody : which === 'rim' ? u.uIdRim : u.uIdMark,
     },
@@ -354,13 +376,19 @@ ${TONEMAP_GLSL}
 ${GRADE_GLSL}
 ${FOG_GLSL}
 void main() {
-  e1DepthTest();
+  ${SCENE_DEPTH_CALL.signal}
   vec3 tex = texture2D( uMap, vUv ).rgb;
   float lumT = dot( tex, vec3( 0.2126, 0.7152, 0.0722 ) );
   // Détail de la texture autour de la pâleur de la palette : facteur borné (un mort reste pâle, B2.O3).
   float detail = clamp( lumT / max( uMeanLum, 1e-3 ), 0.55, 1.45 );
-  vec3 grey = mix( uGrey, uGreyLight, step( 0.5, vMarkD ) ) * detail;
-  vec3 albedo = mix( tex, grey, vInst.a );
+  vec3 base = mix( uGrey, uGreyLight, step( 0.5, vMarkD ) );
+  vec3 grey = base * detail;
+  // Passage au gris en 0,3 s (L4, « désaturé ») : la texture, exposée pour que sa luminance moyenne soit celle du
+  // gris (la pâleur du cadavre), perd sa couleur. Dès le coup fatal, le corps a donc la luminance qu'il gardera et se
+  // détache du sol (B2.O3, sans délai de grâce). Avant E4, il partait de la texture brute, deux à trois fois plus
+  // sombre que le gris, et se fondait dans la boue pendant les premières images.
+  vec3 start = tex * ( dot( base, vec3( 0.2126, 0.7152, 0.0722 ) ) / max( uMeanLum, 1e-3 ) );
+  vec3 albedo = mix( start, grey, vInst.a );
   vec3 n = normalize( vNormalW );
   if ( ! gl_FrontFacing ) n = - n;
   float lum = uDeadAmbient * ( 0.6 + 0.4 * n.y ) + uMoonLum * max( dot( n, uMoonDir ), 0.0 );
@@ -409,9 +437,14 @@ export const deadMaterial = (map: Texture | null, meanLum: number): ShaderMateri
     side: DoubleSide,
   })
 
+// Même test contre la profondeur de la scène que la matière couleur des morts (e1DepthTest, tolérance comprise).
 const DEAD_ID_FRAG = /* glsl */ `
 varying vec4 vInst;
-void main() { gl_FragColor = vec4( vInst.r, vInst.g, ${(1 / 255).toFixed(8)}, 1.0 ); }
+${DEPTH_TEST_GLSL}
+void main() {
+  ${SCENE_DEPTH_CALL.signal}
+  gl_FragColor = vec4( vInst.r, vInst.g, ${(1 / 255).toFixed(8)}, 1.0 );
+}
 `
 const DEAD_ID_VERT = /* glsl */ `
 #include <common>
@@ -425,7 +458,12 @@ void main() {
 `
 
 export const deadIdMaterial = (): ShaderMaterial =>
-  new ShaderMaterial({ vertexShader: DEAD_ID_VERT, fragmentShader: DEAD_ID_FRAG, side: DoubleSide })
+  new ShaderMaterial({
+    vertexShader: DEAD_ID_VERT,
+    fragmentShader: DEAD_ID_FRAG,
+    uniforms: { ...overlayUniforms },
+    side: DoubleSide,
+  })
 
 function glslColor(hex: number): string {
   const c = new Color(hex)

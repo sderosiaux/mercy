@@ -16,6 +16,7 @@ import {
 import { actionPhase, type PlayerAction, step, type World } from '../sim/index'
 import { type Candidate, drawProbes, MARKER, markerCenter } from '../viewer/session'
 import { auditFrame } from './audit'
+import { i1Fidelity } from './fidelity'
 import { readFrame, referenceAccumulator, summarize } from './measure'
 import { InvalidScene } from './policies'
 import { type LabScene, SCENES, sceneById } from './scenes'
@@ -402,6 +403,12 @@ const run = async (scene: LabScene): Promise<void> => {
       draw()
     },
     setShake: (on: boolean) => renderer.debug.setShake(on),
+    setTelegraphs: (on: boolean) => {
+      renderer.debug.setTelegraphs(on)
+      draw()
+    },
+    // I1 fidèle à l'image (E4) : télégraphes et entités, image courante (fidelity.ts).
+    fidelity: (minPx = 150) => i1Fidelity(renderer, minPx),
     stats: () => renderer.debug.stats(),
     read: () => readFrame(renderer.debug.readPixels(), renderer.debug.idPass(), world),
     // Mouvement sur une plage de ticks (B2.O5 pixels, O6.2) : pixels changés d'un mort, XOR des masques d'un vivant.
@@ -765,6 +772,8 @@ const run = async (scene: LabScene): Promise<void> => {
       },
       // Audit §30 (E1) : créatures debout sans ivoire ni or, acier du Bourreau, télégraphes contre le sang et les morts.
       audit: () => auditFrame(renderer, world),
+      // I1 fidèle à l'image (E4) : `task=fidelite&tick=54` (télégraphes sur les morts, entités masquées une à une).
+      fidelite: () => i1Fidelity(renderer, Number(params.get('min') ?? '150')),
       // Temps de frame complet (CPU + GPU) : chaque image est rendue puis on attend la fin du travail du GPU (lecture
       // d’un pixel). Pas plafonné par la synchro verticale, contrairement à perf.
       frametime: () => {

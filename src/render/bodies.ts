@@ -11,6 +11,7 @@ import {
   ConeGeometry,
   CylinderGeometry,
   DoubleSide,
+  FrontSide,
   type Material,
   Matrix4,
   Mesh,
@@ -20,6 +21,8 @@ import {
   PlaneGeometry,
   type Quaternion,
   RingGeometry,
+  type ShaderMaterial,
+  type Side,
   SphereGeometry,
   TorusGeometry,
   Vector3,
@@ -86,8 +89,11 @@ export class BodyLayer {
 
   constructor(layers: OverlayLayers, matterMaterials: Readonly<Record<Matter, Material>>, shadows: boolean) {
     const { scene } = layers
-    const idFront = instancedIdMaterial()
-    const idBack = instancedIdMaterial(BackSide)
+    // Une matière d'identification par lot (son état de rendu suit celui de la matière couleur du lot) ; dans la
+    // couche des signaux, avec le test contre la profondeur de la scène de la matière couleur (idpass.ts).
+    const idScene = (): ShaderMaterial => instancedIdMaterial()
+    const idSignal = (side: Side = FrontSide): ShaderMaterial =>
+      instancedIdMaterial({ side, sceneDepth: 'signal' })
     // Lueur (sac, halo en prière, flamme du reliquaire) : surtout émissive (sa couleur ne dépend pas des lumières
     // voisines, qui la brûleraient en blanc), un peu éclairée pour garder un volume.
     // Opaque : une lueur semi-transparente sur un fond chaud vire à l’olive, puis à l’or (audit §30.10).
@@ -119,7 +125,7 @@ export class BodyLayer {
           new Batch(scene, {
             geometry,
             material: matterMaterials[m],
-            idMaterial: idFront,
+            idMaterial: idScene(),
             capacity: big ? 1024 : 128,
             cast: shadows,
             receive: shadows,
@@ -131,7 +137,7 @@ export class BodyLayer {
         new Batch(scene, {
           geometry,
           material: glowMat,
-          idMaterial: idFront,
+          idMaterial: idScene(),
           capacity: 64,
           cast: false,
           receive: false,
@@ -143,7 +149,7 @@ export class BodyLayer {
         new Batch(layers.signals, {
           geometry,
           material: rimMat,
-          idMaterial: idBack,
+          idMaterial: idSignal(BackSide),
           capacity: big ? 2048 : 256,
           cast: false,
           receive: false,
@@ -154,7 +160,7 @@ export class BodyLayer {
         new Batch(layers.signals, {
           geometry,
           material: flatMat,
-          idMaterial: idFront,
+          idMaterial: idSignal(),
           capacity: 256,
           cast: false,
           receive: false,
@@ -165,7 +171,7 @@ export class BodyLayer {
         new Batch(layers.dead, {
           geometry,
           material: deadMat,
-          idMaterial: idFront,
+          idMaterial: idSignal(),
           capacity: big ? 4096 : 512,
           cast: false,
           receive: false,
@@ -187,6 +193,7 @@ export class BodyLayer {
     this.lane = new PlaneGeometry(1, 1).rotateX(-Math.PI / 2).translate(0.5, 0, 0)
     // Télégraphes : par-dessus les morts (aucun test contre leur profondeur), sous les vivants (test contre la
     // profondeur de la scène). Halo de prière et sceau : sous les morts (un effet de support ne teint jamais un mort).
+    // La passe d'identification fait de même (arbitrage E4) : un pixel de télégraphe sur un mort est au télégraphe.
     const make =
       (opacity: number, order: number, overDead: boolean, stripes = false) =>
       (): Mesh => {
@@ -201,7 +208,11 @@ export class BodyLayer {
         mat.color.setHex(PALETTE.rougeBrun.telegraphe)
         const m = new Mesh(this.lane, mat)
         m.renderOrder = 2 + order
-        m.userData.idMaterial = uniformIdMaterial(0, ROLE.autre, false)
+        m.userData.idMaterial = uniformIdMaterial(0, ROLE.autre, {
+          side: DoubleSide,
+          depthWrite: false,
+          sceneDepth: 'signal',
+        })
         return m
       }
     this.telBorder = new Pool(layers.tel, make(0.9, 0, true))

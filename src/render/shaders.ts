@@ -108,7 +108,14 @@ vec3 e1Airlight( vec3 c, vec3 p, vec3 lp, vec3 I, float range ) {
 `
 
 // Test de profondeur manuel de la couche des signaux contre la profondeur de la scène (même caméra) : un fragment
-// de signal ne passe que s'il n'est pas derrière la surface de la scène à ce pixel.
+// de signal ne passe que s'il n'est pas derrière la surface de la scène à ce pixel. Trois variantes, partagées par
+// la passe couleur et la passe d'identification (B2 I1 : même test, même tolérance) :
+// - e1DepthTest : signaux du jalon 1, morts, télégraphes, sol (2 cm + 0,1 % de la distance) ;
+// - e2RimDepthTest : liseré des modèles (E2), sans tolérance : la coque n'apparaît que hors du corps. Avec la
+//   tolérance du jalon 1 (pensée pour des boîtes convexes), les faces arrière de la coque d'un vêtement mince ou d'un
+//   pli passeraient devant la surface du corps et dessineraient des lignes à l'intérieur de la silhouette ;
+// - e2MarkDepthTest : marques dorées, collées à leur propre corps (même géométrie) ; 1 cm de tolérance, pas plus,
+//   sinon les marques d'un corps à terre transparaîtraient à travers une créature debout qui l'enjambe.
 export const DEPTH_TEST_GLSL = /* glsl */ `
 uniform sampler2D uSceneDepth;
 uniform vec2 uViewport;
@@ -123,6 +130,43 @@ void e1DepthTest() {
   float sceneDist = e1ViewDist( sd );
   float fragDist = e1ViewDist( gl_FragCoord.z );
   if ( fragDist > sceneDist + 0.02 + 0.001 * sceneDist ) discard;
+}
+void e2RimDepthTest() {
+  float sd = texture2D( uSceneDepth, gl_FragCoord.xy / uViewport ).x;
+  if ( e1ViewDist( gl_FragCoord.z ) > e1ViewDist( sd ) ) discard;
+}
+void e2MarkDepthTest() {
+  float sd = texture2D( uSceneDepth, gl_FragCoord.xy / uViewport ).x;
+  if ( e1ViewDist( gl_FragCoord.z ) > e1ViewDist( sd ) + 0.01 ) discard;
+}
+`
+
+// Test contre la profondeur de la scène d'un objet de la couche des signaux (aucun : objet de la scène).
+export type SceneDepth = 'aucun' | 'signal' | 'liseré' | 'marque'
+export const SCENE_DEPTH_CALL: Readonly<Record<SceneDepth, string>> = {
+  aucun: '',
+  signal: 'e1DepthTest();',
+  liseré: 'e2RimDepthTest();',
+  marque: 'e2MarkDepthTest();',
+}
+
+// Découpe du décor (§20) : un fragment entre la caméra et le joueur, près de l'axe, est écarté selon un tramage
+// (fondu). Même fonction dans la passe couleur et dans la passe d'identification.
+export const CUT_GLSL = /* glsl */ `
+uniform vec3 uCutTarget;
+uniform vec3 uCutCam;
+uniform float uCutRadius;
+void e1Cut( vec3 world ) {
+  vec3 axis = uCutTarget - uCutCam;
+  float L = length( axis );
+  axis /= L;
+  vec3 rel = world - uCutCam;
+  float s = dot( rel, axis );
+  float r = length( rel - axis * s );
+  float k = smoothstep( uCutRadius, uCutRadius * 0.55, r ) * smoothstep( L - 0.4, L - 1.6, s );
+  vec2 q = floor( gl_FragCoord.xy );
+  float bayer = fract( dot( q, vec2( 0.5, 0.25 ) ) + fract( q.y * 0.5 ) * 0.5 );
+  if ( k > bayer + 0.02 ) discard;
 }
 `
 
