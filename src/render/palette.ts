@@ -43,6 +43,17 @@ export const PALETTE = {
     tablier: 0x3a5a82,
     plaie: 0x6e1f24,
   },
+  // Chair vivante des modèles de la Forge (E2) : même teinte que la chair des segments, chroma CIELAB × 1,4. Un corps
+  // modélisé (ombres propres, plis, textures sombres) perd plus de chroma à l'écran qu'un segment plat : c'est la
+  // cible vers laquelle le rendu déplace les matières ternes d'un vivant (classes.ts), pour qu'il ne se lise jamais
+  // gris (B2.O1). Loin du rouge vif (chroma moitié moindre) et de l'or (teinte 40° contre 75°).
+  chairModele: {
+    souriant: 0xd1745f,
+    recousu: 0xba6e55,
+    porteur: 0xa9604d,
+    confesseur: 0xc0676f,
+    chirurgien: 0xca806b,
+  },
   // Le Bourreau : cuir sombre bleuté, acier rouillé et taché de sang (loin du gris des morts, audit §30.10).
   bourreau: { cuir: 0x2a3247, capuche: 0x1b2030, peau: 0x8a6a5c, acier: 0x6e5046, manche: 0x3b2c22 },
 

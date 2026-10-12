@@ -2,9 +2,16 @@
 // dans thresholds.ts ; ce qui ne se mesure pas (os introuvable, budget absent) est « non mesurable », jamais
 // réputé bon. Aucun avis : le reste se juge à l'œil dans la galerie.
 import { type AnimationAction, type AnimationClip, AnimationMixer, PropertyBinding } from 'three'
+import {
+  type ClipRecipe,
+  FRAME_S,
+  freeze,
+  INTERRUPT_FADE_S,
+  interrupt,
+  playClip,
+} from '../../../src/render/anim/playback'
 import type { Glb } from '../gltf/glb'
 import { type ImageSize, textureSizes, triangleCount } from '../gltf/inspect'
-import { type ClipRecipe, FRAME_S, freeze, INTERRUPT_FADE_S, interrupt, playClip } from '../playback'
 import { type AssetSheet, type ClipSpec, producedClips, resolveTemps, ticksToS, tuningAt } from '../schema'
 import {
   boneAt,

@@ -11,9 +11,9 @@ import {
   Vector3,
 } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { FRAME_S } from '../../../src/render/anim/playback'
 import { type Glb, parseGlb, writeGlb } from '../gltf/glb'
 import { blockingExtensions, stripTextures } from '../gltf/inspect'
-import { FRAME_S } from '../playback'
 import type { Effecteur } from '../schema'
 
 export interface Rig {

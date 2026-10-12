@@ -3,8 +3,8 @@
 // (interruption, mort), verdict de validation, crédits Meshy consommés.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import type { ClipRecipe } from '../../../src/render/anim/playback'
 import { spentCredits } from '../cache'
-import type { ClipRecipe } from '../playback'
 import type { ValidationReport } from '../validate/checks'
 import { type ForgeContext, MANIFEST_FILE, validationFile } from './context'
 

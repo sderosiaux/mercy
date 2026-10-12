@@ -33,8 +33,8 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three'
+import { type ClipRecipe, FRAME_S, freeze, interrupt, playClip } from '../../../src/render/anim/playback'
 import { cameraPose } from '../../../src/render/camera'
-import { type ClipRecipe, FRAME_S, freeze, interrupt, playClip } from '../playback'
 import { findBone } from '../validate/rig'
 import { FOOT_CONTACT_M } from '../validate/thresholds'
 import { flicker, LIGHTS, SCENE, TRACE } from './theme'

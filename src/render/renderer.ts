@@ -28,15 +28,17 @@ import {
   WebGLRenderTarget,
 } from 'three'
 import { type Creature, PORTEUR_STAGE_KEY, sentenceTarget, type Vec2, type World } from '../sim/index'
+import type { AnimFrame } from './anim/machine'
 import { BodyLayer } from './bodies'
 import { CAMERAS, type CameraPreset, cameraPose, isCameraPreset, shakeOffset } from './camera'
 import { RENDER } from './constants'
 import { buildDecor, WALL_HALF } from './decor'
 import { GoreMemory, SPARK_TICKS } from './gore'
 import { GoreLayer } from './goreview'
-import { LightRig } from './lightrig'
+import { DEAD_PROXY_LAYER, LightRig } from './lightrig'
 import { entityLights, type LightSource } from './lights'
 import { cutUniforms, fixedLightUniforms, overlayUniforms, pbr, skinMaterial, TextureBank } from './materials'
+import { ModelLayer, type ModelsInfo } from './models/layer'
 import { PALETTE } from './palette'
 import { gradeUniforms, PostPipeline } from './post'
 import { type QualityLevel, type QualitySpec, qualityFrom, urlParam } from './quality'
@@ -60,6 +62,7 @@ export interface RendererOptions {
   readonly quality?: QualityLevel // sinon paramètre d'URL `qualite`, sinon haute
   readonly camera?: CameraPreset // sinon paramètre d'URL `camera`, sinon §20
   readonly assetBase?: string // racine des textures (Vite : BASE_URL)
+  readonly models?: boolean // modèles de la Forge (E2) ; sinon paramètre d'URL `modeles=0` (segments du jalon 1), vrai par défaut
 }
 
 export interface PixelImage {
@@ -116,6 +119,8 @@ export interface RenderDebug {
   setTelegraphs(on: boolean): void // instrument : afficher ou masquer les télégraphes (mesure de leur lisibilité)
   lights(): readonly LightInfo[] // sources actives de la dernière image
   syncFrameMs(): number // rend la dernière image et attend la fin du travail du GPU (temps de frame complet)
+  models(): ModelsInfo // modèles de la Forge : chargement, temps, personnages absents (rendus en segments)
+  anim(id: number): AnimFrame | null // dernière pose d'un corps modélisé : clips, instants, poids (séquences)
 }
 
 export interface Renderer {
@@ -156,6 +161,7 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     antialias: options.antialias ?? false,
     preserveDrawingBuffer: options.preserveDrawingBuffer ?? false,
     powerPreference: 'high-performance',
+    stencil: true, // liseré des modèles : masque de la silhouette de chaque corps (E2)
   })
   gl.outputColorSpace = SRGBColorSpace
   gl.toneMapping = NoToneMapping // la courbe de tons est dans la composition (post.ts)
@@ -170,6 +176,10 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
   const dynamic = new Group() // créatures et gore : masqués pendant la capture de l'environnement
   scene.add(dynamic)
   const camera = new PerspectiveCamera(RENDER.camera.fovDeg, 1, 1, 120)
+  // three (r186) filtre les objets des passes d'ombre par les couches de la caméra principale, pas par celles des
+  // caméras d'ombre : sans cette couche, les doublures d'ombre (morts, modèles) ne portaient aucune ombre. Elles sont
+  // invisibles dans la passe principale (ni couleur ni profondeur).
+  camera.layers.enable(DEAD_PROXY_LAYER)
   const bank = new TextureBank(options.assetBase ?? assetBaseDefault())
   const decor = buildDecor(bank, shadows ? q : { ...q, shadowLights: 0, moonShadow: false })
   scene.add(decor.group)
@@ -213,6 +223,13 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     shadows,
   )
   const goreLayer = new GoreLayer(dynamic)
+  const models = new ModelLayer(
+    { scene: dynamic, dead: overlays[1], signals: overlays[3] },
+    options.assetBase ?? assetBaseDefault(),
+    q.level === 'basse',
+    shadows,
+    options.models ?? urlParam('modeles') !== '0',
+  )
 
   let post: PostPipeline | null = null
   const gore = new GoreMemory()
@@ -319,6 +336,7 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
         }
       }
     })
+    models.setEnvironment(envTexture)
     envCaptured = true
   }
 
@@ -347,17 +365,35 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     camera.updateMatrixWorld()
 
     bodies.begin()
+    models.begin()
     const target = aim ? sentenceTarget(world, aim) : null
     const phases = groupPhases(world)
     const sinks = sinkDepths(world, t)
     const list: Body[] = []
     for (const c of world.creatures) {
-      if (insideHost(c) || !visible(c.id)) continue
+      if (insideHost(c)) continue
       const sinkK = sinks.get(c.id) ?? 0
       if (sinkK >= 1) continue
+      const shown = visible(c.id)
       const pc = prevById.get(c.id) ?? c
       const pos = { x: lerp(pc.pos.x, c.pos.x, alpha), z: lerp(pc.pos.z, c.pos.z, alpha) }
       const facing = lerpAngle(pc.facing, c.facing, alpha)
+      const groupPhase = c.group !== null ? (phases.get(c.group) ?? c.ritualPhase) : c.ritualPhase
+      // Modèle de la Forge s'il est prêt (un mort masqué reste dans son lot, invisible), sinon segments (E1).
+      const modelCtx = {
+        t,
+        world,
+        groupPhase,
+        playerPos: ppos,
+        targeted: target === c.id,
+        sink: sinkK * 0.6,
+        visible: shown,
+      }
+      if (models.creature(c, pos, facing, modelCtx)) {
+        if (shown) bodies.ground(c, pos, facing, t, world, target)
+        continue
+      }
+      if (!shown) continue
       let body: Body
       if (c.state.kind === 'mort' && (c.spawn?.state === 'mort' || t - c.state.at >= RENDER.grisTicks)) {
         // Un mort entièrement gris ne change plus : sa pose est mise en cache.
@@ -376,11 +412,15 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
       bodies.ground(c, pos, facing, t, world, target)
     }
     if (visible(PLAYER_ID)) {
-      const speed = (Math.hypot(pp.pos.x - ppPrev.pos.x, pp.pos.z - ppPrev.pos.z) * 60) / dt
-      const pb = playerBody(pp, ppos, lerpAngle(ppPrev.facing, pp.facing, alpha), t, speed)
-      list.push(pb)
-      bodies.push(pb, false, 0)
+      const pfacing = lerpAngle(ppPrev.facing, pp.facing, alpha)
+      if (!models.player(ppos, pfacing, t, PLAYER_ID)) {
+        const speed = (Math.hypot(pp.pos.x - ppPrev.pos.x, pp.pos.z - ppPrev.pos.z) * 60) / dt
+        const pb = playerBody(pp, ppos, pfacing, t, speed)
+        list.push(pb)
+        bodies.push(pb, false, 0)
+      }
     }
+    models.end()
     for (const s of gore.sparks) {
       const age = t - s.born
       if (age < 0 || age >= SPARK_TICKS || !visible(s.id)) continue
@@ -429,6 +469,7 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     p.compose(gl, camera, t, frame.fog, true)
     gl.autoClear = false
     gl.clearDepth()
+    gl.clearStencil()
     for (const o of overlays) gl.render(o, camera)
     gl.autoClear = true
     lastCpu = performance.now() - t0
@@ -461,7 +502,12 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     const h = ctx.drawingBufferHeight
     if (!idTarget || idTarget.width !== w || idTarget.height !== h) {
       idTarget?.dispose()
-      idTarget = new WebGLRenderTarget(w, h, { format: RGBAFormat, type: UnsignedByteType, samples: 0 })
+      idTarget = new WebGLRenderTarget(w, h, {
+        format: RGBAFormat,
+        type: UnsignedByteType,
+        samples: 0,
+        stencilBuffer: true,
+      })
     }
     const swapped: { o: Mesh; m: Material | Material[] }[] = []
     const hiddenObjs: Object3D[] = []
@@ -481,7 +527,8 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
         idm.polygonOffsetFactor = src.polygonOffsetFactor
         idm.polygonOffsetUnits = src.polygonOffsetUnits
         idm.depthWrite = src.depthWrite
-        idm.depthTest = true
+        // Le masque de silhouette du liseré (E2) ne teste pas la profondeur, ni en couleur ni ici.
+        idm.depthTest = o.userData.idDepthTest ?? true
         idm.side = src.side
         o.material = idm
       })
@@ -511,8 +558,8 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     return [((p.x + 1) / 2) * ctx.drawingBufferWidth, ((1 - p.y) / 2) * ctx.drawingBufferHeight]
   }
 
-  const poses = (): EntityPose[] =>
-    lastBodies.map((b) => ({
+  const poses = (): EntityPose[] => [
+    ...lastBodies.map((b) => ({
       id: b.id,
       segments: b.segments.map((s: Segment) => {
         const m = new Matrix4().multiplyMatrices(
@@ -526,7 +573,18 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
           corners: segmentCorners(s).map(project),
         }
       }),
-    }))
+    })),
+    // Modèles de la Forge : un segment par os (boîte de ses sommets), Membre errant : un segment.
+    ...[...models.segments()].map(([id, segs]) => ({
+      id,
+      segments: segs.map((s) => ({
+        part: s.part,
+        role: 'corps' as const,
+        matrix: Array.from(s.matrix.elements),
+        corners: s.corners.map(project),
+      })),
+    })),
+  ]
 
   const screenToGround = (x: number, y: number): Vec2 => {
     const w = Math.max(1, canvas.clientWidth || canvas.width)
@@ -538,8 +596,14 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     return { x: camera.position.x + dir.x * k, z: camera.position.z + dir.z * k }
   }
 
-  const readyPromise = bank.ready.then(() => {
-    texturesLoaded = true
+  // Prêt : textures chargées, environnement capturé, modèles de la Forge chargés (ou écartés).
+  const readyPromise = Promise.all([
+    bank.ready.then(() => {
+      texturesLoaded = true
+      if (last) draw(last.world, last.prev, last.alpha)
+    }),
+    models.load.done,
+  ]).then(() => {
     if (last) draw(last.world, last.prev, last.alpha)
   })
 
@@ -550,6 +614,7 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     },
     observe(world) {
       gore.ingest(world)
+      models.observe(world)
     },
     setAim(p) {
       aim = p
@@ -574,7 +639,7 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
         triangles: gl.info.render.triangles,
         instances: bodies.instances,
         decals: gore.decals.length,
-        bodies: lastBodies.length,
+        bodies: lastBodies.length + models.count,
         cpuMs: lastCpu,
         lights: lastLights.filter((l) => l.weight > 0).length,
         shadowLights: lastLights.filter((l) => l.shadow && l.weight > 0).length,
@@ -583,6 +648,7 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
       }),
       clearGore() {
         gore.clear()
+        models.clear()
       },
       addDecal(pos, s, born) {
         gore.add(pos, s, born)
@@ -605,6 +671,8 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
         preset = p
       },
       lights: () => lastLights,
+      models: () => models.info(),
+      anim: (id) => models.frame(id),
       syncFrameMs() {
         const t1 = performance.now()
         if (last) draw(last.world, last.prev, last.alpha)
@@ -616,6 +684,7 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     },
     dispose() {
       bodies.dispose()
+      models.dispose()
       goreLayer.dispose()
       decor.dispose()
       rig.dispose()

@@ -3,10 +3,10 @@
 // rapport de validation. C'est ici que l'humain juge ce que les mesures ne disent pas.
 import { type AnimationClip, Group, type Object3D } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import type { ClipRecipe } from '../../../src/render/anim/playback'
 import { bancFigure, bancSheet } from '../banc'
 import { estimateAsset } from '../estimate'
 import { writeGlb } from '../gltf/glb'
-import type { ClipRecipe } from '../playback'
 import type { ClipPost, Treatment } from '../post/run'
 import { type AssetSheet, type ClipSpec, resolveTemps } from '../schema'
 import type { PostFile } from '../stages/post'

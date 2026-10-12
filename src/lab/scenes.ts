@@ -13,9 +13,10 @@ import {
   type Vec2,
   type World,
 } from '../sim/index'
-import { testWave, withCreature } from '../sim/testing'
+import { poteau, testWave, withCreature } from '../sim/testing'
 import { LAB_FAMILIES, LAB_FAMILIES_QUIET } from './families'
 import { b2Script, immobile, negligent, type Policy } from './policies'
+import { SEQUENCE_FAMILIES, sequencePolicy, sequenceWorld } from './sequences'
 
 export interface LabScene {
   readonly id: string
@@ -183,6 +184,88 @@ const galleryWorld = (): World => {
   })
   spawns.push({ family: 'membre', pos: uvToGround(-6, -7), facing: 0.3, state: 'abattu' })
   return build(spawns, { families: LAB_FAMILIES_QUIET })
+}
+
+// Modèles de la Forge (E2) : chaque famille dans chaque état, toutes inertes (aucune ne bouge ni n'attaque), plus
+// les quatre stades du sac du Porteur et un Confesseur en prière, debout et à terre.
+const INERT: FamilyRegistry = {
+  souriant: { ...poteau, kind: 'souriant' },
+  recousu: { ...poteau, kind: 'recousu', size: 'large' },
+  porteur: { ...poteau, kind: 'porteur' },
+  confesseur: poteau,
+  chirurgien: { ...poteau, kind: 'chirurgien' },
+}
+const modelsWorld = (): World => {
+  const fams: FamilyKind[] = ['souriant', 'recousu', 'porteur', 'confesseur', 'chirurgien']
+  const cols: { state: State; cic: 0 | 1 | 2 | 3 }[] = [
+    { state: 'rituel', cic: 0 },
+    { state: 'hostile', cic: 2 },
+    { state: 'abattu', cic: 0 },
+    { state: 'abattu', cic: 3 },
+    { state: 'mort', cic: 3 },
+  ]
+  const spawns: SpawnDef[] = []
+  fams.forEach((family, r) => {
+    cols.forEach((col, k) => {
+      spawns.push({
+        family,
+        pos: uvToGround(-6 + k * 3, 5.2 - r * 2.6),
+        facing: -Math.PI / 4,
+        state: col.state,
+        cicatrices: col.cic,
+        group: col.state === 'rituel' ? 1 + r : undefined,
+      })
+    })
+  })
+  // Stades du sac (0 à 3), Confesseurs en prière (debout, à terre).
+  for (let s = 0; s < 4; s++)
+    spawns.push({
+      family: 'porteur',
+      pos: uvToGround(9.5, 5.2 - s * 2.6),
+      facing: -Math.PI / 4,
+      state: 'hostile',
+    })
+  spawns.push({ family: 'confesseur', pos: uvToGround(9.5, -5.2), facing: -Math.PI / 4, state: 'hostile' })
+  spawns.push({ family: 'confesseur', pos: uvToGround(-9.5, 5.2), facing: -Math.PI / 4, state: 'abattu' })
+  let w = build(spawns, { families: { ...INERT, confesseur: LAB_FAMILIES.confesseur } })
+  for (let s = 0; s < 4; s++) w = withCreature(w, 26 + s, { familyData: { [PORTEUR_STAGE_KEY]: s } })
+  return w
+}
+
+// Détails des modèles (E2), au plus près du Bourreau : stades du sac (0 à 3), Confesseur en prière debout et à terre,
+// Recousu Résistant debout (marques dorées) au bras droit tranché, et son Membre errant.
+const detailsWorld = (): World => {
+  const spawns: SpawnDef[] = [0, 1, 2, 3].map(
+    (s): SpawnDef => ({
+      family: 'porteur',
+      pos: uvToGround(-3 + s * 2, 2.2),
+      facing: -Math.PI / 4,
+      state: 'hostile',
+    }),
+  )
+  spawns.push({ family: 'confesseur', pos: uvToGround(-3, -1.6), facing: -Math.PI / 4, state: 'hostile' })
+  spawns.push({ family: 'confesseur', pos: uvToGround(-0.8, -2.2), facing: 0.6, state: 'abattu' })
+  spawns.push({
+    family: 'recousu',
+    pos: uvToGround(2.2, -1.4),
+    facing: -Math.PI / 4,
+    state: 'hostile',
+    cicatrices: 3,
+  })
+  spawns.push({ family: 'membre', pos: uvToGround(3.6, -2.8), facing: 0.4, state: 'abattu' })
+  let w = build(spawns, { families: { ...INERT, confesseur: LAB_FAMILIES.confesseur } })
+  for (let s = 0; s < 4; s++) w = withCreature(w, 1 + s, { familyData: { [PORTEUR_STAGE_KEY]: s } })
+  const rec = w.creatures.find((c) => c.family === 'recousu')
+  if (rec)
+    w = withCreature(w, rec.id, {
+      limbs: [
+        { id: 'brasDroit', hp: 0, hpMax: 40, state: 'severed' },
+        { id: 'brasGauche', hp: 40, hpMax: 40, state: 'ok' },
+      ],
+    })
+  const mem = w.creatures.find((c) => c.family === 'membre')
+  if (mem && rec) w = withCreature(w, mem.id, { unionOf: rec.id, familyData: { limbIndex: 0 } })
+  return w
 }
 
 // La Fosse (E1) : tableau proche de la planche key-art-la-fosse, au coin haut de l'arène pour voir les murs, la
@@ -394,6 +477,26 @@ export const SCENES: readonly LabScene[] = [
     aim: uvToGround(-1.3, 1.1),
   },
   { id: 'galerie', title: 'Galerie des familles et des états', world: galleryWorld, policy: () => immobile },
+  {
+    id: 'modeles',
+    title: 'Modèles de la Forge (E2) : familles, états, stades du sac, prière',
+    world: modelsWorld,
+    policy: () => immobile,
+  },
+  {
+    id: 'details',
+    title: 'Détails (E2) : stades du sac, prière, marques, bras tranché et Membre errant',
+    world: detailsWorld,
+    policy: () => immobile,
+  },
+  ...SEQUENCE_FAMILIES.map(
+    (f): LabScene => ({
+      id: `seq-${f}`,
+      title: `Séquence (E2) : ${f} frappe, est coupé, est abattu puis achevé`,
+      world: () => sequenceWorld(f),
+      policy: sequencePolicy,
+    }),
+  ),
   {
     id: 'charge',
     title: '§24 : 40 créatures, 250 morts, 400 décalques',

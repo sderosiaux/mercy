@@ -3,8 +3,8 @@
 // validation les liront. Les post-traitements transforment ces images ; l'écriture les remet dans le GLB en
 // clés linéaires, une par image. Les clips sources ne sont jamais modifiés en place : chaque étape rend une copie.
 import { AnimationMixer, LoopOnce, type Object3D } from 'three'
+import { FRAME_S, SIM_FPS } from '../../../src/render/anim/playback'
 import { appendBytes, type Glb, type GltfAnimation } from '../gltf/glb'
-import { FRAME_S, SIM_FPS } from '../playback'
 import { type Pose, type Rig, readPose } from '../validate/rig'
 
 export interface NodeTrack {

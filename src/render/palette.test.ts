@@ -78,6 +78,22 @@ describe('palette du §17 et seuils de B2', () => {
     }
   })
 
+  it('chair des modèles (E2) : même teinte que la chair, plus saturée, loin des classes réservées', () => {
+    for (const [k, c] of Object.entries(PALETTE.chairModele)) {
+      const base = lab(PALETTE.chair[k as keyof typeof PALETTE.chairModele])
+      const m = lab(c)
+      expect(chroma(m)).toBeGreaterThanOrEqual(35)
+      expect(chroma(m) / chroma(base)).toBeCloseTo(1.4, 1)
+      expect(Math.abs(m.L - base.L)).toBeLessThan(2)
+      expect(deltaE00(m, OR)).toBeGreaterThan(15)
+      expect(deltaE00(m, IVOIRE)).toBeGreaterThan(15)
+      expect(deltaE00(m, GRIS)).toBeGreaterThan(20)
+      // Rouge vif : chroma presque moitié moindre (87 contre 45 au plus), écart d'au moins 12.
+      expect(chroma(m)).toBeLessThan(chroma(lab(PALETTE.rougeVif)) * 0.55)
+      expect(deltaE00(m, lab(PALETTE.rougeVif))).toBeGreaterThan(12)
+    }
+  })
+
   it('tient la lueur du sac loin de l’or (B2.O4 : sac d’un Porteur à terre)', () => {
     expect(deltaE00(lab(PALETTE.chair.sacLueur), OR)).toBeGreaterThan(20)
     expect(deltaE00(lab(PALETTE.chair.sac), OR)).toBeGreaterThan(20)

@@ -9,9 +9,11 @@ import {
   HUD_BAND_PX,
   type PixelImage,
   PLAYER_ID,
+  ROLE,
   ROLE_NAMES,
+  srgbToLab,
 } from '../render/index'
-import { step, type World } from '../sim/index'
+import { actionPhase, step, type World } from '../sim/index'
 import { type Candidate, drawProbes, MARKER, markerCenter } from '../viewer/session'
 import { auditFrame } from './audit'
 import { readFrame, referenceAccumulator, summarize } from './measure'
@@ -19,6 +21,9 @@ import { InvalidScene } from './policies'
 import { type LabScene, SCENES, sceneById } from './scenes'
 
 const params = new URLSearchParams(location.search)
+// Couleurs du laboratoire : variables CSS de la palette (style.ts), jamais en dur.
+const cssVar = (name: string): string =>
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 const app = document.getElementById('lab')
 if (!app) throw new Error('#lab absent')
 
@@ -79,6 +84,10 @@ const run = async (scene: LabScene): Promise<void> => {
     seedGore()
   }
   renderer.setAim(scene.aim ?? null)
+  // Instruments I2 par l'URL : masquer des entités (hide=3,7) ou n'en montrer qu'une (isolate=12).
+  const urlIds = (k: string): number[] => (params.get(k) ?? '').split(',').filter(Boolean).map(Number)
+  if (params.get('hide')) renderer.debug.hide(urlIds('hide'))
+  if (params.get('isolate')) renderer.debug.isolate(urlIds('isolate')[0] ?? null)
   seedGore()
 
   const stepOnce = (): void => {
@@ -136,6 +145,112 @@ const run = async (scene: LabScene): Promise<void> => {
     cancelAnimationFrame(raf)
   }
   window.addEventListener('resize', () => draw())
+
+  // Moments clés d'une créature, par une partie simulée à part (sans rendu), puis planche de vignettes rendues.
+  const strip = (id: number, to: number) => {
+    let w = scene.world()
+    const pol = scene.policy()
+    let firstAttack: { start: number; activeAt: number; name: string } | null = null
+    let cut: number | null = null
+    let cutAction: string | null = null
+    let death: number | null = null
+    let fell: number | null = null
+    while (w.tick < to && death === null) {
+      w = step(w, pol(w))
+      const c = w.creatures.find((x) => x.id === id)
+      const a = c?.action
+      if (!firstAttack && a && a.kind === 'attaque')
+        firstAttack = { start: a.start, activeAt: a.activeAt, name: a.name }
+      for (const e of w.events) {
+        if (e.type === 'action-interrupted' && e.id === id && cut === null) {
+          cut = e.tick
+          cutAction = e.action
+        }
+        if (e.type === 'fell' && e.id === id && fell === null) fell = e.tick
+        if (e.type === 'death' && e.id === id) death = e.tick
+      }
+    }
+    const rows: { title: string; ticks: number[] }[] = []
+    if (firstAttack)
+      rows.push({
+        title: `impact (${firstAttack.name}, tick actif ${firstAttack.activeAt})`,
+        ticks: [-2, -1, 0, 1, 2].map((k) => (firstAttack?.activeAt ?? 0) + k),
+      })
+    if (cut !== null)
+      rows.push({
+        title: `coup qui coupe ${cutAction} (tick ${cut})`,
+        ticks: [-1, 0, 1, 2, 3].map((k) => (cut ?? 0) + k),
+      })
+    if (death !== null)
+      rows.push({ title: `mort (tick ${death})`, ticks: [-1, 0, 1, 2, 30].map((k) => (death ?? 0) + k) })
+    // Ticks imposés (ticks=70,79,…) : une rangée de plus, par cinq.
+    const forced = (params.get('ticks') ?? '').split(',').filter(Boolean).map(Number)
+    for (let k = 0; k < forced.length; k += 5)
+      rows.push({ title: 'ticks demandés', ticks: forced.slice(k, k + 5) })
+    const T = 220
+    const out = document.createElement('canvas')
+    out.className = 'lab-canvas'
+    out.width = T * 5
+    out.height = rows.length * (T + 22)
+    out.style.width = `${out.width}px`
+    out.style.height = `${out.height}px`
+    out.style.inset = 'auto'
+    out.style.left = '0'
+    out.style.top = '0'
+    const ctx = out.getContext('2d')
+    const frames: unknown[] = []
+    rows.forEach((row, r) => {
+      if (ctx) {
+        ctx.fillStyle = cssVar('--hud-fond')
+        ctx.fillRect(0, r * (T + 22), out.width, 22)
+        ctx.fillStyle = cssVar('--hud-encre')
+        ctx.font = '13px serif'
+        ctx.fillText(row.title, 6, r * (T + 22) + 15)
+      }
+      row.ticks.forEach((t, k) => {
+        goto(t)
+        const c = world.creatures.find((x) => x.id === id)
+        const img = renderer.debug.readPixels()
+        // Le Bourreau (PLAYER_ID) ou une créature ; à défaut, le centre de l'image.
+        const at = id === PLAYER_ID ? world.player.pos : c?.pos
+        const [cx, cy] = at ? renderer.debug.project(at.x, 0.8, at.z) : [img.width / 2, img.height / 2]
+        const x0 = Math.round(Math.min(Math.max(0, cx - T / 2), img.width - T))
+        const y0 = Math.round(Math.min(Math.max(0, cy - T / 2), img.height - T))
+        const tile = new ImageData(T, T)
+        for (let y = 0; y < T; y++)
+          tile.data.set(
+            img.data.subarray(((y0 + y) * img.width + x0) * 4, ((y0 + y) * img.width + x0 + T) * 4),
+            y * T * 4,
+          )
+        ctx?.putImageData(tile, k * T, r * (T + 22) + 22)
+        const f = renderer.debug.anim(id)
+        const a = c?.action
+        const label = `t=${t}${a ? ` ${a.name} ${actionPhase(a, t)}` : ''} ${c?.state.kind ?? ''}`
+        if (ctx) {
+          ctx.fillStyle = cssVar('--hud-encre')
+          ctx.font = '12px serif'
+          ctx.fillText(label, k * T + 5, r * (T + 22) + 36)
+          const main = f?.layers.slice().sort((p, q2) => q2.weight - p.weight)[0]
+          if (main) ctx.fillText(`${main.clip} ${main.time.toFixed(3)} s`, k * T + 5, r * (T + 22) + 50)
+        }
+        frames.push({
+          row: r,
+          tick: t,
+          state: c?.state.kind,
+          action: a
+            ? { name: a.name, start: a.start, activeAt: a.activeAt, end: a.end, phase: actionPhase(a, t) }
+            : null,
+          layers: f?.layers.map((l) => ({
+            clip: l.clip,
+            time: Math.round(l.time * 1000) / 1000,
+            weight: Math.round(l.weight * 1000) / 1000,
+          })),
+        })
+      })
+    })
+    app.append(out)
+    return { id, firstAttack, cut, cutAction, fell, death, rows: rows.map((r) => r.title), frames }
+  }
 
   const q = (xs: number[], p: number): number => {
     const s = [...xs].sort((a, b) => a - b)
@@ -407,6 +522,66 @@ const run = async (scene: LabScene): Promise<void> => {
     const from = world.tick
     const jobs: Record<string, () => unknown> = {
       info: api.info,
+      models: () => renderer.debug.models(),
+      // Séquence image par image (E2) : moments clés d'une créature (id, 1 par défaut) — impact de sa première
+      // attaque, coup qui coupe une attaque, mort — rendus tick par tick et posés en planche ; les clips, instants et
+      // poids de chaque image sont publiés à côté.
+      strip: () => strip(Number(params.get('id') ?? '1'), Number(params.get('to') ?? '900')),
+      // B2 I2 : la même paire de mondes rendue deux fois donne la même image (couleur et identification).
+      same: () => {
+        const diff = (a: PixelImage, b: PixelImage): number => {
+          let n = 0
+          for (let i = 0; i < a.data.length; i += 4)
+            if (a.data[i] !== b.data[i] || a.data[i + 1] !== b.data[i + 1] || a.data[i + 2] !== b.data[i + 2])
+              n++
+          return n
+        }
+        const c1 = renderer.debug.readPixels()
+        const c2 = renderer.debug.readPixels()
+        const i1 = renderer.debug.idPass()
+        const i2 = renderer.debug.idPass()
+        return { colorDiff: diff(c1, c2), idDiff: diff(i1, i2) }
+      },
+      // Diagnostic : dernière pose calculée d'un corps (clips, instants, poids).
+      anim: () => renderer.debug.anim(Number(params.get('id') ?? '1')),
+      // Diagnostic : déciles de L*, C* et teinte des pixels `corps` d'une entité (id).
+      cstats: () => {
+        const id = Number(params.get('id') ?? '1')
+        const col = renderer.debug.readPixels()
+        const ids = renderer.debug.idPass()
+        const L: number[] = []
+        const C: number[] = []
+        const H: number[] = []
+        for (let i = 0; i < ids.data.length; i += 4) {
+          const d = decodeId(ids.data[i] ?? 0, ids.data[i + 1] ?? 0, ids.data[i + 2] ?? 0)
+          if (d.id !== id || d.role !== ROLE.corps) continue
+          const lab = srgbToLab(col.data[i] ?? 0, col.data[i + 1] ?? 0, col.data[i + 2] ?? 0)
+          L.push(lab.L)
+          C.push(Math.hypot(lab.a, lab.b))
+          H.push(((Math.atan2(lab.b, lab.a) * 180) / Math.PI + 360) % 360)
+        }
+        const dec = (xs: number[]) => [0.1, 0.25, 0.5, 0.75, 0.9].map((p) => Math.round(q(xs, p) * 10) / 10)
+        return { id, n: L.length, L: dec(L), C: dec(C), hue: dec(H) }
+      },
+      // Pixels (x, y) : couleur du canvas, id et rôle de la passe d'identification (diagnostic).
+      pixel: () => {
+        const xs = nums('x')
+        const ys = nums('y')
+        const col = renderer.debug.readPixels()
+        const ids = renderer.debug.idPass()
+        return xs.map((x, k) => {
+          const y = ys[k] ?? 0
+          const i = (y * col.width + x) * 4
+          const { id, role } = decodeId(ids.data[i] ?? 0, ids.data[i + 1] ?? 0, ids.data[i + 2] ?? 0)
+          return {
+            x,
+            y,
+            rgb: [col.data[i], col.data[i + 1], col.data[i + 2]],
+            id,
+            role: ROLE_NAMES[role] ?? role,
+          }
+        })
+      },
       ids: api.idSummary,
       read: api.read,
       poses: () => api.poses().map((p) => ({ id: p.id, segments: p.segments.length })),
