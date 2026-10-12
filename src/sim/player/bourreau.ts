@@ -19,7 +19,7 @@ import { applyEffects } from '../effects'
 import { kill } from '../laws/death'
 import { fall } from '../laws/flesh'
 import { TUNING, type WeaponTuning } from '../tuning'
-import type { BufferedCommand, DamageType, PlayerCommands, Vec2, World } from '../types'
+import type { BufferedCommand, DamageType, Effect, PlayerCommands, Vec2, World } from '../types'
 import { add, angleOf, dist, distToSegment, fromAngle, inCone, len, norm, scale, sub } from '../vec'
 
 export const weaponOf = (d: { player: { weapon: 'couperet' | 'masse' } }): WeaponTuning =>
@@ -31,6 +31,13 @@ const facingToward = (from: Vec2, aim: Vec2, fallback: number): number =>
 interface HitContext {
   readonly heavy: boolean // 3e coup contondant
   readonly charge: boolean
+  // Effets des crochets onPlayerHit (éclatement du Porteur) : appliqués après la boucle de dégâts du geste,
+  // pour qu'un même coup n'achève jamais ce que l'éclatement vient d'abattre (L4), quel que soit l'ordre des id.
+  readonly deferred: Array<{ readonly c: MCreature; readonly effects: readonly Effect[] }>
+}
+
+const flush = (d: Draft, ctx: HitContext): void => {
+  for (const { c, effects } of ctx.deferred.splice(0)) applyEffects(d, c, effects)
 }
 
 type Outcome = 'achieved' | 'clang' | 'standing-hit' | 'variant-b' | 'none'
@@ -74,7 +81,7 @@ export const playerHit = (
   }
   if (wasRituel) alert(d, c, 'damage')
   const hook = familyOf(d, c).onPlayerHit
-  if (hook && c.state.kind !== 'mort') applyEffects(d, c, hook(d, c, d.player.pos))
+  if (hook && c.state.kind !== 'mort') ctx.deferred.push({ c, effects: hook(d, c, d.player.pos) })
   return 'standing-hit'
 }
 
@@ -111,12 +118,14 @@ const startStrike = (d: Draft, aim: Vec2): void => {
   emit(d, { type: 'player-impact', tick: d.tick, source: 'frappe', comboStep: step, ...sets })
   let standingHits = 0
   const touched: MCreature[] = []
-  for (const c of d.creatures) {
+  const ctx: HitContext = { heavy: third && w.type === 'contondant', charge: false, deferred: [] }
+  for (const c of [...d.creatures]) {
     if (!isPresent(c) || !inZone(c)) continue
-    const out = playerHit(d, c, amount, w.type, { heavy: third && w.type === 'contondant', charge: false })
+    const out = playerHit(d, c, amount, w.type, ctx)
     if (out === 'standing-hit' || out === 'variant-b') standingHits++
     if (out === 'standing-hit') touched.push(c)
   }
+  flush(d, ctx)
   if (standingHits > 0) {
     gainFerveur(
       d,
@@ -141,10 +150,11 @@ const startBalayage = (d: Draft): void => {
   emit(d, { type: 'player-rite', tick: d.tick, rite: 'balayage' })
   const inZone = (c: MCreature) => dist(c.pos, p.pos) <= TUNING.balayage.radius + radiusOf(c)
   emit(d, { type: 'player-impact', tick: d.tick, source: 'balayage', ...snapshotImpact(d, inZone) })
-  for (const c of d.creatures) {
-    if (isPresent(c) && inZone(c))
-      playerHit(d, c, TUNING.balayage.damage, w.type, { heavy: false, charge: false })
+  const ctx: HitContext = { heavy: false, charge: false, deferred: [] }
+  for (const c of [...d.creatures]) {
+    if (isPresent(c) && inZone(c)) playerHit(d, c, TUNING.balayage.damage, w.type, ctx)
   }
+  flush(d, ctx)
 }
 
 const startCharge = (d: Draft, aim: Vec2): void => {
@@ -178,20 +188,22 @@ const chargeTick = (d: Draft): void => {
   const to = add(from, scale(a.dir, TUNING.charge.length / TUNING.charge.dashTicks))
   p.pos = to
   const charged = [...(a.charged ?? [])]
-  for (const c of d.creatures) {
+  const ctx: HitContext = { heavy: false, charge: true, deferred: [] }
+  for (const c of [...d.creatures]) {
     if (!isPresent(c) || charged.includes(c.id)) continue
     if (distToSegment(c.pos, from, to) > TUNING.charge.hitHalfWidth) continue
     charged.push(c.id)
     if (c.state.kind === 'mort') impact.mortsDansZone++
     else if (isStanding(c)) impact.debout.push(c.id)
     else (c.resistant ? impact.abattusRes : impact.abattusOrd).push(c.id)
-    const out = playerHit(d, c, TUNING.charge.damage, weaponOf(d).type, { heavy: false, charge: true })
+    const out = playerHit(d, c, TUNING.charge.damage, weaponOf(d).type, ctx)
     if (out === 'standing-hit') {
       const side = (c.pos.x - from.x) * -a.dir.z + (c.pos.z - from.z) * a.dir.x
       const lateral = fromAngle(angleOf({ x: 0, z: 0 }, a.dir) + (side < 0 ? -Math.PI / 2 : Math.PI / 2))
       c.pos = add(c.pos, scale(lateral, TUNING.charge.push))
     }
   }
+  flush(d, ctx)
   p.action = { ...a, charged, impact }
   if (d.tick - a.start === TUNING.charge.dashTicks - 1) {
     emit(d, { type: 'player-impact', tick: d.tick, source: 'charge', ...impact })

@@ -124,6 +124,7 @@ export const applyEffects = (d: Draft, self: MCreature, effects: readonly Effect
       case 'absorb': {
         const c = byId(d, e.id)
         if (!absorbable(c)) break
+        interrupt(d, c, 'creature') // un corps avalé perd sa canalisation (Confesseur qui priait à terre)
         c.state = { kind: 'absorbe', into: self.id, cryAt: c.state.kind === 'abattu' ? c.state.cryAt : null }
         c.unionOf = self.id
         c.pos = self.pos
@@ -188,6 +189,7 @@ export const applyEffects = (d: Draft, self: MCreature, effects: readonly Effect
           familyData: { baseChair: base },
         })
         for (const b of bodies) {
+          interrupt(d, b, 'creature')
           b.state = { kind: 'absorbe', into: id, cryAt: b.state.kind === 'abattu' ? b.state.cryAt : null }
           b.unionOf = id
           b.pos = center

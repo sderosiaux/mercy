@@ -883,3 +883,6 @@ L'agent qui construit ce jeu ne doit pas réinterpréter ces points :
 
 - 2026-10-12 (phase B) : un corps qui reçoit une Sentence avant d'avoir commencé à crier reste muet jusqu'à sa mort. Une exécution sur un corps frais est donc silencieuse, comme le veut l'exemple de L7. Un Membre errant ne crie jamais : il n'a pas de voix.
 - 2026-10-12 (phase B) : le +2 de Ferveur par créature touchée ne vaut que pour la Frappe (§8.3). Le Balayage et la Charge ne rapportent de la Ferveur que par les Achèvements qu'ils provoquent.
+- 2026-10-12 (phase C) : un sac de Porteur n'avale jamais un Membre errant. Le cas du §26 « membre mort dans le sac » ne peut donc pas se produire en P0 ; le stade du sac suit son contenu à chaque tick.
+- 2026-10-12 (phase C) : l'éclatement provoqué par un coup s'applique après tous les dégâts de ce coup. Un même geste n'achève jamais ce que l'éclatement qu'il déclenche vient d'abattre (L4).
+- 2026-10-12 (phase C) : un corps avalé par un Porteur ou assemblé par un Chirurgien perd sa canalisation en cours (un Confesseur qui priait à terre).
