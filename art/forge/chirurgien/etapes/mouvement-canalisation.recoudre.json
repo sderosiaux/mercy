@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-canalisation.recoudre",
+  "fingerprint": "5b56b16f4d1787d25755c78587dffe4f5666b328dccf18714f57ab7a06437806",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e58-217e-7602-a9b3-35828498b01a",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:21:51.842Z"
+}

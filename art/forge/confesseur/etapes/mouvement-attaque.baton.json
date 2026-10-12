@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-attaque.baton",
+  "fingerprint": "045278642d4b8df4f3eb7625dd31c7e9890d8b5e99ccd5418429efb62c0f3295",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e58-318f-7423-87b9-37fa0f3f0324",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:21:50.814Z"
+}

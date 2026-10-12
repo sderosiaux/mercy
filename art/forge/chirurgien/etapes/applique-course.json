@@ -1,0 +1,16 @@
+{
+  "key": "applique-course",
+  "fingerprint": "7a3bf77c2c5359203696413674a8e59202242f6e5e438cfa2fda35dc5977824b",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e69-0c64-7676-90f4-5eaf63f9700a",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/chirurgien/files/applique-course.glb",
+      "sha256": "82374f6fa5c60dbf04502057f3370a4f4042d8292fdb0792d522ce1a870867e8"
+    }
+  },
+  "updatedAt": "2026-10-12T04:40:05.525Z"
+}

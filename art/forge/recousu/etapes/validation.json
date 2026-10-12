@@ -1,0 +1,16 @@
+{
+  "key": "validation",
+  "fingerprint": "5d329683031c205c4b13b01c1d30ddc55629d78c2e58efab0cdaff32ef235a61",
+  "status": "reussi",
+  "credits": 0,
+  "outputs": {
+    "rapport": {
+      "file": "art/forge/recousu/validation.json",
+      "sha256": "b066f782d8917d6abe81dc79ad7e89b97980d1e95a2a6d2800b9a573fca9e463"
+    }
+  },
+  "meta": {
+    "verdict": "refuse"
+  },
+  "updatedAt": "2026-10-12T04:24:20.292Z"
+}

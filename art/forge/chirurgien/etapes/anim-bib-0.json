@@ -1,0 +1,16 @@
+{
+  "key": "anim-bib-0",
+  "fingerprint": "cd4c25467d49d15fe7955cfd0b6922eef32229cc8e1c5dd92608004804fe7451",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e68-87d6-7169-8fa5-9eb3b6ad1aef",
+  "estimatedCredits": 9,
+  "credits": 9,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/chirurgien/files/anim-bib-0.glb",
+      "sha256": "80c8cc55c702ab738f493697286a1ac4b63b095f9fb5ce7901652afc07f87e22"
+    }
+  },
+  "updatedAt": "2026-10-12T04:39:41.524Z"
+}

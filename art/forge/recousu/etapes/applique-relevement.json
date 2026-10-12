@@ -1,0 +1,16 @@
+{
+  "key": "applique-relevement",
+  "fingerprint": "247d99663fd395d36c8e8e9eac1296c49eb876fd3187c06ad1a8106aa4ea164a",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e5a-5ff6-74c2-acb3-d9cd00a2433c",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/recousu/files/applique-relevement.glb",
+      "sha256": "675f87989c3c8a4fe5f104c64487b43b28bda3017684b4f02fa4eaacc85b62f3"
+    }
+  },
+  "updatedAt": "2026-10-12T04:24:03.995Z"
+}

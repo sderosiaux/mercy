@@ -1,0 +1,13 @@
+{
+  "key": "assemblage",
+  "fingerprint": "ef710f84c0995acb836ed7772a1217cee8ad840011a33323d9147ebc338fde41",
+  "status": "reussi",
+  "credits": 0,
+  "outputs": {
+    "glb": {
+      "file": "public/models/chirurgien.glb",
+      "sha256": "6469d884950bc2ff7e90bb9fe61e5dcbee3e54b1d027ac57e91697948962d47f"
+    }
+  },
+  "updatedAt": "2026-10-12T04:41:16.519Z"
+}

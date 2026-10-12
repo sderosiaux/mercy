@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-sentence.tranchant.petite",
+  "fingerprint": "9489225014bf5ed59c64ce483333f189d488737c6ef86ac627cdcc874db2c775",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e57-2690-71b4-b0c6-cb6b9bb22543",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:20:47.815Z"
+}

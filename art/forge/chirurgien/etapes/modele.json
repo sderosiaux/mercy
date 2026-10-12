@@ -1,16 +1,16 @@
 {
   "key": "modele",
-  "fingerprint": "d988f3f16135a5f81ee6d410f1ae653d1a9fe61100eadf5de857f03a0be372b0",
+  "fingerprint": "7b88adc89184a6b4e2396067c34be2c10c20763ed17af6f3a347722f6630255f",
   "status": "reussi",
   "endpoint": "multi-image-to-3d",
-  "taskId": "01a12e4a-9be8-7221-a69d-cfe318cea603",
+  "taskId": "01a12e65-68af-7433-b5d3-592a58654bfc",
   "estimatedCredits": 30,
   "credits": 30,
   "outputs": {
     "glb": {
       "file": "art/forge/.cache/chirurgien/files/modele.glb",
-      "sha256": "1ca9b06517ab775e726098c1758564c110e7556ae0c6372256eae2554bc12fb4"
+      "sha256": "ef77ff52fa0041c9c996511e424c32064eb24754a557721d8ab8976962127dc7"
     }
   },
-  "updatedAt": "2026-10-12T04:10:33.715Z"
+  "updatedAt": "2026-10-12T04:39:04.930Z"
 }

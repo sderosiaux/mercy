@@ -1,0 +1,16 @@
+{
+  "key": "applique-attaque.marteau",
+  "fingerprint": "bf111ad23b63f5841f13b06a200782fe0a2ee37111bb9d36670cbd194e9ae594",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e58-3206-7247-8166-d8737f45f6ee",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/recousu/files/applique-attaque.marteau.glb",
+      "sha256": "3a83dde903e87c6a2e0bdd68c6eed1af9250a59d7e81b4934364441713f7d229"
+    }
+  },
+  "updatedAt": "2026-10-12T04:21:40.967Z"
+}

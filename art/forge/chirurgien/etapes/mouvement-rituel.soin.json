@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-rituel.soin",
+  "fingerprint": "140d0167934e71aa9a75a02711d58600a3d640ee24a23d89555bff31d8d9c87a",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e56-abfd-74fa-ab9e-bc8ec28afde9",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:20:12.539Z"
+}

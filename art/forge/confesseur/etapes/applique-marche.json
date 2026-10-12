@@ -1,0 +1,16 @@
+{
+  "key": "applique-marche",
+  "fingerprint": "1509d8e39c4bfc23b9f54e9972609df738d21ea705a65fe9a9a34340906fe198",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e64-33a9-7227-99ec-e7f64f0ef1a5",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/confesseur/files/applique-marche.glb",
+      "sha256": "77ca88b8125a65bd92807476d7733f536dcf8d8e7f0db3af1292ab0e36c8c8b3"
+    }
+  },
+  "updatedAt": "2026-10-12T04:34:53.756Z"
+}

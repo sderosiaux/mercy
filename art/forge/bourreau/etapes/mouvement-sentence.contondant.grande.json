@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-sentence.contondant.grande",
+  "fingerprint": "85bbd72b1051cb87b7f8888aec6c530c3a0a75c83a275e5989d6bad483eb6281",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e58-54ed-73a4-9a04-d944be4f8e44",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:22:00.092Z"
+}

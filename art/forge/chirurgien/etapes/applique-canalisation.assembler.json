@@ -1,0 +1,16 @@
+{
+  "key": "applique-canalisation.assembler",
+  "fingerprint": "f8cac8a713c75fffc59eff1cf51a8ae5083b5e2112485836bda976e81573fe43",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e69-646b-754e-b42d-68fa9ee0987d",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/chirurgien/files/applique-canalisation.assembler.glb",
+      "sha256": "4a3082892ab3db8a5b4c79d8d07529f2d6c7cf445885941fb7122ae8aca9c22c"
+    }
+  },
+  "updatedAt": "2026-10-12T04:40:28.452Z"
+}

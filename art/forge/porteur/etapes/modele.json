@@ -1,16 +1,16 @@
 {
   "key": "modele",
-  "fingerprint": "6d7607cf331f0eedba7e6e9adfec5d1fb2be29aa4732cbe4227f994cd36130cd",
+  "fingerprint": "707359a11fc42a7cb3de82f78d163108b8e7fb12c190580a20e5c0f152c406b2",
   "status": "reussi",
   "endpoint": "multi-image-to-3d",
-  "taskId": "01a12e4a-a6d9-7486-9300-4e451631a711",
+  "taskId": "01a12e5a-c042-71ab-bda6-f4d19ec5d5c2",
   "estimatedCredits": 30,
   "credits": 30,
   "outputs": {
     "glb": {
       "file": "art/forge/.cache/porteur/files/modele.glb",
-      "sha256": "7158f4fca2b6c9860ed6b6e6bdab52a5c87894a76e648b8c32e9e7394bd9a56c"
+      "sha256": "cffad056350285b3b7058b1304677b65c3d80a4c03f3f19b8a1703c2b0400555"
     }
   },
-  "updatedAt": "2026-10-12T04:10:45.374Z"
+  "updatedAt": "2026-10-12T04:28:06.592Z"
 }

@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-marche.stade3",
+  "fingerprint": "bcdbbb94f84b77373ee62c56b76288631b438b5d00cd6d955e4da5a8f858a6ca",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e57-8c1b-74df-8715-ac835f6ec7c0",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:21:03.291Z"
+}

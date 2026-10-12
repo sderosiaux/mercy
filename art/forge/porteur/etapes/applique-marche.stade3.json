@@ -1,0 +1,16 @@
+{
+  "key": "applique-marche.stade3",
+  "fingerprint": "2df636efa7e52d9607b48e55bd486a1d012f3a83504e68430353da3a040eaa77",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e5e-e34b-7125-b9ec-28452b1571b3",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/porteur/files/applique-marche.stade3.glb",
+      "sha256": "684e5b827428e5f26fd0db9e0a68032404734fe8715c5b5e66ccfe8e6efb8080"
+    }
+  },
+  "updatedAt": "2026-10-12T04:28:59.940Z"
+}

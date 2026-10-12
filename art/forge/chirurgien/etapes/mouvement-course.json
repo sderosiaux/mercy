@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-course",
+  "fingerprint": "5172afe0e585734ddcf3358e4adb02716ece5a6ccabccb230a3ea2c5aa11dfa8",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e57-2271-76b3-b642-ccea1b8cdac5",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:20:52.717Z"
+}

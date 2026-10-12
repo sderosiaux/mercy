@@ -1,0 +1,16 @@
+{
+  "key": "applique-rituel.priere",
+  "fingerprint": "2e20d8ed8deb86f0e805e793d5a327474c79cd9e25ae4cdd52741cb0478678fc",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e63-bf34-7372-9824-f9514586bc39",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/confesseur/files/applique-rituel.priere.glb",
+      "sha256": "34bd0b61e8f8784b533effe42e1796140111cca830ad38ed5d9cd68656a00c9d"
+    }
+  },
+  "updatedAt": "2026-10-12T04:34:28.612Z"
+}

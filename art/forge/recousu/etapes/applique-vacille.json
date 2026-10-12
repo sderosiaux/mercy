@@ -1,0 +1,16 @@
+{
+  "key": "applique-vacille",
+  "fingerprint": "d218b6c7524d2008fabd840e15f47a7389fa34d0e6774a23f605dd8b0ac7f619",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e59-41b7-7663-a609-79884a02a2c4",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/recousu/files/applique-vacille.glb",
+      "sha256": "5f04beb54bd85bab7f59501f72b9bf3b0ae1343a7666a07bc64d77a6b281d3c2"
+    }
+  },
+  "updatedAt": "2026-10-12T04:22:52.841Z"
+}

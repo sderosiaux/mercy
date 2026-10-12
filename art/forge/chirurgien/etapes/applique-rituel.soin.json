@@ -1,0 +1,16 @@
+{
+  "key": "applique-rituel.soin",
+  "fingerprint": "6f6025b74b65ab5a32e446005db7fdffd09ea95e21fe8a1678f8ebbc52aabe1c",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e68-c913-70e7-a8b9-5ba54c916a60",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/chirurgien/files/applique-rituel.soin.glb",
+      "sha256": "7a5d054b6ad520c5baede31d0d54771d3c0fbbef631cd11159914f3872289ad2"
+    }
+  },
+  "updatedAt": "2026-10-12T04:39:58.762Z"
+}

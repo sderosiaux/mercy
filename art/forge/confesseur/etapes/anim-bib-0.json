@@ -1,0 +1,16 @@
+{
+  "key": "anim-bib-0",
+  "fingerprint": "fbcd8a3742b993a43fc7a6e247e90b9d53e0c794ee6c0d0df8285822ae591d4c",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e63-7f52-71a6-ae9f-50b517492d8f",
+  "estimatedCredits": 12,
+  "credits": 12,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/confesseur/files/anim-bib-0.glb",
+      "sha256": "00f11f37b43a79a08b8e96f8528687aff6d5e40b11baf43b0b4b32663b01b536"
+    }
+  },
+  "updatedAt": "2026-10-12T04:34:11.323Z"
+}

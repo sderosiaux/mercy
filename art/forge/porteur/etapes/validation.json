@@ -1,0 +1,16 @@
+{
+  "key": "validation",
+  "fingerprint": "5d5d3b71b070d385edf964eed971e8784ea92f8aaea7ae73b1d5a175f95b8bc4",
+  "status": "reussi",
+  "credits": 0,
+  "outputs": {
+    "rapport": {
+      "file": "art/forge/porteur/validation.json",
+      "sha256": "5015e57b2fee43a72a3c52d3fe21943264476ff79a3378e971636fea02ee09c3"
+    }
+  },
+  "meta": {
+    "verdict": "refuse"
+  },
+  "updatedAt": "2026-10-12T04:29:38.251Z"
+}

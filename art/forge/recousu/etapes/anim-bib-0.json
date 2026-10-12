@@ -1,0 +1,16 @@
+{
+  "key": "anim-bib-0",
+  "fingerprint": "51af5df3aac195424dd7215cd5adb20998c573e15b617fac32dcc5188d35bf3a",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e56-6531-765d-b8ff-f53e36ab9bcb",
+  "estimatedCredits": 12,
+  "credits": 12,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/recousu/files/anim-bib-0.glb",
+      "sha256": "a17f6743dbbcd307251f3596bc7f2444a96a428774df98371239e920412be862"
+    }
+  },
+  "updatedAt": "2026-10-12T04:19:56.345Z"
+}

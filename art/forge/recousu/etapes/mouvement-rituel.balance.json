@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-rituel.balance",
+  "fingerprint": "5590886540751a03cb91e01ab6716fe1d67ac9e21ffff0739f6730647c187cc6",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e56-b37c-7708-8241-f0a5e0b9e6e9",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:20:23.857Z"
+}

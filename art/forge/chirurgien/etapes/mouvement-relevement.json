@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-relevement",
+  "fingerprint": "e58640d3529b3fab63db375dc84c98c3f1db992d47fb4eb7b28a0f696cc3acad",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e59-ace2-7592-8ac4-8e1526362273",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:23:27.919Z"
+}

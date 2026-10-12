@@ -1,0 +1,16 @@
+{
+  "key": "applique-rituel.recoud",
+  "fingerprint": "92796424440b11aed02c9453c1b7fd093e3c4a6cfd2364a2aa94b6de5d53ff1e",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e57-9193-7380-a2a5-3a0a77a4b863",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/recousu/files/applique-rituel.recoud.glb",
+      "sha256": "e67e112444d2921ddc28bb4199793bd55c2d6ca4cfb787f36475e48efc65fc08"
+    }
+  },
+  "updatedAt": "2026-10-12T04:21:12.315Z"
+}

@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-abattu.reptation",
+  "fingerprint": "34bc96958cf709eae79d43b0dc7c24f7f4df4dfcf6e32ba4e1f6cf24115b3b60",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e58-dc76-75b9-b9ab-d18890022cff",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:22:34.490Z"
+}

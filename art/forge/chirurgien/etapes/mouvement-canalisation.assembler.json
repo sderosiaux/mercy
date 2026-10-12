@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-canalisation.assembler",
+  "fingerprint": "2cc73f5003ca70af9585804428ce3567fba9a33092e3b23a8a92d48f98408393",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e58-9223-725e-aa92-aeb365781dcb",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:22:10.271Z"
+}

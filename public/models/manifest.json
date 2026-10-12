@@ -119,6 +119,527 @@
         }
       },
       "majLe": "2026-10-12T04:04:54.916Z"
+    },
+    "porteur": {
+      "id": "porteur",
+      "nom": "Le Porteur",
+      "famille": "porteur",
+      "glb": "models/porteur.glb",
+      "sha256": "81c2f5e17792706fc6896f02aaa85b67dce2d96d6e8a60491316fade3c4e4c3d",
+      "hauteurM": 1.6,
+      "clips": [
+        {
+          "name": "rituel.mange",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "marche",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 7.680887914861482
+        },
+        {
+          "name": "marche.stade3",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1.0743252834716965
+        },
+        {
+          "name": "attaque.bousculade",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "absorption",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1.3111111323038738
+        },
+        {
+          "name": "reaction",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "chute",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "abattu.reptation",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 4.282217080132878
+        },
+        {
+          "name": "abattu.torsion",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "relevement",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1.3111111323038738
+        },
+        {
+          "name": "mort.debout",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        }
+      ],
+      "recetteGlobale": {
+        "interruptionFadeS": 0.033,
+        "mort": "mixer.timeScale = 0 (horloge du mélangeur gelée)"
+      },
+      "validation": {
+        "verdict": "refuse",
+        "rapport": "art/forge/porteur/validation.json",
+        "glbSha256": "81c2f5e17792706fc6896f02aaa85b67dce2d96d6e8a60491316fade3c4e4c3d"
+      },
+      "credits": {
+        "meshy": 196,
+        "parCle": {
+          "modele": 60,
+          "rig": 10,
+          "anim-bib-0": 30,
+          "mouvement-rituel.mange": 10,
+          "applique-rituel.mange": 6,
+          "mouvement-marche.stade3": 10,
+          "applique-marche.stade3": 6,
+          "mouvement-absorption": 10,
+          "applique-absorption": 6,
+          "mouvement-abattu.reptation": 10,
+          "applique-abattu.reptation": 6,
+          "mouvement-abattu.torsion": 10,
+          "applique-abattu.torsion": 6,
+          "mouvement-relevement": 10,
+          "applique-relevement": 6
+        }
+      },
+      "majLe": "2026-10-12T04:29:38.251Z"
+    },
+    "chirurgien": {
+      "id": "chirurgien",
+      "nom": "Le Chirurgien",
+      "famille": "chirurgien",
+      "glb": "models/chirurgien.glb",
+      "sha256": "6469d884950bc2ff7e90bb9fe61e5dcbee3e54b1d027ac57e91697948962d47f",
+      "hauteurM": 2.05,
+      "clips": [
+        {
+          "name": "rituel.soin",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "course",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1.757412389787317
+        },
+        {
+          "name": "attaque.scalpel",
+          "boucle": false,
+          "impactS": 0.35,
+          "startS": 0,
+          "rate": 0.8749999999999999
+        },
+        {
+          "name": "canalisation.recoudre",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "canalisation.assembler",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "reaction",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "chute",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "abattu.reptation",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1.1344428405618447
+        },
+        {
+          "name": "abattu.torsion",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "relevement",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1.3111111323038738
+        },
+        {
+          "name": "mort.debout",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        }
+      ],
+      "recetteGlobale": {
+        "interruptionFadeS": 0.033,
+        "mort": "mixer.timeScale = 0 (horloge du mélangeur gelée)"
+      },
+      "validation": {
+        "verdict": "refuse",
+        "rapport": "art/forge/chirurgien/validation.json",
+        "glbSha256": "6469d884950bc2ff7e90bb9fe61e5dcbee3e54b1d027ac57e91697948962d47f"
+      },
+      "credits": {
+        "meshy": 216,
+        "parCle": {
+          "modele": 60,
+          "rig": 10,
+          "anim-bib-0": 18,
+          "mouvement-rituel.soin": 10,
+          "applique-rituel.soin": 6,
+          "mouvement-course": 10,
+          "applique-course": 6,
+          "mouvement-attaque.scalpel": 10,
+          "applique-attaque.scalpel": 6,
+          "mouvement-canalisation.recoudre": 10,
+          "applique-canalisation.recoudre": 6,
+          "mouvement-canalisation.assembler": 10,
+          "applique-canalisation.assembler": 6,
+          "mouvement-abattu.reptation": 10,
+          "applique-abattu.reptation": 6,
+          "mouvement-abattu.torsion": 10,
+          "applique-abattu.torsion": 6,
+          "mouvement-relevement": 10,
+          "applique-relevement": 6
+        }
+      },
+      "majLe": "2026-10-12T04:41:16.613Z"
+    },
+    "recousu": {
+      "id": "recousu",
+      "nom": "Le Recousu",
+      "famille": "recousu",
+      "glb": "models/recousu.glb",
+      "sha256": "f7598dc32a550d36ce916cf01e7f69da5972e6dc62ddbb772a50d9d0733e19d5",
+      "hauteurM": 2.15,
+      "clips": [
+        {
+          "name": "rituel.balance",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "rituel.recoud",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "marche",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 5.197214512191044
+        },
+        {
+          "name": "attaque.marteau",
+          "boucle": false,
+          "impactS": 1.15,
+          "startS": 0,
+          "rate": 1.2777777777777777
+        },
+        {
+          "name": "attaque.empoignade",
+          "boucle": false,
+          "impactS": 1.167,
+          "startS": 0,
+          "rate": 1.167
+        },
+        {
+          "name": "attaque.coup-de-tete",
+          "boucle": false,
+          "impactS": 0.6,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "reaction",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "vacille",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1.3111111323038738
+        },
+        {
+          "name": "chute",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "abattu.reptation",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 3.119905247500758
+        },
+        {
+          "name": "abattu.torsion",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "relevement",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1.3111111323038738
+        },
+        {
+          "name": "mort.debout",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        }
+      ],
+      "recetteGlobale": {
+        "interruptionFadeS": 0.033,
+        "mort": "mixer.timeScale = 0 (horloge du mélangeur gelée)"
+      },
+      "validation": {
+        "verdict": "refuse",
+        "rapport": "art/forge/recousu/validation.json",
+        "glbSha256": "f7598dc32a550d36ce916cf01e7f69da5972e6dc62ddbb772a50d9d0733e19d5"
+      },
+      "credits": {
+        "meshy": 164,
+        "parCle": {
+          "modele": 30,
+          "rig": 5,
+          "anim-bib-0": 12,
+          "mouvement-rituel.balance": 10,
+          "applique-rituel.balance": 3,
+          "mouvement-rituel.recoud": 10,
+          "applique-rituel.recoud": 3,
+          "mouvement-attaque.marteau": 10,
+          "applique-attaque.marteau": 3,
+          "mouvement-attaque.empoignade": 10,
+          "applique-attaque.empoignade": 3,
+          "mouvement-attaque.coup-de-tete": 10,
+          "applique-attaque.coup-de-tete": 3,
+          "mouvement-vacille": 10,
+          "applique-vacille": 3,
+          "mouvement-abattu.reptation": 10,
+          "applique-abattu.reptation": 3,
+          "mouvement-abattu.torsion": 10,
+          "applique-abattu.torsion": 3,
+          "mouvement-relevement": 10,
+          "applique-relevement": 3
+        }
+      },
+      "majLe": "2026-10-12T04:24:20.293Z"
+    },
+    "confesseur": {
+      "id": "confesseur",
+      "nom": "Le Confesseur",
+      "famille": "confesseur",
+      "glb": "models/confesseur.glb",
+      "sha256": "8f8c9c78ace25d88c2755b8857b95d1ca1993dcbbec441f6c121571c4dbf93b2",
+      "hauteurM": 1.8,
+      "clips": [
+        {
+          "name": "rituel.priere",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "rituel.benediction",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "marche",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1.6112035288836535
+        },
+        {
+          "name": "marche.recul",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 2.369795129611485
+        },
+        {
+          "name": "attaque.baton",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "invective",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "canalisation.priere",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "canalisation.priere-abattu",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "reaction",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "chute",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "abattu.reptation",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 46.89592395519503
+        },
+        {
+          "name": "abattu.torsion",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "relevement",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1.3111111323038738
+        },
+        {
+          "name": "mort.debout",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        }
+      ],
+      "recetteGlobale": {
+        "interruptionFadeS": 0.033,
+        "mort": "mixer.timeScale = 0 (horloge du mélangeur gelée)"
+      },
+      "validation": {
+        "verdict": "refuse",
+        "rapport": "art/forge/confesseur/validation.json",
+        "glbSha256": "8f8c9c78ace25d88c2755b8857b95d1ca1993dcbbec441f6c121571c4dbf93b2"
+      },
+      "credits": {
+        "meshy": 254,
+        "parCle": {
+          "modele": 60,
+          "rig": 10,
+          "anim-bib-0": 24,
+          "mouvement-rituel.priere": 10,
+          "applique-rituel.priere": 6,
+          "mouvement-rituel.benediction": 10,
+          "applique-rituel.benediction": 6,
+          "mouvement-marche": 10,
+          "applique-marche": 6,
+          "mouvement-attaque.baton": 10,
+          "applique-attaque.baton": 6,
+          "mouvement-invective": 10,
+          "applique-invective": 6,
+          "mouvement-canalisation.priere": 10,
+          "applique-canalisation.priere": 6,
+          "mouvement-canalisation.priere-abattu": 10,
+          "applique-canalisation.priere-abattu": 6,
+          "mouvement-abattu.reptation": 10,
+          "applique-abattu.reptation": 6,
+          "mouvement-abattu.torsion": 10,
+          "applique-abattu.torsion": 6,
+          "mouvement-relevement": 10,
+          "applique-relevement": 6
+        }
+      },
+      "majLe": "2026-10-12T04:35:59.455Z"
     }
   }
 }

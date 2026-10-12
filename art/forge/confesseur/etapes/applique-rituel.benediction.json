@@ -1,0 +1,16 @@
+{
+  "key": "applique-rituel.benediction",
+  "fingerprint": "4197fcfcad7164eea675afd0e31233420ead96026a1c598749e59c703ca02cac",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e64-02be-765a-bece-2952925f669d",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/confesseur/files/applique-rituel.benediction.glb",
+      "sha256": "194b3e7ab8e874fd10f27ba6a8e901ec6e53bdb830d78ec30d47b4e0a53bd87d"
+    }
+  },
+  "updatedAt": "2026-10-12T04:34:41.132Z"
+}

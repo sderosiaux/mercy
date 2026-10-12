@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-attaque.scalpel",
+  "fingerprint": "8984d0606714eb91d5da765db07d12d9e68a32f65a376f80ad9d49c2b3af2bb9",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e57-be88-7672-a036-f372b5df5ef1",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:21:21.981Z"
+}

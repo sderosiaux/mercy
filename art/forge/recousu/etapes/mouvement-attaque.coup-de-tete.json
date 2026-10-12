@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-attaque.coup-de-tete",
+  "fingerprint": "8113c199fb19f0f0b29b7f785a38f41166e1558f43a4884cca3d053eef8da158",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e58-a9b4-755a-8674-55cd9b688017",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:22:16.871Z"
+}

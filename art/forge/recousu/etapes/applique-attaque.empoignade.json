@@ -1,0 +1,16 @@
+{
+  "key": "applique-attaque.empoignade",
+  "fingerprint": "17835ddaa7c2d73999be682f470db5e6a9dcb6dcf7aa76c12e5f8ea5f6d00d9e",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e58-7940-74ac-8a5e-2828fc5a0192",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/recousu/files/applique-attaque.empoignade.glb",
+      "sha256": "68b7bb9e65c0093a8356543cf9c20251c2d80cbbedd299f2d30a95ae32b7246e"
+    }
+  },
+  "updatedAt": "2026-10-12T04:22:04.926Z"
+}

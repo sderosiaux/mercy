@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-absorption",
+  "fingerprint": "3002a779700255509bdcbf1b9511ec771ab478cd5bbd47fe0c395ee9fc63a9c1",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e57-d4dc-764e-99be-c74faaf791e0",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:21:22.229Z"
+}

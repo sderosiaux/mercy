@@ -1,0 +1,16 @@
+{
+  "key": "applique-invective",
+  "fingerprint": "9211ae983764832dc714d9af78245c716db4657c6e6c43b148630ed4c9359f38",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e64-87e7-7680-9a1e-d84132166aaa",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/confesseur/files/applique-invective.glb",
+      "sha256": "7b48119b8115ae5a6fabb75f8b46ccddd1ce3280d582bc7141033baa1fc78c07"
+    }
+  },
+  "updatedAt": "2026-10-12T04:35:14.901Z"
+}

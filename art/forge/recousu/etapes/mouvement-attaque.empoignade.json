@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-attaque.empoignade",
+  "fingerprint": "a06b22d4bb32ff40242ef9160445c4c648fb5233473a7d84a0da7b959b3b419a",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e58-4c1d-706b-821f-ddf5d77d068c",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:21:52.363Z"
+}

@@ -1,0 +1,16 @@
+{
+  "key": "applique-rituel.balance",
+  "fingerprint": "45afffceb61d95c16610818dfb7cc331c1c0547170b6f28a6cf63e12328c9972",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e57-1f74-74d1-a47f-68a010d2b7f7",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/recousu/files/applique-rituel.balance.glb",
+      "sha256": "f11f7974d54b562702719517f6bb639e121b9405505b18c59bad16170ae8f3b1"
+    }
+  },
+  "updatedAt": "2026-10-12T04:20:36.508Z"
+}

@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-vacille",
+  "fingerprint": "09f3b78e5ee9253006a4df34e1b89946665081cbaa86e49e3584ce50ef2332f7",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e58-fea9-7002-838c-b6875c958397",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:22:43.324Z"
+}

@@ -1,16 +1,16 @@
 {
   "key": "rig",
-  "fingerprint": "db1abb64f22f7dd67859da5101dc6223ad23c748631a6d1d9909e18012e43175",
+  "fingerprint": "45b33226377235f06582519c0e7f0951f5e8d8db9b7163f66c7f897db0e3fcb0",
   "status": "reussi",
   "endpoint": "rigging",
-  "taskId": "01a12e4e-4f6a-7020-8afc-3a2796d7bd7a",
+  "taskId": "01a12e5e-2e7f-7362-91e2-80191ad78d71",
   "estimatedCredits": 5,
   "credits": 5,
   "outputs": {
     "glb": {
       "file": "art/forge/.cache/porteur/files/rig.glb",
-      "sha256": "a7ff12391d2934dbe9aefb57b77af31160cc556142bbf9d690ccbd8f328cf549"
+      "sha256": "a525a016080bb9d072d55fb1c7b92439f74d0f1c4e3f887ab07c0dee13163127"
     }
   },
-  "updatedAt": "2026-10-12T04:11:08.253Z"
+  "updatedAt": "2026-10-12T04:28:27.253Z"
 }

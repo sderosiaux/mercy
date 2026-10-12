@@ -1,0 +1,16 @@
+{
+  "key": "applique-attaque.scalpel",
+  "fingerprint": "ceb99e44548fe9a0511b39c8c1ec9828a9c25b420c0f02de31e54a833ede10c9",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e69-26cd-7240-871d-fb4c023b2bd8",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/chirurgien/files/applique-attaque.scalpel.glb",
+      "sha256": "190397f4ce8f47e0d8b9c8da1cda0976644b181a0eab99f06de1a98a7e83efa6"
+    }
+  },
+  "updatedAt": "2026-10-12T04:40:12.475Z"
+}

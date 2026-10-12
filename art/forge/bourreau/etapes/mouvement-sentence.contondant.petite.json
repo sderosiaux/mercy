@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-sentence.contondant.petite",
+  "fingerprint": "131105a5250c848f16bcab9eacf53f80efa3d0f83b932e213cd11eaf83cb078d",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e57-f50c-73b9-bd4a-818e7eb1b662",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:21:35.389Z"
+}

@@ -1,0 +1,16 @@
+{
+  "key": "applique-abattu.reptation",
+  "fingerprint": "567e317be95e829ad92833c04ac9221141a3144fe3a98094136add49fc3c1949",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e69-805e-7224-8357-e24dbbf3bb1e",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/chirurgien/files/applique-abattu.reptation.glb",
+      "sha256": "2695276cd5ad4c6d8f5be270d9ef3f2448bcc88312c7ea569d471d4ff7fb56e3"
+    }
+  },
+  "updatedAt": "2026-10-12T04:40:45.761Z"
+}

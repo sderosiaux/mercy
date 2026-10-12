@@ -1,0 +1,16 @@
+{
+  "key": "applique-relevement",
+  "fingerprint": "f63858fb08cbd13d4124230af938602d00885185fc78f6ac7e87311430334a92",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e69-f614-705b-bf52-4cf0c7e43590",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/chirurgien/files/applique-relevement.glb",
+      "sha256": "e0d40e6b143b1482539b8796c276024f9c3f6706920362c536e1a2eaa9d51d4d"
+    }
+  },
+  "updatedAt": "2026-10-12T04:41:16.260Z"
+}

@@ -1,0 +1,16 @@
+{
+  "key": "applique-sentence.tranchant.grande",
+  "fingerprint": "22d54067d3e1e14c9ad9094ebd5e2a86854ea970a20d972b8114a6ac0273af36",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e57-da3c-77f7-95cc-586db63bb712",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/bourreau/files/applique-sentence.tranchant.grande.glb",
+      "sha256": "f0471fd203d28cc6eeb27245e7370c045806e884da329808103c5093a94e20e5"
+    }
+  },
+  "updatedAt": "2026-10-12T04:21:18.679Z"
+}

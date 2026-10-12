@@ -1,0 +1,640 @@
+{
+  "id": "recousu",
+  "validateur": 1,
+  "echelle": {
+    "hauteurModele": 2.15,
+    "hauteurFiche": 2.15,
+    "facteur": 1
+  },
+  "triangles": 18562,
+  "textures": [
+    {
+      "index": 0,
+      "name": "Material_0_baseColor",
+      "height": 2048,
+      "width": 2048,
+      "mime": "image/jpeg"
+    }
+  ],
+  "os": 24,
+  "controles": [
+    {
+      "controle": "squelette",
+      "verdict": "ok",
+      "mesure": 24,
+      "unite": "os",
+      "detail": "24 os, 1 maillage(s) skinné(s)"
+    },
+    {
+      "controle": "pistes",
+      "verdict": "ok",
+      "mesure": 0,
+      "detail": "toutes les pistes visent un nœud du modèle"
+    },
+    {
+      "controle": "triangles",
+      "verdict": "echec",
+      "mesure": 18562,
+      "seuil": 18000,
+      "detail": "18562 triangles pour 18000"
+    },
+    {
+      "controle": "textures",
+      "verdict": "ok",
+      "mesure": 2048,
+      "seuil": 2048,
+      "unite": "px",
+      "detail": "1 texture(s), plus grand côté 2048 px"
+    },
+    {
+      "controle": "clip",
+      "clip": "rituel.balance",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "rituel.balance",
+      "verdict": "ok",
+      "mesure": 3.967,
+      "unite": "s",
+      "detail": "3.967 s"
+    },
+    {
+      "controle": "boucle",
+      "clip": "rituel.balance",
+      "verdict": "echec",
+      "mesure": 0.256,
+      "seuil": 0.018,
+      "unite": "m",
+      "detail": "écart dernière/première image 255.9 mm, seuil 17.7 mm (1,5 × pas p95, plancher ½ px)"
+    },
+    {
+      "controle": "pieds",
+      "clip": "rituel.balance",
+      "verdict": "echec",
+      "mesure": 0.026,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 26.0 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "clip",
+      "clip": "rituel.recoud",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "rituel.recoud",
+      "verdict": "ok",
+      "mesure": 3.967,
+      "unite": "s",
+      "detail": "3.967 s"
+    },
+    {
+      "controle": "boucle",
+      "clip": "rituel.recoud",
+      "verdict": "echec",
+      "mesure": 0.427,
+      "seuil": 0.05,
+      "unite": "m",
+      "detail": "écart dernière/première image 426.9 mm, seuil 49.5 mm (1,5 × pas p95, plancher ½ px)"
+    },
+    {
+      "controle": "pieds",
+      "clip": "rituel.recoud",
+      "verdict": "echec",
+      "mesure": 0.025,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 25.4 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "clip",
+      "clip": "marche",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "marche",
+      "verdict": "ok",
+      "mesure": 5.5,
+      "unite": "s",
+      "detail": "5.5 s"
+    },
+    {
+      "controle": "boucle",
+      "clip": "marche",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.056,
+      "unite": "m",
+      "detail": "écart dernière/première image 0.3 mm, seuil 55.7 mm (1,5 × pas p95, plancher ½ px)"
+    },
+    {
+      "controle": "sur-place",
+      "clip": "marche",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.1,
+      "unite": "m/s",
+      "detail": "dérive du bassin 0 m/s : la simulation déplace déjà la créature"
+    },
+    {
+      "controle": "vitesse",
+      "clip": "marche",
+      "verdict": "echec",
+      "mesure": 5.197,
+      "seuil": 2,
+      "unite": "×",
+      "detail": "foulée du clip 0.481 m/s calée sur 2.5 m/s (recousu.speed) ; bornes 0.5 à 2"
+    },
+    {
+      "controle": "clip",
+      "clip": "attaque.marteau",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "attaque.marteau",
+      "verdict": "ok",
+      "mesure": 2.967,
+      "unite": "s",
+      "detail": "2.967 s"
+    },
+    {
+      "controle": "impact",
+      "clip": "attaque.marteau",
+      "verdict": "ok",
+      "mesure": 1.15,
+      "unite": "s",
+      "detail": "repère d'impact à 1.15 s dans [0 ; 2.967]"
+    },
+    {
+      "controle": "pieds",
+      "clip": "attaque.marteau",
+      "verdict": "echec",
+      "mesure": 0.21,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 209.9 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "vitesse",
+      "clip": "attaque.marteau",
+      "verdict": "ok",
+      "mesure": 1.278,
+      "seuil": 2,
+      "unite": "×",
+      "detail": "impact du clip à 1.15 s calé sur le tick actif (54 ticks, sim:recousu.marteau) ; bornes 0.5 à 2"
+    },
+    {
+      "controle": "clip",
+      "clip": "attaque.empoignade",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "attaque.empoignade",
+      "verdict": "ok",
+      "mesure": 2.967,
+      "unite": "s",
+      "detail": "2.967 s"
+    },
+    {
+      "controle": "impact",
+      "clip": "attaque.empoignade",
+      "verdict": "ok",
+      "mesure": 1.167,
+      "unite": "s",
+      "detail": "repère d'impact à 1.167 s dans [0 ; 2.967]"
+    },
+    {
+      "controle": "pieds",
+      "clip": "attaque.empoignade",
+      "verdict": "echec",
+      "mesure": 0.077,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 76.9 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "vitesse",
+      "clip": "attaque.empoignade",
+      "verdict": "ok",
+      "mesure": 1.167,
+      "seuil": 2,
+      "unite": "×",
+      "detail": "impact du clip à 1.167 s calé sur le tick actif (60 ticks, sim:recousu.empoignade) ; bornes 0.5 à 2"
+    },
+    {
+      "controle": "clip",
+      "clip": "attaque.coup-de-tete",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "attaque.coup-de-tete",
+      "verdict": "ok",
+      "mesure": 1.967,
+      "unite": "s",
+      "detail": "1.967 s"
+    },
+    {
+      "controle": "impact",
+      "clip": "attaque.coup-de-tete",
+      "verdict": "ok",
+      "mesure": 0.6,
+      "unite": "s",
+      "detail": "repère d'impact à 0.6 s dans [0 ; 1.967]"
+    },
+    {
+      "controle": "vitesse",
+      "clip": "attaque.coup-de-tete",
+      "verdict": "ok",
+      "mesure": 1,
+      "seuil": 2,
+      "unite": "×",
+      "detail": "impact du clip à 0.6 s calé sur le tick actif (36 ticks, sim:recousu.coupDeTete) ; bornes 0.5 à 2"
+    },
+    {
+      "controle": "clip",
+      "clip": "reaction",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "reaction",
+      "verdict": "ok",
+      "mesure": 1.167,
+      "unite": "s",
+      "detail": "1.167 s"
+    },
+    {
+      "controle": "pieds",
+      "clip": "reaction",
+      "verdict": "ok",
+      "mesure": 0.015,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 15.2 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "clip",
+      "clip": "vacille",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "vacille",
+      "verdict": "ok",
+      "mesure": 1.967,
+      "unite": "s",
+      "detail": "1.967 s"
+    },
+    {
+      "controle": "vitesse",
+      "clip": "vacille",
+      "verdict": "ok",
+      "mesure": 1.311,
+      "seuil": 2,
+      "unite": "×",
+      "detail": "clip calé sur la fenêtre de 90 ticks (TUNING:porteur.burstStaggerLarge) ; bornes 0.5 à 2"
+    },
+    {
+      "controle": "clip",
+      "clip": "chute",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "chute",
+      "verdict": "ok",
+      "mesure": 2.5,
+      "unite": "s",
+      "detail": "2.5 s"
+    },
+    {
+      "controle": "clip",
+      "clip": "abattu.reptation",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "abattu.reptation",
+      "verdict": "ok",
+      "mesure": 2.967,
+      "unite": "s",
+      "detail": "2.967 s"
+    },
+    {
+      "controle": "boucle",
+      "clip": "abattu.reptation",
+      "verdict": "echec",
+      "mesure": 0.283,
+      "seuil": 0.037,
+      "unite": "m",
+      "detail": "écart dernière/première image 283.4 mm, seuil 37.4 mm (1,5 × pas p95, plancher ½ px)"
+    },
+    {
+      "controle": "sur-place",
+      "clip": "abattu.reptation",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.1,
+      "unite": "m/s",
+      "detail": "dérive du bassin 0 m/s : la simulation déplace déjà la créature"
+    },
+    {
+      "controle": "vitesse",
+      "clip": "abattu.reptation",
+      "verdict": "echec",
+      "mesure": 3.12,
+      "seuil": 2,
+      "unite": "×",
+      "detail": "foulée du clip 0.256 m/s calée sur 0.8 m/s (abattuCrawl) ; bornes 0.5 à 2"
+    },
+    {
+      "controle": "clip",
+      "clip": "abattu.torsion",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "abattu.torsion",
+      "verdict": "ok",
+      "mesure": 3.967,
+      "unite": "s",
+      "detail": "3.967 s"
+    },
+    {
+      "controle": "boucle",
+      "clip": "abattu.torsion",
+      "verdict": "echec",
+      "mesure": 0.197,
+      "seuil": 0.024,
+      "unite": "m",
+      "detail": "écart dernière/première image 197.2 mm, seuil 23.7 mm (1,5 × pas p95, plancher ½ px)"
+    },
+    {
+      "controle": "clip",
+      "clip": "relevement",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "relevement",
+      "verdict": "ok",
+      "mesure": 1.967,
+      "unite": "s",
+      "detail": "1.967 s"
+    },
+    {
+      "controle": "vitesse",
+      "clip": "relevement",
+      "verdict": "ok",
+      "mesure": 1.311,
+      "seuil": 2,
+      "unite": "×",
+      "detail": "clip calé sur la fenêtre de 90 ticks (TUNING:relevementTelegraph) ; bornes 0.5 à 2"
+    },
+    {
+      "controle": "clip",
+      "clip": "mort.debout",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "mort.debout",
+      "verdict": "ok",
+      "mesure": 3.5,
+      "unite": "s",
+      "detail": "3.5 s"
+    },
+    {
+      "controle": "interruption",
+      "clip": "attaque.marteau",
+      "verdict": "ok",
+      "mesure": 2,
+      "seuil": 2,
+      "unite": "images",
+      "detail": "coupé à 0.575 s, pose de reaction atteinte en 2 image(s) à 60 i/s"
+    },
+    {
+      "controle": "interruption",
+      "clip": "attaque.empoignade",
+      "verdict": "ok",
+      "mesure": 2,
+      "seuil": 2,
+      "unite": "images",
+      "detail": "coupé à 0.584 s, pose de reaction atteinte en 2 image(s) à 60 i/s"
+    },
+    {
+      "controle": "interruption",
+      "clip": "attaque.coup-de-tete",
+      "verdict": "ok",
+      "mesure": 2,
+      "seuil": 2,
+      "unite": "images",
+      "detail": "coupé à 0.3 s, pose de reaction atteinte en 2 image(s) à 60 i/s"
+    },
+    {
+      "controle": "gel",
+      "clip": "attaque.marteau",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.001,
+      "unite": "m",
+      "detail": "figé en plein fondu vers reaction (horloge du mélangeur gelée), déplacement maximal sur 600 images : 0.0 mm"
+    }
+  ],
+  "clips": [
+    {
+      "etat": "rituel.balance",
+      "dureeS": 3.967,
+      "recette": {
+        "name": "rituel.balance",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "coutureM": 0.256,
+      "tremblementMinPx": 4.474,
+      "glissementM": 0.026
+    },
+    {
+      "etat": "rituel.recoud",
+      "dureeS": 3.967,
+      "recette": {
+        "name": "rituel.recoud",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "coutureM": 0.427,
+      "tremblementMinPx": 14.844,
+      "glissementM": 0.025
+    },
+    {
+      "etat": "marche",
+      "dureeS": 5.5,
+      "recette": {
+        "name": "marche",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 5.197214512191044
+      },
+      "coutureM": 0,
+      "tremblementMinPx": 47.552,
+      "fouleeMps": 0.481
+    },
+    {
+      "etat": "attaque.marteau",
+      "dureeS": 2.967,
+      "recette": {
+        "name": "attaque.marteau",
+        "boucle": false,
+        "impactS": 1.15,
+        "startS": 0,
+        "rate": 1.2777777777777777
+      },
+      "impactMesureS": 1.15,
+      "glissementM": 0.21
+    },
+    {
+      "etat": "attaque.empoignade",
+      "dureeS": 2.967,
+      "recette": {
+        "name": "attaque.empoignade",
+        "boucle": false,
+        "impactS": 1.167,
+        "startS": 0,
+        "rate": 1.167
+      },
+      "impactMesureS": 1.167,
+      "glissementM": 0.077
+    },
+    {
+      "etat": "attaque.coup-de-tete",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "attaque.coup-de-tete",
+        "boucle": false,
+        "impactS": 0.6,
+        "startS": 0,
+        "rate": 1
+      },
+      "impactMesureS": 0.6
+    },
+    {
+      "etat": "reaction",
+      "dureeS": 1.167,
+      "recette": {
+        "name": "reaction",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "glissementM": 0.015,
+      "amorceS": 0.017
+    },
+    {
+      "etat": "vacille",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "vacille",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1.3111111323038738
+      }
+    },
+    {
+      "etat": "chute",
+      "dureeS": 2.5,
+      "recette": {
+        "name": "chute",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      }
+    },
+    {
+      "etat": "abattu.reptation",
+      "dureeS": 2.967,
+      "recette": {
+        "name": "abattu.reptation",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 3.119905247500758
+      },
+      "coutureM": 0.283,
+      "tremblementMinPx": 18.287,
+      "fouleeMps": 0.256
+    },
+    {
+      "etat": "abattu.torsion",
+      "dureeS": 3.967,
+      "recette": {
+        "name": "abattu.torsion",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "coutureM": 0.197,
+      "tremblementMinPx": 6.979
+    },
+    {
+      "etat": "relevement",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "relevement",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1.3111111323038738
+      }
+    },
+    {
+      "etat": "mort.debout",
+      "dureeS": 3.5,
+      "recette": {
+        "name": "mort.debout",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      }
+    }
+  ],
+  "recetteGlobale": {
+    "interruptionFadeS": 0.033,
+    "mort": "mixer.timeScale = 0 (horloge du mélangeur gelée)"
+  },
+  "bilan": {
+    "ok": 45,
+    "echec": 11,
+    "nonMesurable": 0,
+    "verdict": "refuse"
+  },
+  "glbSha256": "f7598dc32a550d36ce916cf01e7f69da5972e6dc62ddbb772a50d9d0733e19d5"
+}

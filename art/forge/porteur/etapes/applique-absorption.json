@@ -1,0 +1,16 @@
+{
+  "key": "applique-absorption",
+  "fingerprint": "343fa073dab9e84721f75bc721a90878e1abdcb02c2918adf42ae1f1d4051fee",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e5e-ff25-7277-9720-c9407704e044",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/porteur/files/applique-absorption.glb",
+      "sha256": "5895d88e9e9694ad8c06d085cfecfcf71a533735bcd14235949796c0e6fc93cd"
+    }
+  },
+  "updatedAt": "2026-10-12T04:29:12.017Z"
+}

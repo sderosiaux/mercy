@@ -1,0 +1,16 @@
+{
+  "key": "applique-attaque.coup-de-tete",
+  "fingerprint": "bdeea21b249afdb14ca36eb063bafc23d1a76ac2647f16f89a61a073c82a38e0",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e58-d902-7033-b6c6-1a0fc0bee1ee",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/recousu/files/applique-attaque.coup-de-tete.glb",
+      "sha256": "1ed282a5253e040455d8d00c41e2f110f869a0968514d62526078b867d9794eb"
+    }
+  },
+  "updatedAt": "2026-10-12T04:22:26.676Z"
+}

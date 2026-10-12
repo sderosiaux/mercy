@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-invective",
+  "fingerprint": "1c688a73ba397bfb2fcc8452d1b650fcc1eedac939cd7f45fc7869d09f66435d",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e58-9600-759a-aab2-4a04abb7dc15",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:22:17.069Z"
+}

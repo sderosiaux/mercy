@@ -1,0 +1,16 @@
+{
+  "key": "validation",
+  "fingerprint": "5a16125ed016436529fba6d7e14e284f0c2da957617a0e0e82ba62f73cc19ee7",
+  "status": "reussi",
+  "credits": 0,
+  "outputs": {
+    "rapport": {
+      "file": "art/forge/confesseur/validation.json",
+      "sha256": "3a4ac9ed0b629b1629a10b0c20a1262525116e2ba2b07ea67ccc26bec672345d"
+    }
+  },
+  "meta": {
+    "verdict": "refuse"
+  },
+  "updatedAt": "2026-10-12T04:35:59.455Z"
+}

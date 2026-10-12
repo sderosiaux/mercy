@@ -1,0 +1,16 @@
+{
+  "key": "anim-bib-0",
+  "fingerprint": "f8b908e0431ef08b5b0016e7ef916d0414be7bfa242b1016b2e4baecf660ed65",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e56-652a-72f3-9376-b5e14ab8a5b7",
+  "estimatedCredits": 30,
+  "credits": 30,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/bourreau/files/anim-bib-0.glb",
+      "sha256": "3c405d7326f929bf32ba282851affbb90a8d762111dff983be53ff29c33b62ef"
+    }
+  },
+  "updatedAt": "2026-10-12T04:20:16.002Z"
+}

@@ -1,0 +1,16 @@
+{
+  "key": "applique-abattu.reptation",
+  "fingerprint": "0dd05659593affa2b54ca294496372e8ebf2f32100ed671a363b7c5a35de2793",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e5f-2e0a-747b-a1c5-c6d63b495617",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/porteur/files/applique-abattu.reptation.glb",
+      "sha256": "b6b46dc7e96a1dc5325f06e50a72e7059e50f49bb7b999b5d2b8ec81eb99e2a9"
+    }
+  },
+  "updatedAt": "2026-10-12T04:29:21.884Z"
+}

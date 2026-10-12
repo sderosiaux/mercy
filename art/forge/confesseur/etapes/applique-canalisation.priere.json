@@ -1,0 +1,16 @@
+{
+  "key": "applique-canalisation.priere",
+  "fingerprint": "53af7c4e938f6bd94a8578c23a027a9010011c261cc496252861857a4fb3975c",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e64-b78d-7373-b49d-bfcfd4d6007a",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/confesseur/files/applique-canalisation.priere.glb",
+      "sha256": "aca4807a559343e246115af1269dcf105f0c09044b96107afa25eb912dfcdaec"
+    }
+  },
+  "updatedAt": "2026-10-12T04:35:27.091Z"
+}

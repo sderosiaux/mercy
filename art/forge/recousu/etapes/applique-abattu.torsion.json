@@ -1,0 +1,16 @@
+{
+  "key": "applique-abattu.torsion",
+  "fingerprint": "55418193f12bd989894b07472f600571e24ceea38ae0f1b588cfd14007ff0d45",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e5a-030d-76ed-8593-34f3681e9f0e",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/recousu/files/applique-abattu.torsion.glb",
+      "sha256": "93d3241e06e46e43331688dd7c5c8b00f1c588004facc79aa0013443caba7bb8"
+    }
+  },
+  "updatedAt": "2026-10-12T04:23:45.713Z"
+}

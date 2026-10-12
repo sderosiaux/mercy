@@ -1,0 +1,16 @@
+{
+  "key": "applique-attaque.baton",
+  "fingerprint": "8b286edb413b52d5c6383bf8e73153cc36f43beb3993167890924dbdfa6c361f",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e64-64f6-7246-888f-a25b37b6bec1",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/confesseur/files/applique-attaque.baton.glb",
+      "sha256": "aa5b2092d208a70f0b6a3ece1053ac26effc1cb2113a542403d8a201b5fe9270"
+    }
+  },
+  "updatedAt": "2026-10-12T04:35:02.704Z"
+}

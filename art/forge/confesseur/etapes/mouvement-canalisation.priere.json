@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-canalisation.priere",
+  "fingerprint": "c5468237d342e89dadd72c023e2416de926f6424eaecefd392c793c0c143bbb5",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e58-f422-725d-a38e-0ce811bc83fe",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:22:35.262Z"
+}

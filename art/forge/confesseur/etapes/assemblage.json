@@ -1,0 +1,13 @@
+{
+  "key": "assemblage",
+  "fingerprint": "2dbf9a122d5cda632c66332a09a5942ea4aa1df0bf27d7e4c88177b266bf37ed",
+  "status": "reussi",
+  "credits": 0,
+  "outputs": {
+    "glb": {
+      "file": "public/models/confesseur.glb",
+      "sha256": "8f8c9c78ace25d88c2755b8857b95d1ca1993dcbbec441f6c121571c4dbf93b2"
+    }
+  },
+  "updatedAt": "2026-10-12T04:35:59.358Z"
+}

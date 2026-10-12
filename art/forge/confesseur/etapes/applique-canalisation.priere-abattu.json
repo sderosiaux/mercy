@@ -1,0 +1,16 @@
+{
+  "key": "applique-canalisation.priere-abattu",
+  "fingerprint": "234e732b2d75e9a8ced058c36a2a462cb6bf8a8d04c4a45a9c7dcfe81c73dc32",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e64-e72a-77d0-92f8-ad1c5acb3117",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/confesseur/files/applique-canalisation.priere-abattu.glb",
+      "sha256": "1576498dd53b9fafefcf8f8f32985b665b0f247b51320bf5e4ccaf2839774dd4"
+    }
+  },
+  "updatedAt": "2026-10-12T04:35:35.924Z"
+}

@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-rituel.recoud",
+  "fingerprint": "b1ca84d8d396f834d11ffeb59a766899755937a83ae9709cb50114dbe2fd829a",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e57-5050-70a1-af7e-5a811358e01f",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:20:53.076Z"
+}

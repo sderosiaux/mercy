@@ -1,0 +1,556 @@
+{
+  "id": "chirurgien",
+  "validateur": 1,
+  "echelle": {
+    "hauteurModele": 2.05,
+    "hauteurFiche": 2.05,
+    "facteur": 1
+  },
+  "triangles": 10485,
+  "textures": [
+    {
+      "index": 0,
+      "name": "Material_0_baseColor",
+      "height": 2048,
+      "width": 2048,
+      "mime": "image/jpeg"
+    }
+  ],
+  "os": 24,
+  "controles": [
+    {
+      "controle": "squelette",
+      "verdict": "ok",
+      "mesure": 24,
+      "unite": "os",
+      "detail": "24 os, 1 maillage(s) skinné(s)"
+    },
+    {
+      "controle": "pistes",
+      "verdict": "ok",
+      "mesure": 0,
+      "detail": "toutes les pistes visent un nœud du modèle"
+    },
+    {
+      "controle": "triangles",
+      "verdict": "ok",
+      "mesure": 10485,
+      "seuil": 10500,
+      "detail": "10485 triangles pour 10500"
+    },
+    {
+      "controle": "textures",
+      "verdict": "ok",
+      "mesure": 2048,
+      "seuil": 2048,
+      "unite": "px",
+      "detail": "1 texture(s), plus grand côté 2048 px"
+    },
+    {
+      "controle": "clip",
+      "clip": "rituel.soin",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "rituel.soin",
+      "verdict": "ok",
+      "mesure": 3.967,
+      "unite": "s",
+      "detail": "3.967 s"
+    },
+    {
+      "controle": "boucle",
+      "clip": "rituel.soin",
+      "verdict": "echec",
+      "mesure": 0.282,
+      "seuil": 0.024,
+      "unite": "m",
+      "detail": "écart dernière/première image 281.6 mm, seuil 23.9 mm (1,5 × pas p95, plancher ½ px)"
+    },
+    {
+      "controle": "pieds",
+      "clip": "rituel.soin",
+      "verdict": "echec",
+      "mesure": 0.056,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 56.4 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "clip",
+      "clip": "course",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "course",
+      "verdict": "ok",
+      "mesure": 1.967,
+      "unite": "s",
+      "detail": "1.967 s"
+    },
+    {
+      "controle": "boucle",
+      "clip": "course",
+      "verdict": "echec",
+      "mesure": 0.45,
+      "seuil": 0.121,
+      "unite": "m",
+      "detail": "écart dernière/première image 450.1 mm, seuil 121.2 mm (1,5 × pas p95, plancher ½ px)"
+    },
+    {
+      "controle": "sur-place",
+      "clip": "course",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.1,
+      "unite": "m/s",
+      "detail": "dérive du bassin 0 m/s : la simulation déplace déjà la créature"
+    },
+    {
+      "controle": "vitesse",
+      "clip": "course",
+      "verdict": "ok",
+      "mesure": 1.757,
+      "seuil": 2,
+      "unite": "×",
+      "detail": "foulée du clip 2.276 m/s calée sur 4 m/s (chirurgien.speed) ; bornes 0.5 à 2"
+    },
+    {
+      "controle": "clip",
+      "clip": "attaque.scalpel",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "attaque.scalpel",
+      "verdict": "ok",
+      "mesure": 1.967,
+      "unite": "s",
+      "detail": "1.967 s"
+    },
+    {
+      "controle": "impact",
+      "clip": "attaque.scalpel",
+      "verdict": "ok",
+      "mesure": 0.35,
+      "unite": "s",
+      "detail": "repère d'impact à 0.35 s dans [0 ; 1.967]"
+    },
+    {
+      "controle": "pieds",
+      "clip": "attaque.scalpel",
+      "verdict": "echec",
+      "mesure": 0.12,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 120.0 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "vitesse",
+      "clip": "attaque.scalpel",
+      "verdict": "ok",
+      "mesure": 0.875,
+      "seuil": 2,
+      "unite": "×",
+      "detail": "impact du clip à 0.35 s calé sur le tick actif (24 ticks, sim:chirurgien.scalpel) ; bornes 0.5 à 2"
+    },
+    {
+      "controle": "clip",
+      "clip": "canalisation.recoudre",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "canalisation.recoudre",
+      "verdict": "ok",
+      "mesure": 2.967,
+      "unite": "s",
+      "detail": "2.967 s"
+    },
+    {
+      "controle": "boucle",
+      "clip": "canalisation.recoudre",
+      "verdict": "echec",
+      "mesure": 0.235,
+      "seuil": 0.04,
+      "unite": "m",
+      "detail": "écart dernière/première image 235.3 mm, seuil 39.6 mm (1,5 × pas p95, plancher ½ px)"
+    },
+    {
+      "controle": "pieds",
+      "clip": "canalisation.recoudre",
+      "verdict": "echec",
+      "mesure": 0.02,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 19.7 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "clip",
+      "clip": "canalisation.assembler",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "canalisation.assembler",
+      "verdict": "ok",
+      "mesure": 2.967,
+      "unite": "s",
+      "detail": "2.967 s"
+    },
+    {
+      "controle": "boucle",
+      "clip": "canalisation.assembler",
+      "verdict": "echec",
+      "mesure": 0.461,
+      "seuil": 0.051,
+      "unite": "m",
+      "detail": "écart dernière/première image 461.3 mm, seuil 51.4 mm (1,5 × pas p95, plancher ½ px)"
+    },
+    {
+      "controle": "pieds",
+      "clip": "canalisation.assembler",
+      "verdict": "echec",
+      "mesure": 0.017,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 17.4 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "clip",
+      "clip": "reaction",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "reaction",
+      "verdict": "ok",
+      "mesure": 5.6,
+      "unite": "s",
+      "detail": "5.6 s"
+    },
+    {
+      "controle": "pieds",
+      "clip": "reaction",
+      "verdict": "echec",
+      "mesure": 0.236,
+      "seuil": 0.017,
+      "unite": "m",
+      "detail": "glissement d'un pied en appui 236.3 mm, seuil 16.7 mm (2 px)"
+    },
+    {
+      "controle": "clip",
+      "clip": "chute",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "chute",
+      "verdict": "ok",
+      "mesure": 2.267,
+      "unite": "s",
+      "detail": "2.267 s"
+    },
+    {
+      "controle": "clip",
+      "clip": "abattu.reptation",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "abattu.reptation",
+      "verdict": "ok",
+      "mesure": 2.967,
+      "unite": "s",
+      "detail": "2.967 s"
+    },
+    {
+      "controle": "boucle",
+      "clip": "abattu.reptation",
+      "verdict": "echec",
+      "mesure": 0.485,
+      "seuil": 0.068,
+      "unite": "m",
+      "detail": "écart dernière/première image 485.2 mm, seuil 67.6 mm (1,5 × pas p95, plancher ½ px)"
+    },
+    {
+      "controle": "sur-place",
+      "clip": "abattu.reptation",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.1,
+      "unite": "m/s",
+      "detail": "dérive du bassin 0 m/s : la simulation déplace déjà la créature"
+    },
+    {
+      "controle": "vitesse",
+      "clip": "abattu.reptation",
+      "verdict": "ok",
+      "mesure": 1.134,
+      "seuil": 2,
+      "unite": "×",
+      "detail": "foulée du clip 0.705 m/s calée sur 0.8 m/s (abattuCrawl) ; bornes 0.5 à 2"
+    },
+    {
+      "controle": "clip",
+      "clip": "abattu.torsion",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "abattu.torsion",
+      "verdict": "ok",
+      "mesure": 3.967,
+      "unite": "s",
+      "detail": "3.967 s"
+    },
+    {
+      "controle": "boucle",
+      "clip": "abattu.torsion",
+      "verdict": "echec",
+      "mesure": 0.056,
+      "seuil": 0.004,
+      "unite": "m",
+      "detail": "écart dernière/première image 56.2 mm, seuil 4.2 mm (1,5 × pas p95, plancher ½ px)"
+    },
+    {
+      "controle": "clip",
+      "clip": "relevement",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "relevement",
+      "verdict": "ok",
+      "mesure": 1.967,
+      "unite": "s",
+      "detail": "1.967 s"
+    },
+    {
+      "controle": "vitesse",
+      "clip": "relevement",
+      "verdict": "ok",
+      "mesure": 1.311,
+      "seuil": 2,
+      "unite": "×",
+      "detail": "clip calé sur la fenêtre de 90 ticks (TUNING:relevementTelegraph) ; bornes 0.5 à 2"
+    },
+    {
+      "controle": "clip",
+      "clip": "mort.debout",
+      "verdict": "ok",
+      "detail": "présent et étiqueté"
+    },
+    {
+      "controle": "duree",
+      "clip": "mort.debout",
+      "verdict": "ok",
+      "mesure": 2.167,
+      "unite": "s",
+      "detail": "2.167 s"
+    },
+    {
+      "controle": "interruption",
+      "clip": "attaque.scalpel",
+      "verdict": "ok",
+      "mesure": 2,
+      "seuil": 2,
+      "unite": "images",
+      "detail": "coupé à 0.175 s, pose de reaction atteinte en 2 image(s) à 60 i/s"
+    },
+    {
+      "controle": "interruption",
+      "clip": "canalisation.recoudre",
+      "verdict": "ok",
+      "mesure": 2,
+      "seuil": 2,
+      "unite": "images",
+      "detail": "coupé à 1.483 s, pose de reaction atteinte en 2 image(s) à 60 i/s"
+    },
+    {
+      "controle": "interruption",
+      "clip": "canalisation.assembler",
+      "verdict": "ok",
+      "mesure": 2,
+      "seuil": 2,
+      "unite": "images",
+      "detail": "coupé à 1.483 s, pose de reaction atteinte en 2 image(s) à 60 i/s"
+    },
+    {
+      "controle": "gel",
+      "clip": "attaque.scalpel",
+      "verdict": "ok",
+      "mesure": 0,
+      "seuil": 0.001,
+      "unite": "m",
+      "detail": "figé en plein fondu vers reaction (horloge du mélangeur gelée), déplacement maximal sur 600 images : 0.0 mm"
+    }
+  ],
+  "clips": [
+    {
+      "etat": "rituel.soin",
+      "dureeS": 3.967,
+      "recette": {
+        "name": "rituel.soin",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "coutureM": 0.282,
+      "tremblementMinPx": 3.653,
+      "glissementM": 0.056
+    },
+    {
+      "etat": "course",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "course",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1.757412389787317
+      },
+      "coutureM": 0.45,
+      "tremblementMinPx": 64.741,
+      "fouleeMps": 2.276
+    },
+    {
+      "etat": "attaque.scalpel",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "attaque.scalpel",
+        "boucle": false,
+        "impactS": 0.35,
+        "startS": 0,
+        "rate": 0.8749999999999999
+      },
+      "impactMesureS": 0.35,
+      "glissementM": 0.12
+    },
+    {
+      "etat": "canalisation.recoudre",
+      "dureeS": 2.967,
+      "recette": {
+        "name": "canalisation.recoudre",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "coutureM": 0.235,
+      "tremblementMinPx": 8.209,
+      "glissementM": 0.02
+    },
+    {
+      "etat": "canalisation.assembler",
+      "dureeS": 2.967,
+      "recette": {
+        "name": "canalisation.assembler",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "coutureM": 0.461,
+      "tremblementMinPx": 6.846,
+      "glissementM": 0.017
+    },
+    {
+      "etat": "reaction",
+      "dureeS": 5.6,
+      "recette": {
+        "name": "reaction",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "glissementM": 0.236,
+      "amorceS": 0.033
+    },
+    {
+      "etat": "chute",
+      "dureeS": 2.267,
+      "recette": {
+        "name": "chute",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      }
+    },
+    {
+      "etat": "abattu.reptation",
+      "dureeS": 2.967,
+      "recette": {
+        "name": "abattu.reptation",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1.1344428405618447
+      },
+      "coutureM": 0.485,
+      "tremblementMinPx": 28.392,
+      "fouleeMps": 0.705
+    },
+    {
+      "etat": "abattu.torsion",
+      "dureeS": 3.967,
+      "recette": {
+        "name": "abattu.torsion",
+        "boucle": true,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      },
+      "coutureM": 0.056,
+      "tremblementMinPx": 0.797
+    },
+    {
+      "etat": "relevement",
+      "dureeS": 1.967,
+      "recette": {
+        "name": "relevement",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1.3111111323038738
+      }
+    },
+    {
+      "etat": "mort.debout",
+      "dureeS": 2.167,
+      "recette": {
+        "name": "mort.debout",
+        "boucle": false,
+        "impactS": null,
+        "startS": 0,
+        "rate": 1
+      }
+    }
+  ],
+  "recetteGlobale": {
+    "interruptionFadeS": 0.033,
+    "mort": "mixer.timeScale = 0 (horloge du mélangeur gelée)"
+  },
+  "bilan": {
+    "ok": 37,
+    "echec": 11,
+    "nonMesurable": 0,
+    "verdict": "refuse"
+  },
+  "glbSha256": "6469d884950bc2ff7e90bb9fe61e5dcbee3e54b1d027ac57e91697948962d47f"
+}

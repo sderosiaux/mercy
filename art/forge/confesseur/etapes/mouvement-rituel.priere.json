@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-rituel.priere",
+  "fingerprint": "1f7697e808dfed1bf37f58146df3e8137771f0e5cd7e702f008a25abdf535c8d",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e56-ae49-74f0-b75f-584bd958ee2e",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:20:28.338Z"
+}

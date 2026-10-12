@@ -1,0 +1,16 @@
+{
+  "key": "applique-canalisation.recoudre",
+  "fingerprint": "5c97f5232461256ae0e451729b01fabae3216f7396155fcdb112144b71b2678c",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e69-41f6-73bc-98ab-927cc284fa31",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/chirurgien/files/applique-canalisation.recoudre.glb",
+      "sha256": "8b62aa93f80014fa093d2c0a233672e8104913d906d234bcc35ae1d171ca77c6"
+    }
+  },
+  "updatedAt": "2026-10-12T04:40:21.299Z"
+}

@@ -1,0 +1,16 @@
+{
+  "key": "applique-sentence.contondant.grande",
+  "fingerprint": "fe6b75e04f39935d0683b4738fbfc264c0353c8bef3d5f6094f0e9feb7a29e85",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e58-986e-7276-810f-5a9b595fa063",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/bourreau/files/applique-sentence.contondant.grande.glb",
+      "sha256": "3b31894a0e8b84d6c054188f23e38b1cdcba0877a52636960715accec69e6627"
+    }
+  },
+  "updatedAt": "2026-10-12T04:22:09.704Z"
+}

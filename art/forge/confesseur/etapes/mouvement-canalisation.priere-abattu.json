@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-canalisation.priere-abattu",
+  "fingerprint": "adf92d8346b6600734d7dc07ffe41dc94bb50f03484d73133f1fe88578fe1ee3",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e59-51e7-7670-9028-d6a699c5ed38",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:23:05.209Z"
+}

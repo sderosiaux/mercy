@@ -1,0 +1,16 @@
+{
+  "key": "applique-abattu.torsion",
+  "fingerprint": "cdee7461f65ce99ec17e5b051e1fb6556aeccca28a44a9d2496e1637818534f0",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e69-c401-710f-a28d-c950d9b9b13b",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/chirurgien/files/applique-abattu.torsion.glb",
+      "sha256": "3d215ecda0a47450970a591352728c36ebd76e0319ec0923bc37777b23cdc267"
+    }
+  },
+  "updatedAt": "2026-10-12T04:40:58.590Z"
+}

@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-sentence.tranchant.grande",
+  "fingerprint": "d2e3a76e3e5d9e057d44e6b0adb7e71d93db59c7c5ed65b5330b2376d7bd135e",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e57-ad53-716e-869d-744bdb3cf1ad",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:21:11.673Z"
+}

@@ -1,0 +1,13 @@
+{
+  "key": "assemblage",
+  "fingerprint": "56ac7ff1174eba13d811267496986e10938c8bbb313e18dd54fe00d3b2a526b8",
+  "status": "reussi",
+  "credits": 0,
+  "outputs": {
+    "glb": {
+      "file": "public/models/recousu.glb",
+      "sha256": "f7598dc32a550d36ce916cf01e7f69da5972e6dc62ddbb772a50d9d0733e19d5"
+    }
+  },
+  "updatedAt": "2026-10-12T04:24:04.495Z"
+}

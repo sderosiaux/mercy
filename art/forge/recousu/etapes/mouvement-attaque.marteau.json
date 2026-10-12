@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-attaque.marteau",
+  "fingerprint": "b04468bc447ac693297e7b69cf92607ae418ff160f5d79df631ad456141e55f6",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e57-dc33-73c0-aec8-df816f5d9c11",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:21:34.150Z"
+}

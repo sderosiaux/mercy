@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-rituel.benediction",
+  "fingerprint": "93a5317f53f791c917623597ca3072438d5287593ccd2c86d86d45a0521f77e2",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e57-62ad-740e-be1e-f63bd8a5a7e6",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:21:03.342Z"
+}

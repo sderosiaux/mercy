@@ -1,16 +1,16 @@
 {
   "key": "modele",
-  "fingerprint": "6cc52df27792929d29ef7dac4f58093b27fda557ce232b223474ef2f3ca65a6c",
+  "fingerprint": "5d24a24170ca5ddd434eee0cbbdbb0f387d82801eeca62f9356c4f5d073a4dcf",
   "status": "reussi",
   "endpoint": "multi-image-to-3d",
-  "taskId": "01a12e4a-a054-767d-9c5f-0dfe74f0cdbd",
+  "taskId": "01a12e5f-9755-7075-b023-c9b197191497",
   "estimatedCredits": 30,
   "credits": 30,
   "outputs": {
     "glb": {
       "file": "art/forge/.cache/confesseur/files/modele.glb",
-      "sha256": "15adb02a8c5f7c919a4cdafd64155b2ab610bf012e216a4f414c2f56af85b4ca"
+      "sha256": "7c60c7a0f2023227c1c251771c247c8a2ab6e17bec2471996e72356894ff348c"
     }
   },
-  "updatedAt": "2026-10-12T04:10:25.082Z"
+  "updatedAt": "2026-10-12T04:33:33.309Z"
 }
