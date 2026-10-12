@@ -1,0 +1,352 @@
+// B5.O11 : mesures du contenu de chaque fichier tel que joué (tampon décodé, offset et points de boucle du
+// manifeste). Fonctions pures sur des Float32Array : le navigateur (I9, analyseBank) et le script de
+// génération les appellent sur les mêmes définitions.
+import { QUANTUM, SILENCE_DB } from './constants'
+import { IMPACT_ROLES, type ManifestEntry, type Role, SPATIAL_ROLES } from './manifest'
+
+// 'c-fixe' n'est pas un critère du contrat : même seuil que (c) (30 dB, 20 ms) mais rapporté au M_f du fichier
+// au lieu de la médiane glissante. Une décroissance lente vers le silence passe (c) (la médiane suit) ; elle ne
+// passe pas 'c-fixe'. Rapporté à part, jamais mêlé au verdict de O11.
+export type Criterion =
+  | 'a'
+  | 'b'
+  | 'c'
+  | 'c-fixe'
+  | 'd-saut'
+  | 'd-niveau'
+  | 'e'
+  | 'f'
+  | 'g'
+  | 'empreinte'
+  | 'decodage'
+  | 'nappe-extinction'
+
+export interface O11Row {
+  readonly file: string
+  readonly role: Role
+  readonly criterion: Criterion
+  readonly measure: string
+  readonly value: number
+  readonly unit: string
+  readonly threshold: string
+  readonly pass: boolean
+}
+
+export interface FileShape {
+  readonly role: Role
+  readonly loop: boolean
+  readonly loopStart: number
+  readonly loopEnd: number
+  readonly startOffset: number
+}
+
+const db = (meanSquare: number): number =>
+  meanSquare > 0 ? 10 * Math.log10(meanSquare) : Number.NEGATIVE_INFINITY
+
+export const median = (xs: readonly number[]): number => {
+  if (xs.length === 0) return Number.NaN
+  const s = [...xs].sort((a, b) => a - b)
+  const m = s.length >> 1
+  return s.length % 2 ? (s[m] as number) : ((s[m - 1] as number) + (s[m] as number)) / 2
+}
+
+// Niveau RMS (dBFS) de chaque quantum d'une suite d'échantillons définie par un index → position dans le tampon.
+// Énergie moyenne sur tous les canaux : c'est ce que rapporte aussi le mesureur du banc.
+export const quantumLevels = (
+  channels: readonly Float32Array[],
+  length: number,
+  at: (i: number) => number,
+): Float32Array => {
+  const n = Math.ceil(length / QUANTUM)
+  const out = new Float32Array(n)
+  for (let q = 0; q < n; q++) {
+    let s = 0
+    for (let k = 0; k < QUANTUM; k++) {
+      const i = q * QUANTUM + k
+      if (i >= length) break // au-delà de la fin : zéros
+      const p = at(i)
+      for (const ch of channels) {
+        const v = ch[p] ?? 0
+        s += v * v
+      }
+    }
+    out[q] = db(s / (QUANTUM * channels.length))
+  }
+  return out
+}
+
+export const nonSilentMedian = (levels: ArrayLike<number>): number => {
+  const xs: number[] = []
+  for (let i = 0; i < levels.length; i++) if ((levels[i] as number) > SILENCE_DB) xs.push(levels[i] as number)
+  return median(xs)
+}
+
+// Lecture sans boucle depuis l'offset de départ.
+export const playedOnce = (channels: readonly Float32Array[], startOffset: number): Float32Array => {
+  const len = Math.max(0, (channels[0]?.length ?? 0) - startOffset)
+  return quantumLevels(channels, len, (i) => startOffset + i)
+}
+
+// Lecture en boucle, `turns` tours : de l'offset à loopEnd, puis loopStart → loopEnd.
+export const playedLooped = (
+  channels: readonly Float32Array[],
+  s: Pick<FileShape, 'loopStart' | 'loopEnd' | 'startOffset'>,
+  turns: number,
+): Float32Array => {
+  const head = s.loopEnd - s.startOffset
+  const period = s.loopEnd - s.loopStart
+  const len = head + (turns - 1) * period
+  return quantumLevels(channels, len, (i) =>
+    i < head ? s.startOffset + i : s.loopStart + ((i - head) % period),
+  )
+}
+
+// B5.O6 (c) appliqué au fichier : passages d'au moins 20 ms (8 quanta) à M₂₀₀ − 30 dB ou moins.
+// Passages d'au moins 8 quanta à `ref` − 30 dB ou moins, référence fixe.
+export const fixedGaps = (levels: ArrayLike<number>, ref: number): { gaps: number; worstRunQ: number } => {
+  let gaps = 0
+  let run = 0
+  let worst = 0
+  for (let q = 0; q < levels.length; q++) {
+    if ((levels[q] as number) <= ref - 30) {
+      run++
+      worst = Math.max(worst, run)
+      if (run === 8) gaps++
+    } else run = 0
+  }
+  return { gaps, worstRunQ: worst }
+}
+
+export const continuityGaps = (levels: ArrayLike<number>): { gaps: number; worstRunQ: number } => {
+  const win = Math.round(0.2 / (QUANTUM / 48_000)) // 75 quanta
+  const minRun = 8
+  let gaps = 0
+  let run = 0
+  let worst = 0
+  for (let q = win; q < levels.length; q++) {
+    const prev: number[] = []
+    for (let k = q - win; k < q; k++) prev.push(levels[k] as number)
+    const m200 = median(prev)
+    if ((levels[q] as number) <= m200 - 30) {
+      run++
+      worst = Math.max(worst, run)
+      if (run === minRun) gaps++
+    } else run = 0
+  }
+  return { gaps, worstRunQ: worst }
+}
+
+const percentile = (sorted: Float32Array, p: number): number =>
+  sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))] as number
+
+const pearson = (a: Float32Array, b: Float32Array): number => {
+  const n = Math.min(a.length, b.length)
+  let ma = 0
+  let mb = 0
+  for (let i = 0; i < n; i++) {
+    ma += a[i] as number
+    mb += b[i] as number
+  }
+  ma /= n
+  mb /= n
+  let sab = 0
+  let saa = 0
+  let sbb = 0
+  for (let i = 0; i < n; i++) {
+    const x = (a[i] as number) - ma
+    const y = (b[i] as number) - mb
+    sab += x * y
+    saa += x * x
+    sbb += y * y
+  }
+  return sab / Math.sqrt(saa * sbb + 1e-30)
+}
+
+const rmsDb = (channels: readonly Float32Array[], from: number, to: number): number => {
+  let s = 0
+  let n = 0
+  for (const ch of channels) {
+    for (let i = Math.max(0, from); i < Math.min(ch.length, to); i++) {
+      const v = ch[i] as number
+      s += v * v
+    }
+    n += to - from
+  }
+  return db(s / Math.max(1, n))
+}
+
+const MS_PER_Q = (QUANTUM / 48_000) * 1000
+
+export interface FileAnalysis {
+  readonly rows: readonly O11Row[]
+  readonly mf: number // médiane des quanta non silencieux du fichier joué une fois
+}
+
+export const analyseFile = (
+  id: string,
+  shape: FileShape,
+  channels: readonly Float32Array[],
+  sampleRate: number,
+): FileAnalysis => {
+  const rows: O11Row[] = []
+  const add = (r: Omit<O11Row, 'file' | 'role'>) => rows.push({ file: id, role: shape.role, ...r })
+  const once = playedOnce(channels, shape.startOffset)
+  const mf = nonSilentMedian(once)
+  const role = shape.role
+
+  if (role === 'halètement' || role === 'cri' || role === 'inspiration' || role === 'cri-etouffe') {
+    const q = once.findIndex((l) => l >= mf - 20)
+    const ms = q < 0 ? Number.POSITIVE_INFINITY : q * MS_PER_Q
+    add({
+      criterion: 'a',
+      measure: 'attaque depuis le départ',
+      value: ms,
+      unit: 'ms',
+      threshold: '≤ 17',
+      pass: ms <= 17,
+    })
+  }
+  if (role === 'halètement' || role === 'inspiration') {
+    let first = -1
+    let last = -1
+    once.forEach((l, i) => {
+      if (l >= mf - 30) {
+        if (first < 0) first = i
+        last = i
+      }
+    })
+    const ms = first < 0 ? 0 : (last - first + 1) * MS_PER_Q
+    const min = role === 'halètement' ? 500 : 1500
+    add({
+      criterion: 'b',
+      measure: 'couverture sans boucle',
+      value: ms,
+      unit: 'ms',
+      threshold: `≥ ${min}`,
+      pass: ms >= min,
+    })
+  }
+  if (role === 'cri' || role === 'inspiration' || role === 'nappe' || shape.loop) {
+    const levels = shape.loop ? playedLooped(channels, shape, 3) : once
+    const { gaps, worstRunQ } = continuityGaps(levels)
+    add({
+      criterion: 'c',
+      measure: `passages ≥ 20 ms à M₂₀₀ − 30 dB (${shape.loop ? '3 tours' : 'une lecture'}, plus long trou ${worstRunQ} q)`,
+      value: gaps,
+      unit: 'passages',
+      threshold: '= 0',
+      pass: gaps === 0,
+    })
+    const fx = fixedGaps(levels, mf)
+    add({
+      criterion: 'c-fixe',
+      measure: `hors contrat : passages ≥ 20 ms à M_f − 30 dB (plus long trou ${fx.worstRunQ} q)`,
+      value: fx.gaps,
+      unit: 'passages',
+      threshold: '= 0',
+      pass: fx.gaps === 0,
+    })
+  }
+  if (shape.loop) {
+    let worst = 0
+    let worstRatio = 0
+    for (const ch of channels) {
+      const steps = new Float32Array(ch.length - 1)
+      for (let i = 1; i < ch.length; i++) steps[i - 1] = Math.abs((ch[i] as number) - (ch[i - 1] as number))
+      steps.sort()
+      const p999 = percentile(steps, 0.999)
+      const jump = Math.abs((ch[shape.loopStart] as number) - (ch[shape.loopEnd - 1] as number))
+      worst = Math.max(worst, jump)
+      worstRatio = Math.max(worstRatio, jump / (p999 || 1e-12))
+    }
+    add({
+      criterion: 'd-saut',
+      measure: `saut à la jonction / 99,9e centile des pas (saut max ${worst.toExponential(2)})`,
+      value: worstRatio,
+      unit: 'ratio',
+      threshold: '≤ 1',
+      pass: worstRatio <= 1,
+    })
+    const w = Math.round(0.05 * sampleRate)
+    const before = rmsDb(channels, shape.loopEnd - w, shape.loopEnd)
+    const after = rmsDb(channels, shape.loopStart, shape.loopStart + w)
+    const diff = Math.abs(before - after)
+    add({
+      criterion: 'd-niveau',
+      measure: 'écart de niveau 50 ms avant / après la jonction',
+      value: diff,
+      unit: 'dB',
+      threshold: '≤ 3',
+      pass: diff <= 3,
+    })
+  }
+  if (SPATIAL_ROLES.has(role)) {
+    if (channels.length === 1) {
+      add({
+        criterion: 'e',
+        measure: 'canaux',
+        value: 1,
+        unit: 'canal',
+        threshold: '1 canal ou r ≥ 0,99',
+        pass: true,
+      })
+    } else {
+      const r = pearson(channels[0] as Float32Array, channels[1] as Float32Array)
+      add({
+        criterion: 'e',
+        measure: 'corrélation gauche-droite',
+        value: r,
+        unit: 'r',
+        threshold: '≥ 0,99',
+        pass: r >= 0.99,
+      })
+    }
+  }
+  if (IMPACT_ROLES.has(role)) {
+    let pq = 0
+    once.forEach((l, i) => {
+      if (l > (once[pq] as number)) pq = i
+    })
+    const peakStart = shape.startOffset + pq * QUANTUM
+    const from = peakStart + Math.round(0.1 * sampleRate)
+    const to = peakStart + Math.round(0.4 * sampleRate)
+    // Au-delà de la fin du fichier, le lecteur ne joue rien : zéros (rmsDb divise par la fenêtre entière).
+    const tail = rmsDb(channels, from, to)
+    const below = (once[pq] as number) - tail
+    add({
+      criterion: 'f',
+      measure: 'queue [pic + 100 ms ; pic + 400 ms] sous le quantum de pic',
+      value: below,
+      unit: 'dB',
+      threshold: '≥ 30',
+      pass: below >= 30,
+    })
+  }
+  return { rows, mf }
+}
+
+// B5.O11 (g) : écart du M_f de chaque cri à la médiane des M_f des cris.
+export const cryLevelRows = (mfs: readonly { id: string; mf: number }[]): O11Row[] => {
+  const m = median(mfs.map((x) => x.mf))
+  return mfs.map(({ id, mf }) => {
+    const d = mf - m
+    return {
+      file: id,
+      role: 'cri' as const,
+      criterion: 'g' as const,
+      measure: `M_f ${mf.toFixed(2)} dBFS − médiane des cris ${m.toFixed(2)} dBFS`,
+      value: d,
+      unit: 'dB',
+      threshold: '±3',
+      pass: Math.abs(d) <= 3,
+    }
+  })
+}
+
+export const shapeOf = (e: ManifestEntry): FileShape => ({
+  role: e.role,
+  loop: e.loop,
+  loopStart: e.loopStart,
+  loopEnd: e.loopEnd,
+  startOffset: e.startOffset,
+})

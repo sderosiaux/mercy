@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MERCY · laboratoire audio (C5)</title>
+    <style>
+      :root {
+        --bg: #f6f5f2;
+        --panel: #ffffff;
+        --ink: #1d1d1b;
+        --muted: #6b6a66;
+        --line: #dedcd6;
+        --accent: #3a5a8c;
+        --accent-ink: #ffffff;
+        --radius: 8px;
+        --font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+        --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--font); }
+      main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+      h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+      p { color: var(--muted); margin: 0 0 20px; }
+      .bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+      button {
+        font: inherit; padding: 8px 14px; border-radius: var(--radius); border: 1px solid var(--line);
+        background: var(--panel); color: var(--ink); cursor: pointer; transition: border-color .15s, background .15s;
+      }
+      button:hover { border-color: var(--accent); }
+      button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+      #status { color: var(--muted); margin-bottom: 8px; min-height: 1.5em; }
+      pre {
+        background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px;
+        font: 12px/1.45 var(--mono); max-height: 70vh; overflow: auto; white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Laboratoire audio · B5 « Entendre la mort »</h1>
+      <p>Banque générée (ElevenLabs), banc hors ligne à 48 kHz avec le vrai module, mesure en direct. Tout est aussi exposé par <code>window.__mercy</code>.</p>
+      <div class="bar">
+        <button id="bank" class="primary">Analyser la banque (O11)</button>
+        <button id="s1">Banc hors ligne S1 (5 variantes)</button>
+        <button id="det">Déterminisme S1-cri</button>
+        <button id="live">Direct S1-cri (I4)</button>
+        <button id="wav">Extrait WAV S1-cri (I7)</button>
+        <button id="snappe">Banc S-nappe</button>
+        <button id="ssat">Banc S-sat</button>
+      </div>
+      <div id="status">Choisir une mesure. Le direct démarre l'audio du navigateur : il exige ce clic.</div>
+      <pre id="out"></pre>
+    </main>
+    <script type="module" src="/src/audio-lab/main.ts"></script>
+  </body>
+</html>
