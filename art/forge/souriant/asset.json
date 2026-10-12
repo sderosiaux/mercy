@@ -1,0 +1,207 @@
+{
+  "id": "souriant",
+  "nom": "Le Souriant",
+  "famille": "souriant",
+  "hauteurM": 1.85,
+  "reference": {
+    "planche": "art/concepts/creatures-souriant-recousu.png",
+    "zone": "les deux figures de gauche (face, trois-quarts)"
+  },
+  "planche": {
+    "prompt": "The Smiling One, an emaciated, unnaturally tall and thin humanoid with an overly long neck and a too-round head. Its face is hidden behind a white porcelain mask with a wide fixed smile and narrow eye slits, strapped tight onto the head. Pale grey-pink skin stretched over visible ribs and knobbly joints, long bony fingers. It wears a torn hooded tunic of rotten brown linen hanging in strips to the knees, a rope belt with small leather pouches, cloth wraps around the shins, bare feet. Vertical, thin silhouette; the white mask is the brightest thing on it.",
+    "taille": "1536x1024",
+    "qualite": "high",
+    "modele": "sunburst"
+  },
+  "modele": {
+    "source": "multi-image",
+    "aiModel": "meshy-7.1",
+    "textureResolution": "2k",
+    "pbr": true
+  },
+  "budgets": {
+    "triangles": 10000,
+    "texturePx": 1024
+  },
+  "squelette": "humanoide",
+  "interruption": {
+    "reaction": "reaction"
+  },
+  "clips": [
+    {
+      "etat": "rituel.danse",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "A thin figure dancing slowly in place with stiff, jerky arm movements, swaying the torso from side to side and lightly stamping the feet, looping smoothly back to the starting pose.",
+        "dureeS": 4,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": true,
+      "note": "§8.10 Rituel : danse en synchronie parfaite ; §18 : la phase commune vient du moteur, le clip boucle"
+    },
+    {
+      "etat": "rituel.fauche",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Standing in place and swinging an imaginary scythe low and wide from right to left in a slow, steady harvesting rhythm, returning to the starting pose to loop.",
+        "dureeS": 4,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": true,
+      "note": "§8.10 Rituel : fauche, en synchronie parfaite"
+    },
+    {
+      "etat": "rituel.mange",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Crouching low, repeatedly picking something up from the ground with both hands and bringing it to the mouth, hunched over, looping smoothly.",
+        "dureeS": 4,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": true,
+      "note": "§8.10 Rituel : mange, en synchronie parfaite"
+    },
+    {
+      "etat": "alerte",
+      "type": "procedurale",
+      "source": {
+        "kind": "aucune"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "L7 : la tête pivote d'un coup sec vers le joueur en 0,4 s (TUNING.alertTurnTicks) ; rotation procédurale de l'os de la tête par le moteur, pas de clip"
+    },
+    {
+      "etat": "course",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Running forward with the upper body perfectly upright and motionless, arms hanging still at the sides, while the legs move unnaturally fast with short quick strides, looping.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "locomotion": {
+        "vitesse": "souriant.speed"
+      },
+      "retirerDerive": true,
+      "note": "§8.10 : buste immobile, jambes trop rapides ; foulée calée sur 4,5 m/s"
+    },
+    {
+      "etat": "attaque.morsure",
+      "type": "attaque",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Lunging bite: the head first tilts sharply sideways by ninety degrees, then the upper body snaps forward leading with the head as if biting, then pulls back to an upright stance.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "temps": {
+        "action": "morsure"
+      },
+      "effecteur": "tete",
+      "note": "§8.10 : morsure en fente, télégraphe 0,4 s où la tête bascule à 90° (§18) ; repère d'impact calé sur le tick actif"
+    },
+    {
+      "etat": "reaction",
+      "type": "reaction",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 178,
+        "nom": "Hit_Reaction"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "note": "L7 : petite créature, interrompue par n'importe quel coup ; la réaction coupe l'attaque en 2 images"
+    },
+    {
+      "etat": "chute",
+      "type": "transition",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 183,
+        "nom": "Shot_and_Fall_Backward"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "L1 : à 0 de Chair elle tombe Abattue ; tombe sur le dos, d'où il rampe (§8.10)"
+    },
+    {
+      "etat": "abattu.reptation",
+      "type": "boucle",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 622,
+        "nom": "Crawl_Backward_inplace"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "locomotion": {
+        "vitesse": "abattuCrawl"
+      },
+      "note": "§8.10 : Abattu, il garde son sourire et rampe sur le dos ; L1 : 0,8 m/s vers le support"
+    },
+    {
+      "etat": "abattu.torsion",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Lying on the back on the ground, slowly twisting and squirming in place, arms reaching up and clawing at the air, looping smoothly.",
+        "dureeS": 4,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "note": "L1 : sans support à portée, elle se tord sur place ; §18 : tout ce qui vit tremble"
+    },
+    {
+      "etat": "relevement",
+      "type": "transition",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Lying on the back, rolls onto the side, plants both hands flat on the ground and pushes the body up until standing upright.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "temps": {
+        "fenetre": [
+          "relevementTelegraph"
+        ]
+      },
+      "note": "L3 : pendant les 1,5 dernières secondes, le corps plante ses mains et pousse (télégraphe de 90 ticks)"
+    },
+    {
+      "etat": "mort",
+      "type": "figee",
+      "source": {
+        "kind": "aucune"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "L4, §18, §30.3 : aucune animation ; la pose courante se fige (mixer.timeScale = 0), le corps ne bouge plus du tout"
+    },
+    {
+      "etat": "mort.debout",
+      "type": "transition",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 189,
+        "nom": "dying_backwards"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "Variante B (§27) seulement : mort debout, effondrement puis gel ; B2 exclut tout mouvement après le coup fatal, à arbitrer (requête F1)"
+    }
+  ]
+}

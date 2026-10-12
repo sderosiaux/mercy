@@ -1,0 +1,16 @@
+{
+  "key": "concept",
+  "fingerprint": "7b6a500d1fe78217d670aa2d65c8b9346528ce79c42ebe44b07528a4e23fb81a",
+  "status": "reussi",
+  "credits": null,
+  "outputs": {
+    "planche": {
+      "file": "art/forge/souriant/planche-modele.png",
+      "sha256": "6b1d3d80d6b37d7eb4eb38b7b81178dcc412c59991e5ae801b54a5ecd8d5b793"
+    }
+  },
+  "meta": {
+    "modele": "sunburst"
+  },
+  "updatedAt": "2026-10-12T03:35:20.955Z"
+}

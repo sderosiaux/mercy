@@ -1,0 +1,225 @@
+{
+  "id": "porteur",
+  "nom": "Le Porteur",
+  "famille": "porteur",
+  "hauteurM": 1.6,
+  "reference": {
+    "planche": "art/concepts/creatures-porteur-confesseur-chirurgien.png",
+    "zone": "figure de gauche"
+  },
+  "planche": {
+    "prompt": "The Carrier, a small hunched old man bent forward under a gigantic sack of stretched translucent membrane strapped onto his back, bigger than his body, the sack faintly glowing red from inside with dark shapes visible within, bound with ropes and hung with rusted bells, keys and a small lantern. Thin limbs, a ragged hooded cloak in strips, bare feet wrapped in cloth. Silhouette: a glowing dorsal hump.",
+    "taille": "1536x1024",
+    "qualite": "high",
+    "modele": "sunburst"
+  },
+  "modele": {
+    "source": "multi-image",
+    "aiModel": "meshy-7.1",
+    "textureResolution": "2k",
+    "pbr": true
+  },
+  "budgets": {
+    "triangles": 10000,
+    "texturePx": 1024
+  },
+  "squelette": "humanoide",
+  "interruption": {
+    "reaction": "reaction"
+  },
+  "clips": [
+    {
+      "etat": "rituel.mange",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "A hunched figure bends down, picks up a heavy bundle from the ground and heaves it over the shoulder into a sack on its back, again and again, looping smoothly.",
+        "dureeS": 4,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": true,
+      "note": "§8.10 Rituel : mange des corps"
+    },
+    {
+      "etat": "alerte",
+      "type": "procedurale",
+      "source": {
+        "kind": "aucune"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "L7 : la tête pivote d'un coup sec vers le joueur en 0,4 s (TUNING.alertTurnTicks), procédural"
+    },
+    {
+      "etat": "marche",
+      "type": "boucle",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 611,
+        "nom": "Carry_Heavy_Object_Walk_inplace"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "locomotion": {
+        "vitesse": "porteur.speed"
+      },
+      "note": "§8.10 : 2 m/s, pivote à 90°/s au plus pour garder son sac loin du joueur (orientation par le moteur)"
+    },
+    {
+      "etat": "marche.stade3",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "A hunched figure hurrying forward under a very heavy load on its back, fast unsteady steps, looping.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "locomotion": {
+        "vitesse": "porteur.speedStage3"
+      },
+      "retirerDerive": true,
+      "note": "§8.10 : au stade 3, il marche sur le joueur à 3 m/s"
+    },
+    {
+      "etat": "attaque.bousculade",
+      "type": "attaque",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 259,
+        "nom": "Step_Forward_and_Push"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "temps": {
+        "action": "bousculade"
+      },
+      "effecteur": "mainDroite",
+      "note": "§8.10 : Bousculade (5)"
+    },
+    {
+      "etat": "absorption",
+      "type": "transition",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Bends down, grabs a heavy bundle from the ground with both hands and heaves it up over the shoulder into a sack on its back.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "temps": {
+        "fenetre": [
+          "porteur.absorbEvery"
+        ]
+      },
+      "note": "§8.10 : absorbe un Abattu à moins de 3 m toutes les 1,5 s"
+    },
+    {
+      "etat": "eclatement",
+      "type": "procedurale",
+      "source": {
+        "kind": "aucune"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "§8.10 : le sac éclate (rendu, gore) ; le Porteur vide tombe Abattu (clip chute)"
+    },
+    {
+      "etat": "reaction",
+      "type": "reaction",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 174,
+        "nom": "Face_Punch_Reaction"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "note": "L7 : petite créature, interrompue par n'importe quel coup"
+    },
+    {
+      "etat": "chute",
+      "type": "transition",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 190,
+        "nom": "Knock_Down_1"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "L1 ; §8.10 : le Porteur vide tombe Abattu après l'éclatement"
+    },
+    {
+      "etat": "abattu.reptation",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Crawling forward slowly on hands and knees under a heavy load, looping smoothly.",
+        "dureeS": 3,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "locomotion": {
+        "vitesse": "abattuCrawl"
+      },
+      "retirerDerive": true,
+      "note": "L1 : rampe à 0,8 m/s vers le support le plus proche"
+    },
+    {
+      "etat": "abattu.torsion",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Lying curled on the side on the ground, twisting and kicking slowly in place, looping smoothly.",
+        "dureeS": 4,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "note": "L1 : sans support à portée, il se tord sur place"
+    },
+    {
+      "etat": "relevement",
+      "type": "transition",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Lying on the side, plants both hands on the ground and pushes up under a heavy load until standing hunched.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "temps": {
+        "fenetre": [
+          "relevementTelegraph"
+        ]
+      },
+      "note": "L3 : les mains se plantent et poussent pendant les 1,5 dernières secondes"
+    },
+    {
+      "etat": "mort",
+      "type": "figee",
+      "source": {
+        "kind": "aucune"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "L4, §18 : pose figée ; L5 : ce qu'il porte meurt avec lui"
+    },
+    {
+      "etat": "mort.debout",
+      "type": "transition",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 184,
+        "nom": "Shot_and_Fall_Forward"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "Variante B (§27) seulement ; B2 exclut tout mouvement après le coup fatal, à arbitrer (requête F1)"
+    }
+  ]
+}

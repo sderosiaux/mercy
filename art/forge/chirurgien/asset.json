@@ -1,0 +1,215 @@
+{
+  "id": "chirurgien",
+  "nom": "Le Chirurgien",
+  "famille": "chirurgien",
+  "hauteurM": 2.05,
+  "reference": {
+    "planche": "art/concepts/creatures-porteur-confesseur-chirurgien.png",
+    "zone": "figure de droite"
+  },
+  "planche": {
+    "prompt": "The Surgeon, a very tall, gaunt figure with a slight forward stoop and abnormally long arms whose hands reach below the knees, long thin fingers, a close leather hood over a sunken face, a long stained leather apron over a ragged robe, and a wide belt loaded with saws, scissors, needles, hooks and small glass bottles. Silhouette: long and leaning forward.",
+    "taille": "1536x1024",
+    "qualite": "high",
+    "modele": "sunburst"
+  },
+  "modele": {
+    "source": "multi-image",
+    "aiModel": "meshy-7.1",
+    "textureResolution": "2k",
+    "pbr": true
+  },
+  "budgets": {
+    "triangles": 10000,
+    "texturePx": 1024
+  },
+  "squelette": "humanoide",
+  "interruption": {
+    "reaction": "reaction"
+  },
+  "clips": [
+    {
+      "etat": "rituel.soin",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "A tall thin stooped figure leaning over a table, stitching with needle and thread in long slow pulling motions, looping smoothly.",
+        "dureeS": 4,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": true,
+      "note": "§8.10 Rituel : soigne des Délaissés sur des lits"
+    },
+    {
+      "etat": "alerte",
+      "type": "procedurale",
+      "source": {
+        "kind": "aucune"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "L7 : la tête pivote d'un coup sec vers le joueur en 0,4 s (TUNING.alertTurnTicks), procédural"
+    },
+    {
+      "etat": "course",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "A tall thin stooped figure scuttling quickly forward with long strides, long arms dangling, bent forward, looping.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "locomotion": {
+        "vitesse": "chirurgien.speed"
+      },
+      "retirerDerive": true,
+      "note": "§8.10 : long, penché, 4 m/s ; fuit le joueur à moins de 4 m"
+    },
+    {
+      "etat": "attaque.scalpel",
+      "type": "attaque",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "A quick stabbing slash forward with the right hand, then pulls back defensively.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "temps": {
+        "action": "scalpel"
+      },
+      "effecteur": "mainDroite",
+      "note": "§8.10 : Scalpel (10), seulement acculé"
+    },
+    {
+      "etat": "canalisation.recoudre",
+      "type": "canalisation",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Kneeling and sewing quickly with needle and thread, fast frantic pulling motions with both hands, looping smoothly.",
+        "dureeS": 3,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": true,
+      "temps": {
+        "action": "recoudre"
+      },
+      "note": "§8.10 : opération de 3 s, recoud un membre ou relève un Recousu ; interrompue par tout coup (L7)"
+    },
+    {
+      "etat": "canalisation.assembler",
+      "type": "canalisation",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Kneeling, pressing pieces together with the left hand and sawing back and forth with the right hand, looping smoothly.",
+        "dureeS": 3,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": true,
+      "temps": {
+        "action": "assembler"
+      },
+      "note": "§8.10 : opération de 3 s, assemble deux ou trois Abattus en Recousu ; bruit de scie qui monte (§19)"
+    },
+    {
+      "etat": "reaction",
+      "type": "reaction",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 176,
+        "nom": "Face_Punch_Reaction_2"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "note": "L7 : petite créature, interrompue par n'importe quel coup"
+    },
+    {
+      "etat": "chute",
+      "type": "transition",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 366,
+        "nom": "falling_down"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "L1 : à 0 de Chair il tombe Abattu"
+    },
+    {
+      "etat": "abattu.reptation",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Crawling forward by pulling the body with long thin arms, legs dragging, looping smoothly.",
+        "dureeS": 3,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "locomotion": {
+        "vitesse": "abattuCrawl"
+      },
+      "retirerDerive": true,
+      "note": "L1 : rampe à 0,8 m/s vers le support le plus proche"
+    },
+    {
+      "etat": "abattu.torsion",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Lying on the side on the ground, long limbs twitching and curling slowly in place, looping smoothly.",
+        "dureeS": 4,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "note": "L1 : sans support à portée, il se tord sur place"
+    },
+    {
+      "etat": "relevement",
+      "type": "transition",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Lying face down, plants both long arms on the ground and pushes up until standing stooped.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "temps": {
+        "fenetre": [
+          "relevementTelegraph"
+        ]
+      },
+      "note": "L3 : les mains se plantent et poussent pendant les 1,5 dernières secondes"
+    },
+    {
+      "etat": "mort",
+      "type": "figee",
+      "source": {
+        "kind": "aucune"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "L4, §18 : pose figée, la scie est coupée net (§19)"
+    },
+    {
+      "etat": "mort.debout",
+      "type": "transition",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 184,
+        "nom": "Shot_and_Fall_Forward"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "Variante B (§27) seulement ; B2 exclut tout mouvement après le coup fatal, à arbitrer (requête F1)"
+    }
+  ]
+}

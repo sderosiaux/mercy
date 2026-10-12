@@ -15,7 +15,9 @@
     "sim": "tsx scripts/sim.ts",
     "bots": "tsx scripts/bots.ts",
     "test": "vitest run",
-    "gates": "pnpm typecheck && pnpm lint && pnpm deps && pnpm determinism && pnpm test"
+    "gates": "pnpm typecheck && pnpm lint && pnpm deps && pnpm determinism && pnpm test && pnpm forge:check",
+    "forge": "tsx tools/forge/cli.ts",
+    "forge:check": "tsc -p tools/forge/tsconfig.json --noEmit && vitest run --config tools/forge/vitest.config.ts && cd tools/forge && biome check ."
   },
   "dependencies": {
     "three": "0.186.1"

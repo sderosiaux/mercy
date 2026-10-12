@@ -1,0 +1,304 @@
+{
+  "id": "bourreau",
+  "nom": "Le Bourreau",
+  "famille": "bourreau",
+  "hauteurM": 1.95,
+  "reference": {
+    "planche": "art/concepts/bourreau-sheet.png",
+    "zone": "les trois vues (face, profil, dos) ; les armes sont des accessoires à part"
+  },
+  "planche": {
+    "prompt": "The Executioner, the player character: a tall, broad, heavily built executioner in a deep dark hood over a riveted iron face mask with eye slits, a long leather apron with dark stains over a torn black tunic reaching below the knees, leather straps crossing the chest, chains looped across the shoulders, a studded iron pauldron on the left shoulder, thick leather gloves and bracers, a small gilded reliquary box hanging from the belt, heavy buckled boots. No weapon: the cleaver and the spiked mace are separate props. Dark silhouette; the apron catches the light.",
+    "taille": "1536x1024",
+    "qualite": "high",
+    "modele": "sunburst"
+  },
+  "modele": {
+    "source": "multi-image",
+    "aiModel": "meshy-7.1",
+    "textureResolution": "2k",
+    "pbr": true
+  },
+  "budgets": {
+    "triangles": 25000,
+    "texturePx": 2048
+  },
+  "squelette": "humanoide",
+  "interruption": null,
+  "clips": [
+    {
+      "etat": "repos",
+      "type": "boucle",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 0,
+        "nom": "Idle"
+      },
+      "boucle": true,
+      "surPlace": true,
+      "note": "§18 : poids lisible ; tout ce qui vit tremble"
+    },
+    {
+      "etat": "course",
+      "type": "boucle",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 659,
+        "nom": "run_fast_3_inplace"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "locomotion": {
+        "vitesse": "playerSpeed"
+      },
+      "note": "§6 : déplacement à 5 m/s"
+    },
+    {
+      "etat": "frappe.couperet.1",
+      "type": "attaque",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 219,
+        "nom": "Right_Hand_Sword_Slash"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "temps": {
+        "impact": "debut",
+        "fenetre": [
+          "weapons.couperet.period"
+        ]
+      },
+      "effecteur": "mainDroite",
+      "note": "§8.1, §8.5 : 1er coup du combo au Couperet, 0,35 s ; le coup touche au tick de départ (requête F1)"
+    },
+    {
+      "etat": "frappe.couperet.2",
+      "type": "attaque",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 97,
+        "nom": "Left_Slash"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "temps": {
+        "impact": "debut",
+        "fenetre": [
+          "weapons.couperet.period"
+        ]
+      },
+      "effecteur": "mainDroite",
+      "note": "§8.1 : 2e coup du combo au Couperet"
+    },
+    {
+      "etat": "frappe.couperet.3",
+      "type": "attaque",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 237,
+        "nom": "Charged_Axe_Chop"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "temps": {
+        "impact": "debut",
+        "fenetre": [
+          "weapons.couperet.period"
+        ]
+      },
+      "effecteur": "mainDroite",
+      "note": "§8.1 : 3e coup lourd, repousse de 1 m"
+    },
+    {
+      "etat": "frappe.masse.1",
+      "type": "attaque",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 128,
+        "nom": "Heavy_Hammer_Swing"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "temps": {
+        "impact": "debut",
+        "fenetre": [
+          "weapons.masse.period"
+        ]
+      },
+      "effecteur": "mainDroite",
+      "note": "§8.5 : 1er coup à la Masse, 0,55 s"
+    },
+    {
+      "etat": "frappe.masse.2",
+      "type": "attaque",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 241,
+        "nom": "Weapon_Combo_2"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "temps": {
+        "impact": "debut",
+        "fenetre": [
+          "weapons.masse.period"
+        ]
+      },
+      "effecteur": "mainDroite",
+      "note": "§8.5 : 2e coup à la Masse"
+    },
+    {
+      "etat": "frappe.masse.3",
+      "type": "attaque",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 127,
+        "nom": "Charged_Ground_Slam"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "temps": {
+        "impact": "debut",
+        "fenetre": [
+          "weapons.masse.period"
+        ]
+      },
+      "effecteur": "mainDroite",
+      "note": "§8.5 : 3e coup à la Masse, repousse de 3 m et interrompt les grandes"
+    },
+    {
+      "etat": "esquive",
+      "type": "transition",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 159,
+        "nom": "Roll_Dodge_1"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "temps": {
+        "fenetre": [
+          "dodge.duration"
+        ]
+      },
+      "note": "§8.1 : roulade de 4 m, 0,3 s d'invulnérabilité"
+    },
+    {
+      "etat": "balayage",
+      "type": "attaque",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 91,
+        "nom": "Double_Blade_Spin"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "temps": {
+        "impact": "debut",
+        "fenetre": [
+          "balayage.duration"
+        ]
+      },
+      "effecteur": "mainDroite",
+      "note": "§8.1 : rotation à 360°, rayon 4 m, 0,8 s de récupération ; le coup touche au tick de départ"
+    },
+    {
+      "etat": "charge",
+      "type": "transition",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 673,
+        "nom": "Standard_Forward_Charge_inplace"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "temps": {
+        "fenetre": [
+          "charge.duration"
+        ]
+      },
+      "note": "§8.1 : ruée de 7 m en 0,35 s, 0,8 s au total ; la simulation déplace le joueur"
+    },
+    {
+      "etat": "sentence.tranchant.petite",
+      "type": "attaque",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "A tall executioner raises a heavy cleaver high with both hands and chops down hard at the ground right in front of his feet, then holds still.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "temps": {
+        "impact": "sentence.durationOrdinaire",
+        "fenetre": [
+          "sentence.durationOrdinaire"
+        ]
+      },
+      "effecteur": "mainDroite",
+      "note": "§8.2, §25 : tranchant × petite ; la mort tombe en fin de Sentence (0,6 s), 1,0 s sur un Résistant (même clip ralenti)"
+    },
+    {
+      "etat": "sentence.tranchant.grande",
+      "type": "attaque",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "A tall executioner swings a heavy cleaver with both hands diagonally down at waist height in front of him, then holds still.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "temps": {
+        "impact": "sentence.durationOrdinaire",
+        "fenetre": [
+          "sentence.durationOrdinaire"
+        ]
+      },
+      "effecteur": "mainDroite",
+      "note": "§8.2, §25 : tranchant × grande"
+    },
+    {
+      "etat": "sentence.contondant.petite",
+      "type": "attaque",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "A tall executioner raises a heavy spiked mace high with both hands and smashes it down hard on the ground right in front of his feet, then holds still.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "temps": {
+        "impact": "sentence.durationOrdinaire",
+        "fenetre": [
+          "sentence.durationOrdinaire"
+        ]
+      },
+      "effecteur": "mainDroite",
+      "note": "§8.2, §25 : contondant × petite"
+    },
+    {
+      "etat": "sentence.contondant.grande",
+      "type": "attaque",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "A tall executioner swings a heavy spiked mace in a wide overhead arc down to waist height in front of him, then holds still.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "temps": {
+        "impact": "sentence.durationOrdinaire",
+        "fenetre": [
+          "sentence.durationOrdinaire"
+        ]
+      },
+      "effecteur": "mainDroite",
+      "note": "§8.2, §25 : contondant × grande"
+    }
+  ]
+}

@@ -1,0 +1,256 @@
+{
+  "id": "confesseur",
+  "nom": "Le Confesseur",
+  "famille": "confesseur",
+  "hauteurM": 1.8,
+  "reference": {
+    "planche": "art/concepts/creatures-porteur-confesseur-chirurgien.png",
+    "zone": "figure du milieu"
+  },
+  "planche": {
+    "prompt": "The Confessor, a heavy, bald, elderly priest in a wide triangular chasuble of tarnished gold brocade over a stained off-white alb, rich embroidery and a pectoral cross, a thin ring-shaped iron halo of small spikes fixed behind the head on a rod, a brass censer hanging from the belt on a chain. Silhouette: a triangle topped by a halo.",
+    "taille": "1536x1024",
+    "qualite": "high",
+    "modele": "sunburst"
+  },
+  "modele": {
+    "source": "multi-image",
+    "aiModel": "meshy-7.1",
+    "textureResolution": "2k",
+    "pbr": true
+  },
+  "budgets": {
+    "triangles": 10000,
+    "texturePx": 1024
+  },
+  "squelette": "humanoide",
+  "interruption": {
+    "reaction": "reaction"
+  },
+  "clips": [
+    {
+      "etat": "rituel.priere",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "An old priest standing before an altar, praying with the right hand raised in blessing, slowly swaying, looping smoothly.",
+        "dureeS": 4,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": true,
+      "note": "§8.10 Rituel : prie devant un autel"
+    },
+    {
+      "etat": "rituel.benediction",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "A priest leaning forward and making slow signs of blessing over something lying on the ground in front of him, looping smoothly.",
+        "dureeS": 4,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": true,
+      "note": "§8.10 Rituel : bénit les Délaissés"
+    },
+    {
+      "etat": "alerte",
+      "type": "procedurale",
+      "source": {
+        "kind": "aucune"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "L7 : la tête pivote d'un coup sec vers le joueur en 0,4 s (TUNING.alertTurnTicks), procédural"
+    },
+    {
+      "etat": "marche",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "An old heavy priest in long robes hurrying forward with short quick steps, looping.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "locomotion": {
+        "vitesse": "confesseur.speed"
+      },
+      "retirerDerive": true,
+      "note": "§8.10 : 3 m/s, garde 7 à 10 m"
+    },
+    {
+      "etat": "marche.recul",
+      "type": "boucle",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 679,
+        "nom": "Walk_Backward_inplace"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "locomotion": {
+        "vitesse": "confesseur.speed"
+      },
+      "note": "§8.10 : recule pour garder 7 à 10 m"
+    },
+    {
+      "etat": "attaque.baton",
+      "type": "attaque",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Swings a heavy staff from over the right shoulder and strikes down in front, then steps back.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "temps": {
+        "action": "baton"
+      },
+      "effecteur": "mainDroite",
+      "note": "§8.10 : Bâton (8)"
+    },
+    {
+      "etat": "invective",
+      "type": "transition",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Points forward accusingly with the right arm and shouts, the whole body leaning in, then settles.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "note": "§8.10 : son invective hostile alerte à 10 m ; il parle pendant le combat"
+    },
+    {
+      "etat": "canalisation.priere",
+      "type": "canalisation",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Raises both arms toward the sky and prays with growing intensity, trembling, looping smoothly.",
+        "dureeS": 3,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": true,
+      "temps": {
+        "action": "priere"
+      },
+      "note": "§8.10 : Prière, canalisation de 2,5 s ; interrompue par tout coup (L7)"
+    },
+    {
+      "etat": "canalisation.priere-abattu",
+      "type": "canalisation",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Lying on the back on the ground, raising one trembling hand toward the sky in prayer, looping smoothly.",
+        "dureeS": 3,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "temps": {
+        "action": "priere"
+      },
+      "note": "§8.10 : il prie en étant Abattu, et sa prière le relève avec les autres"
+    },
+    {
+      "etat": "reaction",
+      "type": "reaction",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 175,
+        "nom": "Face_Punch_Reaction_1"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "note": "L7 : petite créature, interrompue par n'importe quel coup ; une prière interrompue s'éteint en fondu au son (§8.10)"
+    },
+    {
+      "etat": "chute",
+      "type": "transition",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 185,
+        "nom": "Shot_and_Slow_Fall_Backward"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "L1 : à 0 de Chair il tombe Abattu"
+    },
+    {
+      "etat": "abattu.reptation",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Lying on the back, crawling slowly by pushing with the heels and elbows, looping smoothly.",
+        "dureeS": 3,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "locomotion": {
+        "vitesse": "abattuCrawl"
+      },
+      "retirerDerive": true,
+      "note": "L1 : rampe à 0,8 m/s vers le support le plus proche"
+    },
+    {
+      "etat": "abattu.torsion",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Lying on the back on the ground, rocking and twisting slowly in place, looping smoothly.",
+        "dureeS": 4,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "note": "L1 : sans support à portée, il se tord sur place"
+    },
+    {
+      "etat": "relevement",
+      "type": "transition",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Lying on the back, rolls to the side, plants both hands on the ground and pushes up heavily until standing.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "temps": {
+        "fenetre": [
+          "relevementTelegraph"
+        ]
+      },
+      "note": "L3 : les mains se plantent et poussent pendant les 1,5 dernières secondes"
+    },
+    {
+      "etat": "mort",
+      "type": "figee",
+      "source": {
+        "kind": "aucune"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "L4, §18 : pose figée, le chant est coupé net (§19)"
+    },
+    {
+      "etat": "mort.debout",
+      "type": "transition",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 186,
+        "nom": "Strangled_and_Fall_Forward"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "Variante B (§27) seulement ; B2 exclut tout mouvement après le coup fatal, à arbitrer (requête F1)"
+    }
+  ]
+}

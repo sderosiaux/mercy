@@ -1,0 +1,247 @@
+{
+  "id": "recousu",
+  "nom": "Le Recousu",
+  "famille": "recousu",
+  "hauteurM": 2.15,
+  "reference": {
+    "planche": "art/concepts/creatures-souriant-recousu.png",
+    "zone": "les deux figures de droite (face, trois-quarts)"
+  },
+  "planche": {
+    "prompt": "The Sewn One, a huge, wide and lopsided brute assembled from several bodies joined by crude thick pale stitches across bloated pale flesh, with a smaller extra torso and limp arms sewn onto its chest. Long matted hair and a crown of rusted iron spikes on the head. The entire right forearm is replaced by a massive rusted iron hammer-arm ending in a heavy forged block, bound with leather straps and rivets. A torn loincloth of rags with hanging chains and a rusted round pendant, cloth-wrapped feet. Wide, asymmetric silhouette; the stitches read clearly.",
+    "taille": "1536x1024",
+    "qualite": "high",
+    "modele": "sunburst"
+  },
+  "modele": {
+    "source": "multi-image",
+    "aiModel": "meshy-7.1",
+    "textureResolution": "2k",
+    "pbr": true
+  },
+  "budgets": {
+    "triangles": 18000,
+    "texturePx": 2048
+  },
+  "squelette": "humanoide",
+  "interruption": {
+    "reaction": "reaction"
+  },
+  "clips": [
+    {
+      "etat": "rituel.balance",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "A huge heavy figure standing in place, slowly rocking its weight from one leg to the other, heavy arms hanging loose, looping smoothly.",
+        "dureeS": 4,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": true,
+      "note": "§8.10 Rituel : debout, se balance"
+    },
+    {
+      "etat": "rituel.recoud",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Standing in place, holding the left forearm up and sewing along it with the right hand in long, slow pulling motions, looping smoothly.",
+        "dureeS": 4,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": true,
+      "note": "§8.10 Rituel : recoud sa propre peau"
+    },
+    {
+      "etat": "alerte",
+      "type": "procedurale",
+      "source": {
+        "kind": "aucune"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "L7 : la tête pivote d'un coup sec vers le joueur en 0,4 s (TUNING.alertTurnTicks), procédural"
+    },
+    {
+      "etat": "marche",
+      "type": "boucle",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 669,
+        "nom": "Slow_Orc_Walk_inplace"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "locomotion": {
+        "vitesse": "recousu.speed"
+      },
+      "note": "§8.10 : grande créature lente, 2,5 m/s"
+    },
+    {
+      "etat": "attaque.marteau",
+      "type": "attaque",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "A heavy brute lets its right arm drag behind its body, then whips the arm over its head and smashes it down hard in front, then slowly straightens up.",
+        "dureeS": 3,
+        "mode": "prime"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "temps": {
+        "action": "marteau"
+      },
+      "effecteur": "mainDroite",
+      "note": "§8.10 : Marteau, bras droit, télégraphe 0,9 s ; §18 : le bras traîne en retard, puis fouette"
+    },
+    {
+      "etat": "attaque.empoignade",
+      "type": "attaque",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Reaches forward with the left hand, grabs something at chest height, lifts it up and hurls it hard to the side, then recovers.",
+        "dureeS": 3,
+        "mode": "prime"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "temps": {
+        "action": "empoignade"
+      },
+      "effecteur": "mainGauche",
+      "note": "§8.10 : Empoignade, bras gauche, télégraphe 1,0 s, saisie puis projection à 4 m"
+    },
+    {
+      "etat": "attaque.coup-de-tete",
+      "type": "attaque",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Lowers the head and rams forward with a powerful headbutt, then straightens up.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "retirerDerive": true,
+      "temps": {
+        "action": "coupDeTete"
+      },
+      "effecteur": "tete",
+      "note": "§8.10 : attaque de secours quand il n'a plus de bras ; la ruée de 5 m est faite par la simulation (dashSelf)"
+    },
+    {
+      "etat": "reaction",
+      "type": "reaction",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 179,
+        "nom": "Hit_Reaction_1"
+      },
+      "boucle": false,
+      "surPlace": true,
+      "note": "L7 : grande créature, interrompue par le 3e coup contondant, la Charge, une rupture ou le sectionnement du bras qui attaque"
+    },
+    {
+      "etat": "vacille",
+      "type": "transition",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Staggers backwards off balance, nearly falls, then regains footing and stands.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "temps": {
+        "fenetre": [
+          "porteur.burstStaggerLarge"
+        ]
+      },
+      "note": "§8.10 : une grande créature prise dans un éclatement de Porteur vacille 1,5 s"
+    },
+    {
+      "etat": "chute",
+      "type": "transition",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 187,
+        "nom": "Knock_Down"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "L1 : à 0 de Chair il tombe Abattu"
+    },
+    {
+      "etat": "abattu.reptation",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Crawling forward on the elbows while dragging the legs behind, heavy and slow, looping smoothly.",
+        "dureeS": 3,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "locomotion": {
+        "vitesse": "abattuCrawl"
+      },
+      "retirerDerive": true,
+      "note": "§18 : le Recousu rampe sur les coudes ; L1 : 0,8 m/s vers le support"
+    },
+    {
+      "etat": "abattu.torsion",
+      "type": "boucle",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Lying face down on the ground, heaving and twisting slowly in place, looping smoothly.",
+        "dureeS": 4,
+        "mode": "prime"
+      },
+      "boucle": true,
+      "surPlace": false,
+      "note": "L1 : sans support à portée, il se tord sur place"
+    },
+    {
+      "etat": "relevement",
+      "type": "transition",
+      "source": {
+        "kind": "mouvement",
+        "prompt": "Lying face down, plants both hands on the ground, pushes up heavily to kneeling, then stands up.",
+        "dureeS": 2,
+        "mode": "prime"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "temps": {
+        "fenetre": [
+          "relevementTelegraph"
+        ]
+      },
+      "note": "L3 : les mains se plantent et poussent pendant les 1,5 dernières secondes"
+    },
+    {
+      "etat": "mort",
+      "type": "figee",
+      "source": {
+        "kind": "aucune"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "L4, §18, §30.3 : pose courante figée ; L5 : ses bras coupés se figent dans la même image"
+    },
+    {
+      "etat": "mort.debout",
+      "type": "transition",
+      "source": {
+        "kind": "bibliotheque",
+        "actionId": 188,
+        "nom": "Fall_Dead_from_Abdominal_Injury"
+      },
+      "boucle": false,
+      "surPlace": false,
+      "note": "Variante B (§27) seulement ; B2 exclut tout mouvement après le coup fatal, à arbitrer (requête F1)"
+    }
+  ]
+}

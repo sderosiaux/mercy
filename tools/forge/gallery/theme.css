@@ -1,0 +1,518 @@
+/* Galerie de la Forge. Chrome clair, sobre ; les vues 3D restent sombres (lumière de la DA) : c'est le contenu
+   à juger, pas l'interface. Toutes les couleurs passent par ces variables. */
+:root {
+  --bg: #f4f3f0;
+  --surface: #ffffff;
+  --surface-2: #faf9f7;
+  --ink: #1c1b1a;
+  --ink-2: #5d5a55;
+  --ink-3: #8f8a83;
+  --line: #e4e1db;
+  --line-2: #d3cfc7;
+  --accent: #6b4e16;
+  --accent-soft: #f3ead6;
+
+  --ok: #2f7a4b;
+  --ok-soft: #e3f2e8;
+  --echec: #b3261e;
+  --echec-soft: #fbe7e5;
+  --nm: #8a6a00;
+  --nm-soft: #fbf2d4;
+  --prevu: #4a5c7a;
+  --prevu-soft: #e7ecf4;
+
+  --stage-bg: #0b0a09;
+  --stage-ink: #e9d9a4;
+
+  --radius: 10px;
+  --shadow: 0 1px 2px rgb(20 18 15 / 6%), 0 4px 16px rgb(20 18 15 / 5%);
+  --font: ui-sans-serif, -apple-system, 'Segoe UI', Inter, system-ui, sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.45 var(--font);
+}
+
+.app {
+  display: grid;
+  grid-template-columns: var(--side, 248px) 1fr;
+  min-height: 100vh;
+  transition: grid-template-columns 0.25s var(--ease);
+}
+.app.collapsed {
+  --side: 64px;
+}
+
+/* ------------------------------------------------------------------ barre latérale */
+.side {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.side-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.brand {
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.brand small {
+  display: block;
+  font-weight: 400;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+.toggle {
+  margin-left: auto;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  color: var(--ink-2);
+  transition: background 0.15s var(--ease), transform 0.25s var(--ease);
+}
+.toggle:hover {
+  background: var(--accent-soft);
+}
+.app.collapsed .toggle {
+  transform: rotate(180deg);
+  margin: 0 auto;
+}
+.app.collapsed .brand,
+.app.collapsed .nav-label,
+.app.collapsed .nav-meta,
+.app.collapsed .side-foot {
+  display: none;
+}
+.nav {
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+  overflow-y: auto;
+  flex: 1;
+}
+.nav-section {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  padding: 14px 8px 6px;
+}
+.app.collapsed .nav-section {
+  visibility: hidden;
+}
+.nav a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  color: var(--ink);
+  text-decoration: none;
+  transition: background 0.15s var(--ease);
+}
+.nav a:hover {
+  background: var(--surface-2);
+}
+.nav a.active {
+  background: var(--accent-soft);
+}
+.nav-mark {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  font-weight: 650;
+  font-size: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+.nav-meta {
+  margin-left: auto;
+  display: flex;
+  gap: 3px;
+}
+.side-foot {
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+/* ------------------------------------------------------------------ pastilles d'état */
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line-2);
+}
+.dot.ok {
+  background: var(--ok);
+}
+.dot.echec {
+  background: var(--echec);
+}
+.dot.nm {
+  background: var(--nm);
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.pill.ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+  border-color: transparent;
+}
+.pill.echec {
+  background: var(--echec-soft);
+  color: var(--echec);
+  border-color: transparent;
+}
+.pill.nm {
+  background: var(--nm-soft);
+  color: var(--nm);
+  border-color: transparent;
+}
+.pill.prevu {
+  background: var(--prevu-soft);
+  color: var(--prevu);
+  border-color: transparent;
+}
+
+/* ------------------------------------------------------------------ page */
+.main {
+  padding: 24px 28px 48px;
+  min-width: 0;
+}
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.page-head h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 650;
+}
+.page-head .sub {
+  color: var(--ink-2);
+}
+.stages {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr);
+  gap: 18px;
+}
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.card + .card {
+  margin-top: 18px;
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.card-head h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.card-head .hint {
+  color: var(--ink-3);
+  font-size: 12px;
+}
+.card-body {
+  padding: 14px;
+}
+
+/* ------------------------------------------------------------------ scène */
+.stage {
+  position: relative;
+  background: var(--stage-bg);
+  aspect-ratio: 16 / 10;
+}
+.stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.stage .vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 55%, transparent 45%, rgb(0 0 0 / 55%) 100%);
+}
+.stage .grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+}
+.stage.neutre .vignette,
+.stage.neutre .grain {
+  display: none;
+}
+.stage-label {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  color: var(--stage-ink);
+  font: 12px var(--mono);
+  opacity: 0.85;
+  pointer-events: none;
+}
+.stage-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--stage-ink);
+  padding: 24px;
+}
+.stage-empty p {
+  max-width: 460px;
+  margin: 6px 0;
+  opacity: 0.85;
+}
+.stage-empty code {
+  font: 12px var(--mono);
+  background: rgb(255 255 255 / 8%);
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  align-items: center;
+}
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.seg button,
+.btn {
+  border: 0;
+  background: var(--surface);
+  padding: 6px 11px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+.seg button + button {
+  border-left: 1px solid var(--line);
+}
+.seg button:hover,
+.btn:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.seg button.on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.btn {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.btn.warn:hover {
+  background: var(--echec-soft);
+  color: var(--echec);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.timeline {
+  position: relative;
+  height: 6px;
+  background: var(--line);
+  border-radius: 3px;
+  flex: 1;
+  min-width: 140px;
+}
+.timeline .head {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 12px;
+  background: var(--ink);
+}
+.timeline .impact {
+  position: absolute;
+  top: -4px;
+  width: 4px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--echec);
+}
+.time {
+  font: 12px var(--mono);
+  color: var(--ink-2);
+  min-width: 120px;
+  text-align: right;
+}
+
+/* ------------------------------------------------------------------ tableaux */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--ink-2);
+  font-size: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+  position: sticky;
+  top: 0;
+}
+td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+tr.clickable {
+  cursor: pointer;
+  transition: background 0.15s var(--ease);
+}
+tr.clickable:hover {
+  background: var(--surface-2);
+}
+tr.current {
+  background: var(--accent-soft);
+}
+td.mono,
+.mono {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+td.note {
+  color: var(--ink-2);
+  max-width: 340px;
+}
+.scroll {
+  max-height: 420px;
+  overflow: auto;
+}
+.boards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.boards figure {
+  margin: 0;
+}
+.boards img {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  display: block;
+}
+.boards figcaption {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 6px;
+}
+.empty {
+  border: 1px dashed var(--line-2);
+  border-radius: 8px;
+  padding: 18px;
+  color: var(--ink-2);
+  background: var(--surface-2);
+}
+.empty code {
+  font: 12px var(--mono);
+  background: var(--surface);
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1px solid var(--line);
+}
+.kv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  font-size: 13px;
+}
+.kv dt {
+  color: var(--ink-3);
+}
+.kv dd {
+  margin: 0;
+}
+.banner {
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--prevu-soft);
+  color: var(--prevu);
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+.card.wide {
+  margin-top: 18px;
+}
