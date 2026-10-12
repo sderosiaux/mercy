@@ -102,13 +102,25 @@ export const applyEffects = (d: Draft, self: MCreature, effects: readonly Effect
         }
         if (e.hitsCreatures) damageCreatures(d, self, e)
         break
-      case 'raise':
+      case 'raise': {
+        // Une prière achevée émet toujours prayer-complete, même si elle ne relève personne.
+        const raised: number[] = []
         for (const id of e.ids) {
           const c = byId(d, id)
-          if (c && c.state.kind === 'abattu' && c.state.claimedBy === null && !c.resistant)
+          if (
+            c &&
+            c.state.kind === 'abattu' &&
+            c.state.claimedBy === null &&
+            !c.resistant &&
+            c.family !== 'membre'
+          ) {
             rise(d, c, 'priere')
+            raised.push(c.id)
+          }
         }
+        emit(d, { type: 'prayer-complete', tick: d.tick, id: self.id, others: raised })
         break
+      }
       case 'absorb': {
         const c = byId(d, e.id)
         if (!absorbable(c)) break

@@ -93,3 +93,83 @@ describe('effets de mouvement', () => {
     expect(creature(dash.world, 1).pos.x).toBeCloseTo(6.5, 5)
   })
 })
+
+// Prêtre factice : prie 150 ticks, même à terre, et relève tout ce qui est à moins de 8 m (lui compris).
+const pretre: FamilyModule = {
+  kind: 'confesseur',
+  size: 'small',
+  isSupport: true,
+  canActWhileDown: true,
+  base: { chair: 40, speed: 0, limbs: [] },
+  actions: {
+    priere: { kind: 'canalisation', telegraphTicks: 0, recoverTicks: 0, channelTicks: 150, reach: 8 },
+  },
+  decide: (_w, self) => (self.familyData.done ? { kind: 'idle' } : { kind: 'act', action: 'priere' }),
+  resolve: (w, self) => [
+    { kind: 'setData', key: 'done', value: 1 },
+    {
+      kind: 'raise',
+      ids: w.creatures
+        .filter(
+          (c) => c.state.kind === 'abattu' && Math.hypot(c.pos.x - self.pos.x, c.pos.z - self.pos.z) <= 8,
+        )
+        .map((c) => c.id),
+    },
+  ],
+}
+
+describe('prière (requêtes C3)', () => {
+  it('une prière achevée émet prayer-complete avec les corps relevés, même si elle ne relève personne', () => {
+    const w = scene(
+      [
+        { family: 'confesseur', pos: vec(0, 0), state: 'hostile' },
+        { family: 'souriant', pos: vec(2, 0), state: 'abattu' },
+      ],
+      { families: { confesseur: pretre }, playerStart: vec(-12, -12) },
+    )
+    const r = run(w, 24 + 150)
+    const done = ofType(r.events, 'prayer-complete')
+    expect(done.map((e) => [e.id, e.others])).toEqual([[1, [2]]])
+    const empty = scene([{ family: 'confesseur', pos: vec(0, 0), state: 'hostile' }], {
+      families: { confesseur: pretre },
+      playerStart: vec(-12, -12),
+    })
+    expect(ofType(run(empty, 24 + 150).events, 'prayer-complete').map((e) => e.others)).toEqual([[]])
+  })
+
+  it('une prière ne relève jamais un Membre errant', () => {
+    const w0 = scene(
+      [
+        { family: 'confesseur', pos: vec(0, 0), state: 'hostile' },
+        { family: 'souriant', pos: vec(2, 0), state: 'abattu' },
+      ],
+      { families: { confesseur: pretre }, playerStart: vec(-12, -12) },
+    )
+    const w = {
+      ...w0,
+      creatures: w0.creatures.map((c) => (c.id === 2 ? { ...c, family: 'membre' as const, unionOf: 1 } : c)),
+    }
+    const r = run(w, 24 + 150)
+    expect(ofType(r.events, 'rise')).toHaveLength(0)
+    expect(ofType(r.events, 'prayer-complete')[0]?.others).toEqual([])
+  })
+
+  it('un Relèvement ne coupe pas la prière en cours : elle continue debout et finit par action-end', () => {
+    const w = scene([{ family: 'confesseur', pos: vec(0, 0), state: 'abattu' }], {
+      families: { confesseur: pretre },
+      playerStart: vec(-12, -12),
+    })
+    // Abattu au tick 0, il prie du tick 1 au tick 151 ; on avance son Relèvement au tick 50, en pleine prière.
+    const early = {
+      ...w,
+      creatures: w.creatures.map((c) =>
+        c.state.kind === 'abattu' ? { ...c, state: { ...c.state, riseAt: 50 } } : c,
+      ),
+    }
+    const r = run(early, 160)
+    expect(ofType(r.events, 'rise').map((e) => e.tick)).toEqual([50])
+    expect(ofType(r.events, 'action-interrupted')).toHaveLength(0)
+    expect(ofType(r.events, 'action-end').map((e) => e.action)).toEqual(['priere'])
+    expect(ofType(r.events, 'prayer-complete')).toHaveLength(1)
+  })
+})

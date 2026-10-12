@@ -1,5 +1,5 @@
 // L3 Relèvement et Cicatrices.
-import { baseChair, chairMaxFor, crying, type Draft, emit, type MCreature } from '../draft'
+import { baseChair, chairMaxFor, crying, type Draft, emit, interrupt, type MCreature } from '../draft'
 import { TUNING } from '../tuning'
 
 export const rise = (d: Draft, c: MCreature, cause: 'delai' | 'priere' | 'chirurgien'): void => {
@@ -11,7 +11,8 @@ export const rise = (d: Draft, c: MCreature, cause: 'delai' | 'priere' | 'chirur
   c.chairMax = chairMaxFor(baseChair(d, c), cic)
   c.chair = c.chairMax
   c.limbs = c.limbs.map((l) => ({ ...l, hp: l.hpMax, state: 'ok' }))
-  c.action = null
+  // Une canalisation commencée à terre (prière du Confesseur) continue debout ; toute autre action s'arrête.
+  if (c.action && c.action.kind !== 'canalisation') interrupt(d, c, 'creature')
   // Déjà Hostile : pas de nouveau pivot de tête.
   c.state = { kind: 'hostile', alertedAt: d.tick - TUNING.alertTurnTicks }
   emit(d, { type: 'rise', tick: d.tick, id: c.id, cicatrices: cic, cause })
