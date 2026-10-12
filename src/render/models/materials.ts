@@ -114,16 +114,15 @@ const patchVertex: Patch = (s) => {
 // ---------------------------------------------------------------------------------------------------------
 // Corps vivant (scène éclairée)
 
-// Plancher de la chair vivante (E4, B2.O1 dans le noir) : loin de toute flamme, un corps vivant ne descend pas sous
-// cette part de son albédo (translucidité de la chair, ART_DIRECTION « Matières »). C'est une lumière propre à la chair
-// qui ne s'ajoute que dans le noir : un corps éclairé au-dessus du plancher ne change pas, le sol reste noir, les morts
-// (couche des morts) n'y passent jamais. Forme, réglée sur S1b et S1d (rapport E4) : le Recousu Résistant s10 de S1b,
-// à 11 m du Bourreau dans le coin de l'image, est le plus sombre (C* du corps 6,5 sans plancher) ; 0,35 lui donne
-// une marge d'au moins 2 sur B2.O1. Instrument : `plancher=<part>`.
-export const LIVING_FLOOR = 0.35
-const floorFromUrl = Number(urlParam('plancher') ?? Number.NaN)
-export const livingFloorUniform = { value: Number.isFinite(floorFromUrl) ? floorFromUrl : LIVING_FLOOR }
-export const NO_FLOOR = { value: 0 } // le Bourreau : sombre, il vit dans sa propre lumière
+// Un corps vivant reçoit la lumière de la scène (E6, retour du concepteur : « la lumière devrait s'appliquer à lui de
+// manière normale ») : le plancher de luminance de E4, qui relevait les corps dans la pénombre, est retiré, sans
+// remplaçant. Reste la translucidité de la chair d'avant E4 (E2, comme les segments du jalon 1) : 7 % de l'albédo,
+// la même partout. Elle est gardée parce que l'équilibre des classes réservées en dépend (§30.10, mesure E6 : sans
+// elle, sous les lumières chaudes et la prière, 2 pixels « or » sur un Confesseur debout et 1 à 3 sur le Bourreau,
+// contre 0 avec elle). Instrument (E6) : `translucidite=<part>` (0 : lumière de la scène seule).
+export const TRANSLUCENCE_DEFAULT = 0.07
+const translucenceFromUrl = Number(urlParam('translucidite') ?? Number.NaN)
+const TRANSLUCENCE = Number.isFinite(translucenceFromUrl) ? translucenceFromUrl : TRANSLUCENCE_DEFAULT
 
 export const bodyMaterial = (
   map: Texture | null,
@@ -131,12 +130,11 @@ export const bodyMaterial = (
   u: ModelUniforms,
   shift: ClassShift,
   meanLum: number,
-  floor: { value: number },
 ): MeshStandardMaterial => {
   const m = new MeshStandardMaterial({ map, roughness, metalness: 0, envMapIntensity: 0.25 })
   const cs = classShiftUniforms(shift, meanLum)
   m.onBeforeCompile = (s) => {
-    Object.assign(s.uniforms, u, cs, { uLivingFloor: floor })
+    Object.assign(s.uniforms, u, cs)
     patchVertex(s)
     s.fragmentShader = s.fragmentShader
       .replace(
@@ -149,7 +147,6 @@ uniform float uSacLumOnly;
 uniform vec3 uHaloTint;
 uniform float uHaloGlow;
 uniform float uSeams;
-uniform float uLivingFloor;
 ${CLASS_SHIFT_GLSL}`,
       )
       .replace('void main() {', 'void main() {\n  if ( vHide > 0.5 ) discard;')
@@ -172,8 +169,7 @@ ${CLASS_SHIFT_GLSL}`,
       .replace(
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
-  // Chair : un peu de lumière qui traverse (comme les segments du jalon 1).
-  totalEmissiveRadiance += diffuseColor.rgb * 0.07;
+  ${TRANSLUCENCE > 0 ? `totalEmissiveRadiance += diffuseColor.rgb * ${TRANSLUCENCE.toFixed(4)};` : ''}
   if ( e2Sac ) totalEmissiveRadiance += uSacTint * uSacGlow;
   if ( e2Halo ) totalEmissiveRadiance += uHaloTint * uHaloGlow;`,
       )
@@ -181,8 +177,6 @@ ${CLASS_SHIFT_GLSL}`,
       // leur laisser la couleur que l'étalonnage froid retire au décor (post.ts, LOOK.modelSaturation).
       // Sac aux stades 0 à 2 (E5) : la lumière reçue ne lui donne que sa luminance ; la chromaticité reste celle de la
       // couleur du stade (palette). Pourquoi : look.ts, sacLuminanceOnly.
-      // Plancher de la chair (E4) : la luminance ne descend pas sous celle de l'albédo × uLivingFloor ; ce qui manque
-      // est rendu dans la couleur de l'albédo (la chair, pas la lumière froide de la nuit). Au-dessus : rien ne change.
       .replace(
         '#include <opaque_fragment>',
         `if ( e2Sac && uSacLumOnly > 0.5 ) {
@@ -190,17 +184,11 @@ ${CLASS_SHIFT_GLSL}`,
     vec3 e5Tint = uSacTint / max( dot( uSacTint, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-6 );
     outgoingLight = e5Tint * dot( e5Lit, vec3( 0.2126, 0.7152, 0.0722 ) ) + totalEmissiveRadiance;
   }
-  {
-    vec3 e4Floor = diffuseColor.rgb * uLivingFloor;
-    float e4Lf = dot( e4Floor, vec3( 0.2126, 0.7152, 0.0722 ) );
-    float e4Lo = dot( outgoingLight, vec3( 0.2126, 0.7152, 0.0722 ) );
-    outgoingLight += e4Floor * clamp( 1.0 - e4Lo / max( e4Lf, 1e-6 ), 0.0, 1.0 );
-  }
   #include <opaque_fragment>
   gl_FragColor.a = 0.0;`,
       )
   }
-  m.customProgramCacheKey = () => 'e2-body'
+  m.customProgramCacheKey = () => `e2-body-${TRANSLUCENCE}`
   return m
 }
 

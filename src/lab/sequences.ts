@@ -125,3 +125,77 @@ export const bourreauSequencePolicy =
       rite: w.tick === S.balayage ? 'balayage' : null,
     }
   }
+
+// Armes en main et orientation (E6) : le Bourreau enchaîne tous ses gestes avec ses deux armes, dans le vide (aucune
+// créature Hostile : le changement d'arme reste permis), et deux Sentences sur des Abattus placés hors des cônes de
+// frappe. Combinaison complète au Couperet (3 coups), Sentence tranchante, Masse, combinaison complète à la Masse,
+// demi-tour au moment de frapper (le curseur passe derrière lui), Sentence contondante, retour au Couperet, Balayage,
+// Charge, Esquive, marche au clavier en visant ailleurs, puis quart de tour du curseur à l'arrêt. Un Souriant en
+// Rituel, loin, garde la vague ouverte. Ticks des commandes : la simulation lance le geste au tick suivant ; une
+// Frappe maintenue enchaîne la combinaison (période de l'arme).
+export const ARMES_SEQ = {
+  comboCouperet: [10, 72],
+  sentenceTranchante: 90,
+  versMasse: 140,
+  comboMasse: [150, 248],
+  demiTour: 260,
+  sentenceContondante: 300,
+  versCouperet: 345,
+  balayage: 360,
+  charge: 420,
+  esquive: 480,
+  marche: [520, 570],
+  quartDeTour: 580,
+  fin: 620,
+} as const
+
+export const ARMES_ABATTUS: readonly Vec2[] = [
+  { x: 0.4, z: -1.6 },
+  { x: 0.16, z: 1.37 },
+]
+
+export const armesWorld = (): World => {
+  const w = createWorld({
+    seed: 7,
+    variant: 'A',
+    wave: testWave(
+      [
+        ...ARMES_ABATTUS.map((pos, k) => ({
+          family: 'souriant' as const,
+          pos,
+          facing: 0.6 + k,
+          state: 'abattu' as const,
+        })),
+        { family: 'souriant', pos: { x: 13, z: -13 }, facing: 2, state: 'rituel' },
+      ],
+      { x: 0, z: 0 },
+    ),
+    families: FAMILIES,
+  })
+  return withPlayer(w, { ferveur: TUNING.ferveur.max })
+}
+
+const within = (t: number, [a, b]: readonly [number, number]): boolean => t >= a && t <= b
+
+export const armesPolicy =
+  (): Policy =>
+  (w: World): PlayerCommands => {
+    const S = ARMES_SEQ
+    const p = w.player.pos
+    const t = w.tick
+    let aim: Vec2 = { x: p.x + 3, z: p.z }
+    if (t >= S.sentenceTranchante && t < S.versMasse) aim = ARMES_ABATTUS[0] as Vec2
+    if (t >= S.demiTour && t < S.sentenceContondante) aim = { x: p.x - 3, z: p.z }
+    if (t >= S.sentenceContondante && t < S.versCouperet) aim = ARMES_ABATTUS[1] as Vec2
+    if ((t >= S.charge && t < S.esquive) || t >= S.quartDeTour) aim = { x: p.x, z: p.z + 3 }
+    return {
+      ...IDLE_COMMANDS,
+      aim,
+      move: within(t, S.marche) ? { x: -1, z: 0 } : t === S.esquive ? { x: 0, z: -1 } : { x: 0, z: 0 },
+      strike: within(t, S.comboCouperet) || within(t, S.comboMasse) || t === S.demiTour,
+      swapWeapon: t === S.versMasse || t === S.versCouperet,
+      sentence: t === S.sentenceTranchante || t === S.sentenceContondante,
+      dodge: t === S.esquive,
+      rite: t === S.balayage ? 'balayage' : t === S.charge ? 'charge' : null,
+    }
+  }

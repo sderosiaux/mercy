@@ -17,6 +17,8 @@ import { poteau, testWave, withCreature } from '../sim/testing'
 import { LAB_FAMILIES, LAB_FAMILIES_QUIET } from './families'
 import { b2Script, immobile, negligent, type Policy } from './policies'
 import {
+  armesPolicy,
+  armesWorld,
   bourreauSequencePolicy,
   bourreauSequenceWorld,
   SEQUENCE_FAMILIES,
@@ -508,6 +510,13 @@ export const SCENES: readonly LabScene[] = [
     title: 'Séquence (E3) : Frappe du Bourreau, Frappe coupée par une Esquive, Balayage',
     world: bourreauSequenceWorld,
     policy: bourreauSequencePolicy,
+  },
+  {
+    id: 'armes',
+    title:
+      'Armes en main et orientation (E6) : Couperet, Masse, changements, demi-tour, Sentence, rites, marche',
+    world: armesWorld,
+    policy: armesPolicy,
   },
   {
     id: 'charge',

@@ -121,6 +121,14 @@ export interface RenderDebug {
   syncFrameMs(): number // rend la dernière image et attend la fin du travail du GPU (temps de frame complet)
   models(): ModelsInfo // modèles de la Forge : chargement, temps, personnages absents (rendus en segments)
   anim(id: number): AnimFrame | null // dernière pose d'un corps modélisé : clips, instants, poids (séquences)
+  // Arme du Bourreau en main (E6) : prise, bout, tranchant en coordonnées monde, et orientation affichée.
+  weapon(): {
+    weapon: string | null
+    grip: number[]
+    tip: number[]
+    edge: number[]
+    facing: number | null
+  } | null
 }
 
 export interface Renderer {
@@ -233,6 +241,8 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     q.level === 'basse',
     shadows,
     options.models ?? urlParam('modeles') !== '0',
+    { fer, bois, cuir }, // armes du Bourreau en main (E6)
+    PLAYER_ID,
   )
 
   let post: PostPipeline | null = null
@@ -244,6 +254,7 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
   let lastBodies: Body[] = []
   let lastCpu = 0
   let lastLights: LightInfo[] = []
+  let lastPlayerFacing: number | null = null // orientation affichée du Bourreau (instrument)
   let texturesLoaded = false
   let envCaptured = false
   let envTexture: Texture | null = null
@@ -416,8 +427,11 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
       bodies.ground(c, pos, facing, t, world, target)
     }
     if (visible(PLAYER_ID)) {
-      const pfacing = lerpAngle(ppPrev.facing, pp.facing, alpha)
-      if (!models.player(ppos, pfacing, t, PLAYER_ID)) {
+      // Orientation affichée (E6, anim/facing.ts) : virage court et lissé vers celle de la simulation, fini au tick du
+      // coup ; à défaut de mondes observés, celle de la simulation interpolée.
+      const pfacing = models.memory.playerFacing.at(t) ?? lerpAngle(ppPrev.facing, pp.facing, alpha)
+      lastPlayerFacing = pfacing
+      if (!models.player(ppos, pfacing, t, PLAYER_ID, pp.weapon)) {
         const speed = (Math.hypot(pp.pos.x - ppPrev.pos.x, pp.pos.z - ppPrev.pos.z) * 60) / dt
         const pb = playerBody(pp, ppos, pfacing, t, speed)
         list.push(pb)
@@ -677,6 +691,10 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
       lights: () => lastLights,
       models: () => models.info(),
       anim: (id) => models.frame(id),
+      weapon: () => {
+        const w = models.weaponPose()
+        return w ? { ...w, facing: lastPlayerFacing } : null
+      },
       syncFrameMs() {
         const t1 = performance.now()
         if (last) draw(last.world, last.prev, last.alpha)

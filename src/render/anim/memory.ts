@@ -13,6 +13,7 @@ import {
   TUNING,
   type World,
 } from '../../sim/index'
+import { FacingSmoother } from './facing'
 import { INTERRUPT_FADE_FRAMES } from './playback'
 
 // Fondu entre deux états de base qui ne viennent pas d'un coup (forme, E2) : 6 ticks (0,1 s).
@@ -176,6 +177,26 @@ export const PLAYER_TRACK = -1
 export const cutsWindup = (k: BaseKey, T: number): boolean =>
   k.kind === 'player-action' && k.activeAt !== null && T < k.activeAt && T < k.end
 
+// Échéance du geste du joueur au tick T (facing.ts) : tick où le modèle doit regarder dans la direction du coup.
+// Frappe et Balayage : leur tick d'impact ; Sentence : sa fin (la mort tombe alors) ; tout tick où un coup du joueur
+// porte (la Charge touche pendant sa ruée).
+export const playerDeadline = (w: World, T: number): number | null => {
+  const a = w.player.action
+  const struck = w.events.some(
+    (e) =>
+      (e.type === 'hit' && e.by === 'player') ||
+      e.type === 'clang' ||
+      e.type === 'player-impact' ||
+      (e.type === 'death' && e.by !== 'union'),
+  )
+  if (a && struck) return T
+  if (!a) return null
+  if ((a.kind === 'frappe' || a.kind === 'balayage') && a.activeAt !== undefined && a.activeAt >= T)
+    return a.activeAt
+  if (a.kind === 'sentence') return a.end
+  return null
+}
+
 const struckId = (e: SimEvent): number | null => {
   if (e.type === 'hit') return e.target === 'player' ? null : e.target
   if (e.type === 'action-interrupted' || e.type === 'fell' || e.type === 'clang') return e.id
@@ -184,11 +205,13 @@ const struckId = (e: SimEvent): number | null => {
 
 export class AnimMemory {
   readonly tracks = new Map<number, Track>()
+  readonly playerFacing = new FacingSmoother() // orientation affichée du Bourreau (facing.ts)
   lastTick = Number.NEGATIVE_INFINITY
   private lastWorld: World | null = null
 
   clear(): void {
     this.tracks.clear()
+    this.playerFacing.clear()
     this.lastTick = Number.NEGATIVE_INFINITY
     this.lastWorld = null
   }
@@ -288,6 +311,12 @@ export class AnimMemory {
     const prev = ptr.segments[ptr.segments.length - 1]
     const cut = prev !== undefined && cutsWindup(prev.key, T)
     this.push(ptr, pk, T, cut ? INTERRUPT_FADE_FRAMES : pk.kind === 'player-action' ? 0 : BASE_FADE_TICKS)
+    this.playerFacing.observe({
+      tick: T,
+      facing: w.player.facing,
+      deadline: playerDeadline(w, T),
+      snap: w.events.some((e) => e.type === 'reset'),
+    })
     for (const id of [...this.tracks.keys()])
       if (id !== PLAYER_TRACK && !present.has(id)) this.tracks.delete(id)
     this.lastTick = T

@@ -239,6 +239,9 @@ export const selectLights = (
 
 const lerp = (a: number, b: number, k: number): number => a + (b - a) * k
 
+// Hauteur (m) de la source de la chandelle du reliquaire, au-dessus du Bourreau (voir entityLights).
+export const RELIQUAIRE_HEIGHT_M = 2.8
+
 // Chandelle du reliquaire (planche du Bourreau) : le rayon de lumière autour du joueur, à la manière de Diablo.
 // Halo de prière : vert maladif, son intensité monte avec la canalisation. Lueur du sac : rouge vif, au stade 3 seulement.
 export const entityLights = (world: World, prev: World, alpha: number, t: number): LightSource[] => {
@@ -250,7 +253,7 @@ export const entityLights = (world: World, prev: World, alpha: number, t: number
   // Rayon de lumière à la Diablo : la flamme du reliquaire est à la ceinture (rig-bourreau.ts), mais la source de
   // lumière est placée au-dessus du Bourreau, pour éclairer le sol autour de lui sans brûler son propre corps. Elle
   // ne dépend que de la position (pas de l'orientation) : un Bourreau immobile ne fait pas bouger la lumière.
-  out.push(source('reliquaire', 'reliquaire', px, 2.8, pz, { owner: -1 }))
+  out.push(source('reliquaire', 'reliquaire', px, RELIQUAIRE_HEIGHT_M, pz, { owner: -1 }))
   const prevById = new Map(prev.creatures.map((c) => [c.id, c]))
   for (const c of world.creatures) {
     if (c.state.kind === 'mort' || c.state.kind === 'absorbe') continue

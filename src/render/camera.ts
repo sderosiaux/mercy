@@ -24,7 +24,7 @@ export const groundToUv = (p: Vec2): { u: number; v: number } => ({
 // Réglages de caméra : celui du §20 par défaut ; « proche » (environ 12 m de champ, plus inclinée) reste un réglage
 // prêt à être choisi (décision humaine du 2026-10-12 : le §20 est gardé). Même rotation de 45° pour les deux, donc
 // mêmes axes d'écran (SCREEN_UP, SCREEN_RIGHT).
-export type CameraPreset = 'p20' | 'proche'
+export type CameraPreset = 'p20' | 'proche' | 'inspection'
 export interface CameraSpec {
   readonly champM: number
   readonly tiltDeg: number
@@ -33,9 +33,11 @@ export interface CameraSpec {
 export const CAMERAS: Readonly<Record<CameraPreset, CameraSpec>> = {
   p20: { champM: RENDER.camera.champM, tiltDeg: RENDER.camera.tiltDeg, fovDeg: RENDER.camera.fovDeg },
   proche: { champM: 12, tiltDeg: 60, fovDeg: RENDER.camera.fovDeg }, // forme (E1) : réglage proposé, non retenu
+  // Instrument (E6) : 6 m de champ, moins inclinée, pour regarder de près l'arme en main (laboratoire, vérifications).
+  inspection: { champM: 6, tiltDeg: 35, fovDeg: RENDER.camera.fovDeg },
 }
 export const isCameraPreset = (s: string | null | undefined): s is CameraPreset =>
-  s === 'p20' || s === 'proche'
+  s === 'p20' || s === 'proche' || s === 'inspection'
 
 export interface CameraInput {
   readonly focus: Vec2 // position interpolée du joueur

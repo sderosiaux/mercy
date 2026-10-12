@@ -4,7 +4,9 @@
 import {
   decodeId,
   deltaE00,
+  hexToLab,
   type Lab,
+  PALETTE,
   type PixelImage,
   PLAYER_ID,
   type Renderer,
@@ -44,10 +46,11 @@ const telegraphPixels = (r: Renderer): { on: PixelImage; off: PixelImage; idx: n
   return { on, off, idx }
 }
 
-export const auditFrame = (r: Renderer, world: World) => {
+// `given` (E6) : références imposées (celles de B2, refs.json), pour auditer une image sans Résistant ni mort.
+export const auditFrame = (r: Renderer, world: World, given?: { ivoire: Lab; or: Lab; gris: Lab }) => {
   const color = r.debug.readPixels()
   const ids = r.debug.idPass()
-  const frame = readFrame(color, ids, world)
+  const frame = readFrame(color, ids, world, given)
   const refs = frame.refs
   // 1. Créatures debout et Bourreau : pixels lus comme ivoire, or (et gris pour le Bourreau).
   const standing = frame.entities
@@ -65,6 +68,55 @@ export const auditFrame = (r: Renderer, world: World) => {
     if (refs.gris && deltaE00(l, refs.gris) <= 10) playerGris++
   }
   const player = frame.entities.find((e) => e.id === PLAYER_ID)
+  // L'arme en main (E6) : pixels du joueur au rôle « autre ». Classes réservées : ivoire, or, gris des morts (références
+  // de l'image) et rouge vif (palette).
+  const rougeVif = hexToLab(PALETTE.rougeVif)
+  const weaponLabs: Lab[] = []
+  const weaponHits: { x: number; y: number; kind: string; rgb: number[] }[] = []
+  for (let i = 0, p = 0; i < ids.data.length; i += 4, p++) {
+    const { id, role } = decodeId(ids.data[i] ?? 0, ids.data[i + 1] ?? 0, ids.data[i + 2] ?? 0)
+    if (id !== PLAYER_ID || role !== ROLE.autre) continue
+    const l = labAt(color, i)
+    weaponLabs.push(l)
+    const kinds: [string, Lab | null][] = [
+      ['ivoire', refs.ivoire],
+      ['or', refs.or],
+      ['gris', refs.gris],
+      ['rougeVif', rougeVif],
+    ]
+    const k = kinds.find(([, ref]) => ref && deltaE00(l, ref) <= 10)
+    if (k && weaponHits.length < 40)
+      weaponHits.push({
+        x: p % ids.width,
+        y: Math.floor(p / ids.width),
+        kind: k[0],
+        rgb: [color.data[i] ?? 0, color.data[i + 1] ?? 0, color.data[i + 2] ?? 0],
+      })
+  }
+  const near = (ref: Lab | null): number =>
+    ref ? weaponLabs.filter((l) => deltaE00(l, ref) <= 10).length : 0
+  const weaponMedian = medianLab(weaponLabs)
+  const weapon = {
+    pixels: weaponLabs.length,
+    ivoirePx: near(refs.ivoire),
+    orPx: near(refs.or),
+    grisPx: near(refs.gris),
+    rougeVifPx: near(rougeVif),
+    lab: weaponMedian,
+    deGrisMedian: refs.gris && weaponMedian ? deltaE00(weaponMedian, refs.gris) : null,
+    deOrMin:
+      refs.or && weaponLabs.length ? Math.min(...weaponLabs.map((l) => deltaE00(l, refs.or as Lab))) : null,
+    deIvoireMin:
+      refs.ivoire && weaponLabs.length
+        ? Math.min(...weaponLabs.map((l) => deltaE00(l, refs.ivoire as Lab)))
+        : null,
+    deGrisMin:
+      refs.gris && weaponLabs.length
+        ? Math.min(...weaponLabs.map((l) => deltaE00(l, refs.gris as Lab)))
+        : null,
+    deRougeVifMin: weaponLabs.length ? Math.min(...weaponLabs.map((l) => deltaE00(l, rougeVif))) : null,
+    hits: weaponHits,
+  }
   // Où sont ces pixels (pour les retrouver sur la capture) : id, rôle, position, classe.
   const standingIds = new Set([...standing.map((s) => s.id), PLAYER_ID])
   const hits: { id: number; role: number; x: number; y: number; kind: string }[] = []
@@ -126,6 +178,7 @@ export const auditFrame = (r: Renderer, world: World) => {
       grisPx: playerGris,
       deGrisMedian: refs.gris && playerLabs.length ? deltaE00(medianLab(playerLabs) as Lab, refs.gris) : null,
     },
+    weapon,
     telegraph: {
       pixels: tel.idx.length,
       lab: telLab,

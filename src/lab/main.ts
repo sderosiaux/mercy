@@ -7,6 +7,7 @@ import {
   createRenderer,
   decodeId,
   HUD_BAND_PX,
+  type Lab,
   type PixelImage,
   PLAYER_ID,
   ROLE,
@@ -22,6 +23,17 @@ import { InvalidScene } from './policies'
 import { type LabScene, SCENES, sceneById } from './scenes'
 
 const params = new URLSearchParams(location.search)
+// Références de couleur imposées à l'audit (E6) : `refs=L,a,b;L,a,b;L,a,b` (ivoire ; or ; gris).
+const givenRefs = (): { ivoire: Lab; or: Lab; gris: Lab } | undefined => {
+  const r = (params.get('refs') ?? '').split(';').map((x) => x.split(',').map(Number))
+  const lab = (v: number[] | undefined): Lab => ({ L: v?.[0] ?? 0, a: v?.[1] ?? 0, b: v?.[2] ?? 0 })
+  return r.length === 3 && r.every((v) => v.length === 3 && v.every(Number.isFinite))
+    ? { ivoire: lab(r[0]), or: lab(r[1]), gris: lab(r[2]) }
+    : undefined
+}
+// Instrument (E6) : `arme=masse` met la Masse en main du Bourreau au départ de la scène (audit, captures).
+const armed = (w: World): World =>
+  params.get('arme') === 'masse' ? { ...w, player: { ...w.player, weapon: 'masse' } } : w
 // Couleurs du laboratoire : variables CSS de la palette (style.ts), jamais en dur.
 const cssVar = (name: string): string =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim()
@@ -69,7 +81,7 @@ interface Gesture {
   cutBy: string | null
 }
 const playerGestures = (scene: LabScene, to: number): Gesture[] => {
-  let w = scene.world()
+  let w = armed(scene.world())
   const pol = scene.policy()
   const out: Gesture[] = []
   let cur: Gesture | null = null
@@ -117,7 +129,7 @@ const run = async (scene: LabScene): Promise<void> => {
   if (params.get('label') !== '0') app.append(label)
 
   let policy = scene.policy()
-  let world: World = scene.world()
+  let world: World = armed(scene.world())
   let prev: World = world
   let error: string | null = null
   // Les décalques de la scène sont du sang ancien (rouge brun), posés avant le tick 0.
@@ -128,7 +140,7 @@ const run = async (scene: LabScene): Promise<void> => {
   }
   const reset = (): void => {
     policy = scene.policy()
-    world = scene.world()
+    world = armed(scene.world())
     prev = world
     error = null
     seedGore()
@@ -198,7 +210,7 @@ const run = async (scene: LabScene): Promise<void> => {
 
   // Moments clés d'une créature, par une partie simulée à part (sans rendu), puis planche de vignettes rendues.
   const strip = (id: number, to: number) => {
-    let w = scene.world()
+    let w = armed(scene.world())
     const pol = scene.policy()
     let firstAttack: { start: number; activeAt: number; name: string } | null = null
     let cut: number | null = null
@@ -645,6 +657,85 @@ const run = async (scene: LabScene): Promise<void> => {
       },
       // Diagnostic : dernière pose calculée d'un corps (clips, instants, poids).
       anim: () => renderer.debug.anim(Number(params.get('id') ?? '1')),
+      // Vignettes (E6) : `task=vignettes&ticks=…&taille=<px>[&sub=<n>]` : pour chaque tick (n sous-images par tick,
+      // alpha = k/n), l'image recadrée autour du Bourreau (PNG en data URL), l'arme tenue et le geste.
+      vignettes: () => {
+        const size = Number(params.get('taille') ?? '360')
+        const sub = Math.max(1, Number(params.get('sub') ?? '1'))
+        const out: unknown[] = []
+        for (const t of nums('ticks')) {
+          goto(t)
+          for (let k = sub === 1 ? sub : 1; k <= sub; k++) {
+            draw(k / sub)
+            const img = renderer.debug.readPixels()
+            const p = world.player.pos
+            const pp = prev.player.pos
+            const a = k / sub
+            const [cx, cy] = renderer.debug.project(pp.x + (p.x - pp.x) * a, 0.9, pp.z + (p.z - pp.z) * a)
+            const S = Math.min(size, img.width, img.height)
+            const x0 = Math.round(Math.min(Math.max(0, cx - S / 2), img.width - S))
+            const y0 = Math.round(Math.min(Math.max(0, cy - S / 2), img.height - S))
+            const c = document.createElement('canvas')
+            c.width = S
+            c.height = S
+            const tile = new ImageData(S, S)
+            for (let y = 0; y < S; y++)
+              tile.data.set(
+                img.data.subarray(((y0 + y) * img.width + x0) * 4, ((y0 + y) * img.width + x0 + S) * 4),
+                y * S * 4,
+              )
+            c.getContext('2d')?.putImageData(tile, 0, 0)
+            const act = world.player.action
+            const wp = renderer.debug.weapon()
+            out.push({
+              t: prev.tick + (world.tick - prev.tick) * a,
+              weapon: world.player.weapon,
+              held: wp?.weapon ?? null,
+              action: act ? `${act.kind} ${playerPhase(act, world.tick)}` : null,
+              impact: world.events.some((e) => e.type === 'player-impact'),
+              swap: world.events.some((e) => e.type === 'weapon-swap'),
+              sim: world.player.facing,
+              shown: wp?.facing ?? null,
+              png: c.toDataURL('image/png'),
+            })
+          }
+        }
+        return out
+      },
+      // Arme en main et orientation, tick par tick (E6) : `task=armes&tick=<de>&to=<à>[&sub=<n>]`. Pour chaque image
+      // (n sous-images par tick, alpha = k/n, comme le jeu entre deux ticks) : prise, bout et tranchant de l'arme
+      // (monde), orientation affichée et de la simulation, geste, arme, clip principal, impact.
+      armes: () => {
+        const to = Number(params.get('to') ?? from + 60)
+        const sub = Math.max(1, Number(params.get('sub') ?? '1'))
+        const out: unknown[] = []
+        for (let t = from; t <= to; t++) {
+          goto(t)
+          for (let k = sub === 1 ? sub : 1; k <= sub; k++) {
+            draw(k / sub)
+            const wp = renderer.debug.weapon()
+            const f = renderer.debug.anim(PLAYER_ID)
+            const main = f?.layers.slice().sort((p, q2) => q2.weight - p.weight)[0]
+            const a = world.player.action
+            out.push({
+              t: prev.tick + (world.tick - prev.tick) * (k / sub),
+              sim: world.player.facing,
+              shown: wp?.facing ?? null,
+              pos: [world.player.pos.x, world.player.pos.z].map((x) => Math.round(x * 1000) / 1000),
+              weapon: world.player.weapon,
+              held: wp?.weapon ?? null,
+              action: a ? { kind: a.kind, start: a.start, activeAt: a.activeAt ?? null, end: a.end } : null,
+              impact: world.events.some((e) => e.type === 'player-impact'),
+              swap: world.events.some((e) => e.type === 'weapon-swap'),
+              clip: main ? `${main.clip}@${main.time.toFixed(3)}` : null,
+              grip: wp?.grip.map((x) => Math.round(x * 1000) / 1000) ?? null,
+              tip: wp?.tip.map((x) => Math.round(x * 1000) / 1000) ?? null,
+              edge: wp?.edge.map((x) => Math.round(x * 1000) / 1000) ?? null,
+            })
+          }
+        }
+        return out
+      },
       // Diagnostic : déciles de L*, C* et teinte des pixels `corps` d'une entité (id).
       cstats: () => {
         const id = Number(params.get('id') ?? '1')
@@ -771,7 +862,28 @@ const run = async (scene: LabScene): Promise<void> => {
         return { creatures: world.creatures.length, maxErrorM: worst }
       },
       // Audit §30 (E1) : créatures debout sans ivoire ni or, acier du Bourreau, télégraphes contre le sang et les morts.
-      audit: () => auditFrame(renderer, world),
+      // `refs=L,a,b;L,a,b;L,a,b` (ivoire ; or ; gris, ceux de B2) : références imposées (E6) ; sinon celles de l'image.
+      audit: () => auditFrame(renderer, world, givenRefs()),
+      // Audit du Bourreau et de son arme image après image (E6) : `task=auditbourreau&tick=<de>&to=<à>&every=<n>`.
+      auditbourreau: () => {
+        const to = Number(params.get('to') ?? from + 60)
+        const every = Math.max(1, Number(params.get('every') ?? '1'))
+        const out: unknown[] = []
+        for (let t = from; t <= to; t += every) {
+          goto(t)
+          const a = auditFrame(renderer, world, givenRefs())
+          const { hits: _h, ...weapon } = a.weapon
+          out.push({
+            t,
+            weapon: world.player.weapon,
+            action: world.player.action?.kind ?? null,
+            bourreau: a.player,
+            arme: weapon,
+            hits: a.weapon.hits.slice(0, 6),
+          })
+        }
+        return out
+      },
       // I1 fidèle à l'image (E4) : `task=fidelite&tick=54` (télégraphes sur les morts, entités masquées une à une).
       fidelite: () => i1Fidelity(renderer, Number(params.get('min') ?? '150')),
       // Temps de frame complet (CPU + GPU) : chaque image est rendue puis on attend la fin du travail du GPU (lecture

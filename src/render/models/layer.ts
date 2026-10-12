@@ -6,7 +6,7 @@
 // - vivant : maillage à squelette éclairé (scène), liseré et marques dans la couche des signaux ;
 // - mort : pose du tick de la mort, cuite une fois dans le lot des morts de son personnage (gris, lumière fixe) ;
 // - Membre errant : le bras du propriétaire, découpé du modèle, qui vit à part (le bras disparaît du corps) ;
-// - Bourreau : le modèle `bourreau` du manifeste, sinon ses segments.
+// - Bourreau : le modèle `bourreau` du manifeste, sinon ses segments ; son arme courante en main (weapons.ts).
 import {
   BufferAttribute,
   BufferGeometry,
@@ -22,7 +22,14 @@ import {
   type Texture,
   Vector3,
 } from 'three'
-import { type Creature, PORTEUR_STAGE_KEY, TUNING, type Vec2, type World } from '../../sim/index'
+import {
+  type Creature,
+  PORTEUR_STAGE_KEY,
+  TUNING,
+  type Vec2,
+  type WeaponId,
+  type World,
+} from '../../sim/index'
 import { type AnimFrame, animate, deathFrame, type MachineInput, phase01 } from '../anim/machine'
 import { AnimMemory, PLAYER_TRACK } from '../anim/memory'
 import { encodeId, ROLE } from '../idpass'
@@ -40,16 +47,15 @@ import {
   deadIdMaterial,
   deadMaterial,
   idMaterial,
-  livingFloorUniform,
   type ModelUniforms,
   markMaterial,
   modelUniforms,
-  NO_FLOOR,
   rimMaterial,
   setStencil,
   silhouetteMaterial,
 } from './materials'
 import { PART } from './regions'
+import { HAND_BONE, HeldWeapons, type HeldWeaponsInfo, type WeaponMaps } from './weapons'
 
 export interface OverlayTargets {
   readonly scene: Object3D
@@ -86,6 +92,7 @@ export interface ModelsInfo {
   }[]
   readonly living: number
   readonly corpses: number
+  readonly weapons: HeldWeaponsInfo | null // armes du Bourreau en main
 }
 
 export interface ModelSegment {
@@ -111,10 +118,6 @@ const SAC_GLOW = 0.5 // lueur du sac chargé (émissif, × teinte du stade ; cel
 const HALO_GLOW = 0.6 // halo en prière
 
 const wrap = (a: number): number => Math.atan2(Math.sin(a), Math.cos(a))
-
-// Plancher de la chair (E4) : les créatures et les Membres errants ; pas le Bourreau.
-const floorOf = (assetId: string): { value: number } =>
-  assetId === 'bourreau' ? NO_FLOOR : livingFloorUniform
 
 const idVec = (u: { value: Vector3 }, id: number, role: number): void => {
   const [r, g, b] = encodeId(id, role)
@@ -180,6 +183,7 @@ export class ModelLayer {
   private readonly segs = new Map<number, ModelSegment[]>()
   private readonly frames = new Map<number, AnimFrame>() // dernière pose calculée (instrument)
   private env: Texture | null = null
+  private readonly weapons: HeldWeapons | null
   private stencil = 1
   // Matière des doublures d'ombre dans la passe principale : ni couleur ni profondeur.
   private readonly invisible = new MeshBasicMaterial({ colorWrite: false, depthWrite: false })
@@ -202,7 +206,10 @@ export class ModelLayer {
     lowTextures: boolean,
     private readonly shadows: boolean,
     enabled = true,
+    weaponMaps: WeaponMaps | null = null,
+    playerId = 0,
   ) {
+    this.weapons = weaponMaps ? new HeldWeapons(weaponMaps, playerId, shadows) : null
     this.load = loadModels(
       base,
       lowTextures,
@@ -230,6 +237,7 @@ export class ModelLayer {
     for (const l of this.living.values()) this.applyEnv(l.inst.mesh.material as MeshStandardMaterial)
     for (const list of this.pool.values())
       for (const l of list) this.applyEnv(l.inst.mesh.material as MeshStandardMaterial)
+    for (const m of this.weapons?.materials ?? []) this.applyEnv(m)
   }
 
   private applyEnv(m: MeshStandardMaterial): void {
@@ -283,14 +291,7 @@ export class ModelLayer {
   private createLiving(asset: ModelAsset): Living {
     const inst = new ModelInstance(asset)
     const u = modelUniforms(asset.regions.sacCenter)
-    const body = bodyMaterial(
-      asset.map,
-      asset.roughness,
-      u,
-      this.shift(asset.id),
-      asset.meanLum,
-      floorOf(asset.id),
-    )
+    const body = bodyMaterial(asset.map, asset.roughness, u, this.shift(asset.id), asset.meanLum)
     this.applyEnv(body)
     inst.mesh.material = body
     // L'ombre portée vient de la doublure grossière ; le corps reçoit les ombres.
@@ -442,7 +443,8 @@ export class ModelLayer {
     return true
   }
 
-  player(pos: Vec2, facing: number, t: number, id: number): boolean {
+  // Le Bourreau, son arme courante en main (null : aucune).
+  player(pos: Vec2, facing: number, t: number, id: number, weapon: WeaponId | null): boolean {
     const asset = this.asset('bourreau')
     if (!asset) return false
     const l = this.acquire(id, asset)
@@ -459,6 +461,7 @@ export class ModelLayer {
     })
     l.inst.place(pos.x, pos.z, facing, 1)
     this.boundShadow(l, pos, asset.entry.hauteurM ?? 2, 1)
+    this.holdWeapon(l.inst, asset, weapon)
     this.frames.set(id, frame)
     l.inst.pose(frame, t, id)
     this.showRim(l.rim, false)
@@ -466,6 +469,26 @@ export class ModelLayer {
     idVec(l.u.uIdBody, id, ROLE.corps)
     this.segs.set(id, this.boneSegments(l.inst))
     return true
+  }
+
+  // Arme courante dans la main droite du Bourreau (weapons.ts) : la prise est au centre des sommets de la main.
+  private holdWeapon(inst: ModelInstance, asset: ModelAsset, weapon: WeaponId | null): void {
+    if (!this.weapons) return
+    const hand = inst.bone(HAND_BONE)
+    const bi = asset.boneNames.indexOf(HAND_BONE)
+    const box = asset.boxes.find((b) => b.bone === bi)
+    if (!hand || !box) {
+      this.warn(`${asset.id} : os ${HAND_BONE} absent — arme non tenue`)
+      this.weapons.show(null)
+      return
+    }
+    const grip = new Vector3(
+      (box.min[0] + box.max[0]) / 2,
+      (box.min[1] + box.max[1]) / 2,
+      (box.min[2] + box.max[2]) / 2,
+    )
+    this.weapons.attach(inst.root, hand, grip)
+    this.weapons.show(weapon)
   }
 
   // I4 : un os est un segment ; sa boîte est celle des sommets dont il est l'os dominant.
@@ -729,14 +752,7 @@ export class ModelLayer {
     if (!mb || mb.key !== key) {
       if (mb) this.dropMembre(c.id, mb)
       const u = modelUniforms(new Vector3())
-      const body = bodyMaterial(
-        asset.map,
-        asset.roughness,
-        u,
-        this.shift(asset.id),
-        asset.meanLum,
-        floorOf(asset.id),
-      )
+      const body = bodyMaterial(asset.map, asset.roughness, u, this.shift(asset.id), asset.meanLum)
       this.applyEnv(body)
       const bodyId = idMaterial(u, 'body')
       const piece3 = (mat: Material, id: Material): Mesh => {
@@ -809,6 +825,18 @@ export class ModelLayer {
     return this.frames.get(id) ?? null
   }
 
+  // Arme en main de la dernière image : prise, bout, tranchant (repère monde), arme visible.
+  weaponPose(): { weapon: WeaponId | null; grip: number[]; tip: number[]; edge: number[] } | null {
+    const p = this.weapons?.pose()
+    if (!p) return null
+    return {
+      weapon: this.weapons?.info().weapon ?? null,
+      grip: p.grip.toArray(),
+      tip: p.tip.toArray(),
+      edge: p.edge.toArray(),
+    }
+  }
+
   // Segments (I4) de chaque corps modélisé de la dernière image.
   segments(): ReadonlyMap<number, readonly ModelSegment[]> {
     return this.segs
@@ -841,6 +869,7 @@ export class ModelLayer {
       })),
       living: this.used.size,
       corpses: this.corpses.size,
+      weapons: this.weapons?.info() ?? null,
     }
   }
 
@@ -853,5 +882,6 @@ export class ModelLayer {
       }
     for (const [id, mb] of [...this.membres]) this.dropMembre(id, mb)
     for (const b of this.batches.values()) b.dispose()
+    this.weapons?.dispose()
   }
 }
