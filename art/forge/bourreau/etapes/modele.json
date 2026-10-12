@@ -1,0 +1,16 @@
+{
+  "key": "modele",
+  "fingerprint": "56276396d7acdded8c4167b638b2422fe7d664bc8cc530407d45985ed3ab592b",
+  "status": "reussi",
+  "endpoint": "multi-image-to-3d",
+  "taskId": "01a12e4a-a12d-70d8-b34b-b6929beba808",
+  "estimatedCredits": 30,
+  "credits": 30,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/bourreau/files/modele.glb",
+      "sha256": "387bcca3f8eafdb998c3d2638e6fd68555e12f0e4970d1a3b5b793229f52b1d6"
+    }
+  },
+  "updatedAt": "2026-10-12T04:10:30.826Z"
+}

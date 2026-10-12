@@ -1,0 +1,16 @@
+{
+  "key": "modele",
+  "fingerprint": "d988f3f16135a5f81ee6d410f1ae653d1a9fe61100eadf5de857f03a0be372b0",
+  "status": "reussi",
+  "endpoint": "multi-image-to-3d",
+  "taskId": "01a12e4a-9be8-7221-a69d-cfe318cea603",
+  "estimatedCredits": 30,
+  "credits": 30,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/chirurgien/files/modele.glb",
+      "sha256": "1ca9b06517ab775e726098c1758564c110e7556ae0c6372256eae2554bc12fb4"
+    }
+  },
+  "updatedAt": "2026-10-12T04:10:33.715Z"
+}

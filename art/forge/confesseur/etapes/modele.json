@@ -1,0 +1,16 @@
+{
+  "key": "modele",
+  "fingerprint": "6cc52df27792929d29ef7dac4f58093b27fda557ce232b223474ef2f3ca65a6c",
+  "status": "reussi",
+  "endpoint": "multi-image-to-3d",
+  "taskId": "01a12e4a-a054-767d-9c5f-0dfe74f0cdbd",
+  "estimatedCredits": 30,
+  "credits": 30,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/confesseur/files/modele.glb",
+      "sha256": "15adb02a8c5f7c919a4cdafd64155b2ab610bf012e216a4f414c2f56af85b4ca"
+    }
+  },
+  "updatedAt": "2026-10-12T04:10:25.082Z"
+}

@@ -1,0 +1,28 @@
+{
+  "key": "vues",
+  "fingerprint": "70e5f11d81600c61d6e7570da386c651566fccfedc318ebf7ab23ab7e7c8ee2b",
+  "status": "reussi",
+  "credits": 0,
+  "outputs": {
+    "face": {
+      "file": "art/forge/.cache/recousu/files/vue-face.png",
+      "sha256": "8b45583f5fbcdb93c07f824354fb1a5cd26ea43567ebe3be3e828901014d42c0"
+    },
+    "profil": {
+      "file": "art/forge/.cache/recousu/files/vue-profil.png",
+      "sha256": "6d007b7cb058e102f904d393e2e4e1631fd06792b008e49960410e43410ad668"
+    },
+    "dos": {
+      "file": "art/forge/.cache/recousu/files/vue-dos.png",
+      "sha256": "96aa043753aa81d46a484e11028bc8a5e0e6604697b23a57fa31779aee2c9771"
+    }
+  },
+  "meta": {
+    "tailles": [
+      "583x954",
+      "324x955",
+      "583x960"
+    ]
+  },
+  "updatedAt": "2026-10-12T04:06:45.078Z"
+}

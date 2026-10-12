@@ -1,0 +1,16 @@
+{
+  "key": "concept",
+  "fingerprint": "9f182eb691d43009709dd869c6d7504bc8b2add0b09836efca52305149b25525",
+  "status": "reussi",
+  "credits": null,
+  "outputs": {
+    "planche": {
+      "file": "art/forge/confesseur/planche-modele.png",
+      "sha256": "deff638090d6ac1cbbeda3ab529c565d12822bf74c4aa6881da5184dc0ce991a"
+    }
+  },
+  "meta": {
+    "modele": "sunburst"
+  },
+  "updatedAt": "2026-10-12T04:06:43.906Z"
+}

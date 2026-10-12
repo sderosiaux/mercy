@@ -1,0 +1,16 @@
+{
+  "key": "rig",
+  "fingerprint": "03578a1a8c0db5afbbc706027102c9715e844297e8ebfdba86677f60839d8a16",
+  "status": "reussi",
+  "endpoint": "rigging",
+  "taskId": "01a12e4e-1d1e-73ae-aa22-4643d181e9eb",
+  "estimatedCredits": 5,
+  "credits": 5,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/recousu/files/rig.glb",
+      "sha256": "5a0f5eb4b06a9a875eb6427f91b731413f6a77f2ac6c0326a6470eebc5b90d55"
+    }
+  },
+  "updatedAt": "2026-10-12T04:10:54.645Z"
+}

@@ -1,0 +1,16 @@
+{
+  "key": "rig",
+  "fingerprint": "7996617113d789dff2465406778fbd57a9bc1df197536c9b26de08c738c6c21e",
+  "status": "reussi",
+  "endpoint": "rigging",
+  "taskId": "01a12e4e-2016-7614-8463-df6c0ac6c76d",
+  "estimatedCredits": 5,
+  "credits": 5,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/chirurgien/files/rig.glb",
+      "sha256": "2d1aec7adf80e75ba74d2266ffee3fc5a597befb782d8b25735fb56471b7a40b"
+    }
+  },
+  "updatedAt": "2026-10-12T04:10:55.062Z"
+}

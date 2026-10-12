@@ -1,0 +1,28 @@
+{
+  "key": "vues",
+  "fingerprint": "467d17bf30cced82b373028908f9405bc1d5b0ac26a0d3d08254454059691cb5",
+  "status": "reussi",
+  "credits": 0,
+  "outputs": {
+    "face": {
+      "file": "art/forge/.cache/chirurgien/files/vue-face.png",
+      "sha256": "2a9487681b20ab16be5b7962163f9e07064974b38d0269570f07d4e2db037696"
+    },
+    "profil": {
+      "file": "art/forge/.cache/chirurgien/files/vue-profil.png",
+      "sha256": "98f568c44b68bb62e121aacb7ac23f7c69d29db1535f683fe1dfedcb7c7fdc0b"
+    },
+    "dos": {
+      "file": "art/forge/.cache/chirurgien/files/vue-dos.png",
+      "sha256": "975ad295e27a748b95429298fc8ca5409caa0ca50a1920efc37e80c1d5973d02"
+    }
+  },
+  "meta": {
+    "tailles": [
+      "545x1023",
+      "342x1024",
+      "548x1024"
+    ]
+  },
+  "updatedAt": "2026-10-12T04:06:43.204Z"
+}

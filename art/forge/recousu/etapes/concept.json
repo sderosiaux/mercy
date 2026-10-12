@@ -1,0 +1,16 @@
+{
+  "key": "concept",
+  "fingerprint": "b720c1c455bc2589308404df78ad7ae8788c996802ad6ef91ac47336a4de6cd2",
+  "status": "reussi",
+  "credits": null,
+  "outputs": {
+    "planche": {
+      "file": "art/forge/recousu/planche-modele.png",
+      "sha256": "4c19d486cdf4fb4e186bd1850e6c647fbcea028faa94ee88973dfa00cb0aff9b"
+    }
+  },
+  "meta": {
+    "modele": "sunburst"
+  },
+  "updatedAt": "2026-10-12T04:06:44.667Z"
+}

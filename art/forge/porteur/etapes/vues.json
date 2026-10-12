@@ -1,0 +1,28 @@
+{
+  "key": "vues",
+  "fingerprint": "7d554991c0be9f61c599234784cf7b7af25e73d3e86991fd83e9d391db86a47e",
+  "status": "reussi",
+  "credits": 0,
+  "outputs": {
+    "face": {
+      "file": "art/forge/.cache/porteur/files/vue-face.png",
+      "sha256": "5a235423d11ddf2c3d136511871e87a2e2610178ca19b1ba0098fa8d0cef0f21"
+    },
+    "profil": {
+      "file": "art/forge/.cache/porteur/files/vue-profil.png",
+      "sha256": "b5cd79caf7f8a170986524c19ac10d04e3edd1d6e044d91ab0fd6d69a52d30e2"
+    },
+    "dos": {
+      "file": "art/forge/.cache/porteur/files/vue-dos.png",
+      "sha256": "c1607f02144a8d86a564e0f6967c4193368264f1dd6f2596d90ba36d9248c9b0"
+    }
+  },
+  "meta": {
+    "tailles": [
+      "481x899",
+      "478x897",
+      "490x907"
+    ]
+  },
+  "updatedAt": "2026-10-12T04:06:45.665Z"
+}

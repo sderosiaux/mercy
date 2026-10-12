@@ -1,0 +1,5 @@
+{"at":"2026-10-12T04:06:43.993Z","key":"concept","event":"reussi","credits":null,"note":"coût non rapporté par le service"}
+{"at":"2026-10-12T04:06:47.021Z","key":"modele","taskId":"01a12e4a-a12d-70d8-b34b-b6929beba808","event":"cree","estimatedCredits":30}
+{"at":"2026-10-12T04:10:30.826Z","key":"modele","taskId":"01a12e4a-a12d-70d8-b34b-b6929beba808","event":"reussi","credits":30}
+{"at":"2026-10-12T04:10:34.698Z","key":"rig","taskId":"01a12e4e-14b7-7199-aab5-973a1f009b17","event":"cree","estimatedCredits":5}
+{"at":"2026-10-12T04:10:53.514Z","key":"rig","taskId":"01a12e4e-14b7-7199-aab5-973a1f009b17","event":"reussi","credits":5}

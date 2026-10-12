@@ -1,0 +1,16 @@
+{
+  "key": "concept",
+  "fingerprint": "ff67eedac94e79bccb8f73790f0762cd972d1f8bf614eb41d8260c70b380a299",
+  "status": "reussi",
+  "credits": null,
+  "outputs": {
+    "planche": {
+      "file": "art/forge/bourreau/planche-modele.png",
+      "sha256": "bb9ac8597f7710aaadee4f235ff6d9cfee4c67b120bb0c33a5d615dbcd2fb4a3"
+    }
+  },
+  "meta": {
+    "modele": "sunburst"
+  },
+  "updatedAt": "2026-10-12T04:06:43.992Z"
+}

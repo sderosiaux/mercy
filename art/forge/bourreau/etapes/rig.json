@@ -1,0 +1,16 @@
+{
+  "key": "rig",
+  "fingerprint": "d8f5cb4b1b7183faac52367bc6266b5b3d5de88d0f899106171858d7153b37f0",
+  "status": "reussi",
+  "endpoint": "rigging",
+  "taskId": "01a12e4e-14b7-7199-aab5-973a1f009b17",
+  "estimatedCredits": 5,
+  "credits": 5,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/bourreau/files/rig.glb",
+      "sha256": "6f29c5c655fd0fe6f2305e6405b51f1eff6398e04dd53533bef9a5d82f4af668"
+    }
+  },
+  "updatedAt": "2026-10-12T04:10:53.514Z"
+}

@@ -1,0 +1,16 @@
+{
+  "key": "modele",
+  "fingerprint": "28b5cc309d35d46ced1923ed54c4d4b1f4b528f3b0080014ea0effeb740c69c0",
+  "status": "reussi",
+  "endpoint": "multi-image-to-3d",
+  "taskId": "01a12e4a-a613-765f-b6b4-07661a5a2876",
+  "estimatedCredits": 30,
+  "credits": 30,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/recousu/files/modele.glb",
+      "sha256": "5000308fc3c6f8bc20db754820008417931e45f2cd506a7cd233016a01d40a6f"
+    }
+  },
+  "updatedAt": "2026-10-12T04:10:32.955Z"
+}

@@ -1,0 +1,16 @@
+{
+  "key": "concept",
+  "fingerprint": "520650dbc7d77295f05a02753853a101c9286029f8e17bcf2654be7f299bf25a",
+  "status": "reussi",
+  "credits": null,
+  "outputs": {
+    "planche": {
+      "file": "art/forge/chirurgien/planche-modele.png",
+      "sha256": "fffbd9e726f72eb1d986bcb230df565c68a5e850d3a06385e04f43a05365282f"
+    }
+  },
+  "meta": {
+    "modele": "sunburst"
+  },
+  "updatedAt": "2026-10-12T04:06:42.917Z"
+}
