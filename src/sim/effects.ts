@@ -39,7 +39,13 @@ const clampArena = (p: Vec2): Vec2 => {
   return { x: Math.max(-h, Math.min(h, p.x)), z: Math.max(-h, Math.min(h, p.z)) }
 }
 
-const damagePlayer = (d: Draft, self: MCreature, amount: number, source: 'creature' | 'burst'): void => {
+const damagePlayer = (
+  d: Draft,
+  self: MCreature,
+  amount: number,
+  source: 'creature' | 'burst',
+  push?: { from: Vec2; distance: number },
+): void => {
   const p = d.player
   if (d.tick < p.invulnerableUntil) {
     const a = p.action
@@ -52,6 +58,10 @@ const damagePlayer = (d: Draft, self: MCreature, amount: number, source: 'creatu
   }
   p.vie -= amount
   emit(d, { type: 'hit', tick: d.tick, target: 'player', amount, damageType: source, by: self.id })
+  if (push && push.distance > 0) {
+    const away = dist(push.from, p.pos) < 1e-9 ? self.facing : angleOf(push.from, p.pos)
+    p.pos = clampArena(add(p.pos, scale(fromAngle(away), push.distance)))
+  }
 }
 
 const damageCreatures = (d: Draft, self: MCreature, e: Extract<Effect, { kind: 'damage' }>): void => {
@@ -86,7 +96,10 @@ export const applyEffects = (d: Draft, self: MCreature, effects: readonly Effect
   for (const e of effects) {
     switch (e.kind) {
       case 'damage':
-        if (inArea(e.area, d.player.pos, TUNING.playerRadius)) damagePlayer(d, self, e.amount, e.source)
+        if (inArea(e.area, d.player.pos, TUNING.playerRadius)) {
+          const from = e.area.kind === 'circle' ? e.area.center : e.area.origin
+          damagePlayer(d, self, e.amount, e.source, { from, distance: e.knockback ?? 0 })
+        }
         if (e.hitsCreatures) damageCreatures(d, self, e)
         break
       case 'raise':
@@ -186,6 +199,9 @@ export const applyEffects = (d: Draft, self: MCreature, effects: readonly Effect
         break
       case 'setData':
         self.familyData = { ...self.familyData, [e.key]: e.value }
+        break
+      case 'dashSelf':
+        self.pos = clampArena(e.to)
         break
     }
   }

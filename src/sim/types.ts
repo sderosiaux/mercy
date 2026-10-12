@@ -155,6 +155,7 @@ export type Effect =
       readonly abatSmall: boolean // éclatement : abat toute petite créature ordinaire
       readonly staggerLarge: number // ticks de vacillement des grandes créatures et Résistants
       readonly hitsCreatures: boolean
+      readonly knockback?: number // projette le joueur touché, en m, à l'opposé du centre de la zone
     }
   | { readonly kind: 'raise'; readonly ids: readonly EntityId[] }
   | { readonly kind: 'absorb'; readonly id: EntityId }
@@ -169,6 +170,7 @@ export type Effect =
     }
   | { readonly kind: 'selfAbattu' }
   | { readonly kind: 'setData'; readonly key: string; readonly value: number }
+  | { readonly kind: 'dashSelf'; readonly to: Vec2 } // ruée : la créature se déplace d'un coup
 
 export type Intent =
   | { readonly kind: 'idle' }

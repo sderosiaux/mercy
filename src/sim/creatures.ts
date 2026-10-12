@@ -62,9 +62,27 @@ const decideAndAct = (d: Draft, c: MCreature): void => {
     limb: def.limb ?? null,
   }
   emit(d, { type: 'action-start', tick: d.tick, id: c.id, action: intent.action })
+  // Une canalisation sur un corps le réserve : il ne se relève pas seul et aucun autre support ne le prend.
+  if (channel && typeof intent.target === 'number') {
+    const body = byId(d, intent.target)
+    if (body && body.state.kind === 'abattu' && body.state.claimedBy === null) {
+      body.state = { ...body.state, claimedBy: c.id }
+    }
+  }
+}
+
+// Une réservation ne vaut que tant que la canalisation qui l'a posée continue.
+const releaseClaims = (d: Draft): void => {
+  for (const b of d.creatures) {
+    if (b.state.kind !== 'abattu' || typeof b.state.claimedBy !== 'number') continue
+    const op = byId(d, b.state.claimedBy)
+    const holds = op?.action?.kind === 'canalisation' && op.action.target === b.id && op.state.kind !== 'mort'
+    if (!holds) b.state = { ...b.state, claimedBy: null }
+  }
 }
 
 export const creaturesTick = (d: Draft): void => {
+  releaseClaims(d)
   for (const c of [...d.creatures]) {
     if (!d.creatures.includes(c) || c.state.kind === 'mort') continue
     if (c.state.kind === 'absorbe') {
