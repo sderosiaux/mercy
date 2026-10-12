@@ -30,7 +30,7 @@ import { DEAD_PROXY_LAYER } from '../lightrig'
 import { greyMix, rimOf, sacColor } from '../look'
 import { PALETTE } from '../palette'
 import { urlParam } from '../quality'
-import { parseShiftOverride, shiftFor } from './classes'
+import { type ClassShift, parseShiftOverride, shiftFor, withOverrides } from './classes'
 import { type BakedCorpse, DeadBatch } from './dead'
 import { ModelInstance } from './instance'
 import { loadModels, type ModelAsset, type ModelLoad } from './loader'
@@ -177,8 +177,17 @@ export class ModelLayer {
   private stencil = 1
   // Matière des doublures d'ombre dans la passe principale : ni couleur ni profondeur.
   private readonly invisible = new MeshBasicMaterial({ colorWrite: false, depthWrite: false })
-  // Instrument (captures avant / après) : force imposée au décalage des classes, sinon celle de classes.ts.
+  // Instruments (captures avant / après, réglage) : forces imposées au décalage des classes (`decalage`, puis `gris`
+  // et `jaune`), sinon celles de classes.ts.
   private readonly shiftOverride = parseShiftOverride(urlParam('decalage'))
+  private readonly grisOverride = parseShiftOverride(urlParam('gris'))
+  private readonly jauneOverride = parseShiftOverride(urlParam('jaune'))
+  private shift(id: string): ClassShift {
+    return withOverrides(shiftFor(id, this.shiftOverride(id)), {
+      gris: this.grisOverride(id),
+      jaune: this.jauneOverride(id),
+    })
+  }
   readonly notes: string[] = []
 
   constructor(
@@ -268,13 +277,7 @@ export class ModelLayer {
   private createLiving(asset: ModelAsset): Living {
     const inst = new ModelInstance(asset)
     const u = modelUniforms(asset.regions.sacCenter)
-    const body = bodyMaterial(
-      asset.map,
-      asset.roughness,
-      u,
-      shiftFor(asset.id, this.shiftOverride(asset.id)),
-      asset.meanLum,
-    )
+    const body = bodyMaterial(asset.map, asset.roughness, u, this.shift(asset.id), asset.meanLum)
     this.applyEnv(body)
     inst.mesh.material = body
     // L'ombre portée vient de la doublure grossière ; le corps reçoit les ombres.
@@ -712,13 +715,7 @@ export class ModelLayer {
     if (!mb || mb.key !== key) {
       if (mb) this.dropMembre(c.id, mb)
       const u = modelUniforms(new Vector3())
-      const body = bodyMaterial(
-        asset.map,
-        asset.roughness,
-        u,
-        shiftFor(asset.id, this.shiftOverride(asset.id)),
-        asset.meanLum,
-      )
+      const body = bodyMaterial(asset.map, asset.roughness, u, this.shift(asset.id), asset.meanLum)
       this.applyEnv(body)
       const bodyId = idMaterial(u, 'body')
       const piece3 = (mat: Material, id: Material): Mesh => {

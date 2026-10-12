@@ -38,6 +38,9 @@ vec3 e1LinearToSrgb( vec3 c ) {
 
 // Étalonnage : désaturation partielle, ombres tirées vers le froid, lumières vers la chaleur des flammes, contraste.
 // neutral = 1 : seulement la courbe de luminance (un gris reste un gris).
+// model (0 à 1, E3) : part du pixel qui appartient à un personnage vivant de la Forge (masque de la scène, post.ts).
+// Le décor garde l'étalonnage froid et désaturé ; un personnage garde la couleur de sa matière : ni désaturation des
+// tons ternes, ni teinte froide des ombres (uModelSaturation, uModelTint), le contraste et le vignettage restent.
 export const GRADE_GLSL = /* glsl */ `
 uniform float uSaturation;
 uniform float uContrast;
@@ -45,20 +48,26 @@ uniform vec3 uShadowTint;
 uniform vec3 uHighlightTint;
 uniform float uTintAmount;
 uniform float uVignette;
-vec3 e1Grade( vec3 c, float neutral ) {
+uniform float uModelSaturation;
+uniform float uModelTint;
+vec3 e1GradeMix( vec3 c, float neutral, float model ) {
   float l = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) );
   // Selective desaturation: dull tones (mud, earth, stone) lose their colour, saturated tones (living flesh,
   // flames, blood) keep it; reading the bodies (B2.O1) comes before the grade.
   float mx = max( c.r, max( c.g, c.b ) );
   float sat = ( mx - min( c.r, min( c.g, c.b ) ) ) / max( mx, 1e-4 );
   float keep = smoothstep( 0.3, 0.65, sat );
-  vec3 g = mix( vec3( l ), c, mix( mix( uSaturation, 1.0, keep ), 1.0, neutral ) );
+  float dull = mix( uSaturation, uModelSaturation, model );
+  vec3 g = mix( vec3( l ), c, mix( mix( dull, 1.0, keep ), 1.0, neutral ) );
   float lc = clamp( 0.18 * pow( max( l, 0.0 ) / 0.18, uContrast ), 0.0, 1.0 );
   g *= ( l > 1e-5 ) ? lc / l : 1.0;
   float w = smoothstep( 0.0, 0.5, l );
   vec3 tint = mix( uShadowTint, uHighlightTint, w );
-  g = mix( g, g * tint, uTintAmount * ( 1.0 - neutral ) );
+  g = mix( g, g * tint, mix( uTintAmount, uModelTint, model ) * ( 1.0 - neutral ) );
   return clamp( g, 0.0, 1.0 );
+}
+vec3 e1Grade( vec3 c, float neutral ) {
+  return e1GradeMix( c, neutral, 0.0 );
 }
 float e1VignetteAt( vec2 uv, vec2 res ) {
   vec2 d = ( uv - 0.5 ) * vec2( res.x / res.y, 1.0 );

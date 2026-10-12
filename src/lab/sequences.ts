@@ -13,7 +13,7 @@ import {
   type Vec2,
   type World,
 } from '../sim/index'
-import { testWave, withCreature } from '../sim/testing'
+import { testWave, withCreature, withPlayer } from '../sim/testing'
 import type { Policy } from './policies'
 
 const dist = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.z - b.z)
@@ -90,3 +90,38 @@ export const SEQUENCE_FAMILIES: readonly FamilyKind[] = [
   'confesseur',
   'chirurgien',
 ]
+
+// Séquence du Bourreau (E3) : ses gestes contre un Souriant en Rituel, très résistant (il reste debout). Une Frappe
+// complète (anticipation, impact au tick d'impact de la simulation), une Frappe coupée par une Esquive pendant son
+// anticipation (aucun impact), un Balayage. Ticks des commandes : la simulation lance le geste au tick suivant.
+export const BOURREAU_SEQ = { frappe: 10, frappeCoupee: 60, esquive: 62, balayage: 120 } as const
+
+export const bourreauSequenceWorld = (): World => {
+  let w = createWorld({
+    seed: 7,
+    variant: 'A',
+    wave: testWave([{ family: 'souriant', pos: { x: 1.4, z: 0 }, facing: Math.PI, state: 'rituel' }], {
+      x: 0,
+      z: 0,
+    }),
+    families: FAMILIES,
+  })
+  const c = w.creatures[0]
+  if (c) w = withCreature(w, c.id, { chair: 1000 })
+  return withPlayer(w, { ferveur: TUNING.balayage.cost })
+}
+
+export const bourreauSequencePolicy =
+  (): Policy =>
+  (w: World): PlayerCommands => {
+    const c = w.creatures.find((x) => x.family !== 'membre')
+    const aim = c ? c.pos : { x: 1.4, z: 0 }
+    const S = BOURREAU_SEQ
+    return {
+      ...IDLE_COMMANDS,
+      aim,
+      strike: w.tick === S.frappe || w.tick === S.frappeCoupee,
+      dodge: w.tick === S.esquive,
+      rite: w.tick === S.balayage ? 'balayage' : null,
+    }
+  }

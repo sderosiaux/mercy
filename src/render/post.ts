@@ -4,13 +4,16 @@
 // étalonnage froid et désaturé, vignettage, grain. Le résultat va au canvas ; la couche des signaux (liserés,
 // marques, morts, télégraphes) se dessine ensuite par-dessus, hors de cette chaîne.
 import {
+  AddEquation,
   Color,
+  CustomBlending,
   DepthTexture,
   FloatType,
   HalfFloatType,
   LinearFilter,
   Matrix4,
   NearestFilter,
+  OneFactor,
   type PerspectiveCamera,
   RGBAFormat,
   type Scene,
@@ -20,11 +23,12 @@ import {
   Vector4,
   type WebGLRenderer,
   WebGLRenderTarget,
+  ZeroFactor,
 } from 'three'
 import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import { PALETTE } from './palette'
-import type { QualitySpec } from './quality'
+import { type QualitySpec, urlParam } from './quality'
 import { FOG_GLSL, GRADE_GLSL, MAX_FOG_LIGHTS, NOISE_GLSL, TONEMAP_GLSL } from './shaders'
 
 // Réglages de l'image (forme, E1). Partagés avec la matière des morts par `gradeUniforms`.
@@ -41,7 +45,22 @@ export const LOOK = {
   bloomStrength: 0.28,
   bloomRadius: 0.45,
   bloomThreshold: 2.2, // luminance scène : au-dessus des surfaces éclairées, sous les flammes
+  // Personnages vivants de la Forge (E3, décision du concepteur du 2026-10-12 : « assouplir d'abord l'étalonnage ») :
+  // saturation des tons ternes et teinte froide sur leurs pixels. 1 et 0 : l'étalonnage ne retire rien à leur matière.
+  modelSaturation: 1,
+  modelTint: 0,
 } as const
+
+// Instrument (captures avant / après, réglage) : `etalmodele=0.72,0.5` rend aux personnages l'étalonnage du décor
+// (jalons 1 et 2) ; `etalmodele=<saturation>,<teinte>` en général.
+const modelGrade = (): { saturation: number; tint: number } => {
+  const v = (urlParam('etalmodele') ?? '').split(',').map(Number)
+  const ok = (x: number | undefined): x is number => x !== undefined && Number.isFinite(x)
+  return {
+    saturation: ok(v[0]) && v.length === 2 ? v[0] : LOOK.modelSaturation,
+    tint: ok(v[1]) && v.length === 2 ? v[1] : LOOK.modelTint,
+  }
+}
 
 const linear = (hex: number): Vector3 => {
   const c = new Color(hex) // converti en linéaire (gestion des couleurs de three)
@@ -64,6 +83,8 @@ export const gradeUniforms = {
   uHighlightTint: { value: tintOf(PALETTE.etalonnage.lumieres, 0.4) },
   uTintAmount: { value: LOOK.tintAmount as number },
   uVignette: { value: LOOK.vignette as number },
+  uModelSaturation: { value: modelGrade().saturation },
+  uModelTint: { value: modelGrade().tint },
   uResolution: { value: new Vector2(1, 1) },
 }
 
@@ -104,7 +125,10 @@ ${GRADE_GLSL}
 ${FOG_GLSL}
 ${NOISE_GLSL}
 void main() {
-  vec3 c = texture2D( tScene, vUv ).rgb;
+  vec4 scene = texture2D( tScene, vUv );
+  vec3 c = scene.rgb;
+  // Masque des personnages vivants (alpha de la scène) : 1 partout, 0 sur leurs pixels (matière des corps).
+  float model = 1.0 - clamp( scene.a, 0.0, 1.0 );
   float depth = texture2D( tDepth, vUv ).x;
   vec4 ndc = vec4( vUv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0 );
   vec4 view = uProjInv * ndc;
@@ -123,7 +147,7 @@ void main() {
     c = c * T + inscatter * uFogScatter;
   }
   c = e1Aces( c * uExposure );
-  c = e1Grade( c, 0.0 );
+  c = e1GradeMix( c, 0.0, model );
   c *= e1VignetteAt( vUv, uResolution );
   // Grain: deterministic noise (pixel, frame), stronger in the midtones.
   vec2 gp = gl_FragCoord.xy + vec2( mod( uFrame, 97.0 ) * 13.17, mod( uFrame, 89.0 ) * 7.31 );
@@ -175,6 +199,17 @@ export class PostPipeline {
           LOOK.bloomThreshold,
         )
       : null
+    // Le halo s'ajoute à la couleur de la scène sans toucher à son alpha, qui porte le masque des personnages.
+    if (this.bloom) {
+      const b = this.bloom.blendMaterial
+      b.blending = CustomBlending
+      b.blendEquation = AddEquation
+      b.blendSrc = OneFactor
+      b.blendDst = OneFactor
+      b.blendEquationAlpha = AddEquation
+      b.blendSrcAlpha = ZeroFactor
+      b.blendDstAlpha = OneFactor
+    }
     this.fogPos = Array.from({ length: MAX_FOG_LIGHTS }, () => new Vector4())
     this.fogCol = Array.from({ length: MAX_FOG_LIGHTS }, () => new Vector3())
     this.composite = new ShaderMaterial({

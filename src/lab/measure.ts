@@ -206,6 +206,12 @@ export const summarize = (readings: readonly FrameReading[]) => {
         if (e.ringDE !== null) lo('ringDE_min', e.ringDE)
       } else {
         lo('Ccorps_min', e.corpsCmedian)
+        // B2 §5 : une entité n'entre dans une mesure de couleur qu'avec ≥ 150 pixels visibles (le taux de visibilité
+        // ≥ 50 % demande un rendu isolé, non fait ici). Pire valeur sur ces seules images, et leur nombre.
+        if (e.pixels >= 150) {
+          lo('Ccorps_min_inclus', e.corpsCmedian)
+          s.framesInclus = ((s.framesInclus as number | undefined) ?? 0) + 1
+        }
       }
       if (e.cls === 'abattu') {
         lo('ivoirePx_min', e.ivoirePx)

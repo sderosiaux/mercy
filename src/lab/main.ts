@@ -13,7 +13,7 @@ import {
   ROLE_NAMES,
   srgbToLab,
 } from '../render/index'
-import { actionPhase, step, type World } from '../sim/index'
+import { actionPhase, type PlayerAction, step, type World } from '../sim/index'
 import { type Candidate, drawProbes, MARKER, markerCenter } from '../viewer/session'
 import { auditFrame } from './audit'
 import { readFrame, referenceAccumulator, summarize } from './measure'
@@ -45,6 +45,55 @@ const toDataUrl = (img: PixelImage): string => {
   if (!ctx) throw new Error('2d absent')
   ctx.putImageData(new ImageData(new Uint8ClampedArray(img.data), img.width, img.height), 0, 0)
   return c.toDataURL('image/png')
+}
+
+// Phase d'un geste du Bourreau à l'image t : anticipation avant le tick d'impact, impact, récupération.
+const playerPhase = (a: PlayerAction, t: number): string =>
+  a.activeAt === undefined
+    ? 'geste'
+    : t < a.activeAt
+      ? 'anticipation'
+      : t === a.activeAt
+        ? 'impact'
+        : 'récupération'
+
+// Gestes à anticipation du Bourreau dans une partie simulée à part (sans rendu) : début, tick d'impact prévu, tick
+// de l'évènement player-impact de la simulation, et l'action qui le coupe avant son impact s'il y en a une.
+interface Gesture {
+  readonly kind: string
+  readonly start: number
+  readonly activeAt: number
+  impact: number | null
+  cutAt: number | null
+  cutBy: string | null
+}
+const playerGestures = (scene: LabScene, to: number): Gesture[] => {
+  let w = scene.world()
+  const pol = scene.policy()
+  const out: Gesture[] = []
+  let cur: Gesture | null = null
+  while (w.tick < to) {
+    w = step(w, pol(w))
+    const a = w.player.action
+    if (
+      cur &&
+      cur.cutAt === null &&
+      (!a || a.start !== cur.start) &&
+      cur.impact === null &&
+      w.tick < cur.activeAt
+    ) {
+      cur.cutAt = w.tick
+      cur.cutBy = a?.kind ?? 'repos'
+    }
+    if (a && a.activeAt !== undefined && (!cur || cur.start !== a.start)) {
+      cur = { kind: a.kind, start: a.start, activeAt: a.activeAt, impact: null, cutAt: null, cutBy: null }
+      out.push(cur)
+    }
+    const hit = w.events.find((e) => e.type === 'player-impact')
+    if (hit && cur && cur.impact === null && cur.cutAt === null && hit.tick >= cur.start)
+      cur.impact = hit.tick
+  }
+  return out
 }
 
 const run = async (scene: LabScene): Promise<void> => {
@@ -171,6 +220,27 @@ const run = async (scene: LabScene): Promise<void> => {
       }
     }
     const rows: { title: string; ticks: number[] }[] = []
+    // Le Bourreau (E3) : ses gestes à anticipation (Frappe, Balayage), avec le tick d'impact de la simulation
+    // (évènement player-impact), et un geste coupé avant son impact.
+    const gestures = id === PLAYER_ID ? playerGestures(scene, to) : []
+    for (const g of gestures) {
+      const head = `${g.kind} (début ${g.start}, activeAt ${g.activeAt}`
+      if (g.cutAt !== null) {
+        rows.push({
+          title: `${head}) coupée par ${g.cutBy} au tick ${g.cutAt} ; player-impact : ${g.impact ?? 'aucun'}`,
+          ticks: [g.start, g.cutAt - 1, g.cutAt, g.cutAt + 1, g.cutAt + 2],
+        })
+        continue
+      }
+      rows.push({
+        title: `${head}) : anticipation`,
+        ticks: [-1, 0, 1, 2, 3].map((k) => g.start + k),
+      })
+      rows.push({
+        title: `${head}) : impact, player-impact au tick ${g.impact ?? 'aucun'}`,
+        ticks: [-1, 0, 1, 2, 4].map((k) => g.activeAt + k),
+      })
+    }
     if (firstAttack)
       rows.push({
         title: `impact (${firstAttack.name}, tick actif ${firstAttack.activeAt})`,
@@ -225,7 +295,12 @@ const run = async (scene: LabScene): Promise<void> => {
         ctx?.putImageData(tile, k * T, r * (T + 22) + 22)
         const f = renderer.debug.anim(id)
         const a = c?.action
-        const label = `t=${t}${a ? ` ${a.name} ${actionPhase(a, t)}` : ''} ${c?.state.kind ?? ''}`
+        const pa = id === PLAYER_ID ? world.player.action : null
+        const impactHere = world.events.some((e) => e.type === 'player-impact')
+        const label =
+          id === PLAYER_ID
+            ? `t=${t}${pa ? ` ${pa.kind} ${playerPhase(pa, t)}` : ' —'}${impactHere ? ' IMPACT' : ''}`
+            : `t=${t}${a ? ` ${a.name} ${actionPhase(a, t)}` : ''} ${c?.state.kind ?? ''}`
         if (ctx) {
           ctx.fillStyle = cssVar('--hud-encre')
           ctx.font = '12px serif'
@@ -237,6 +312,15 @@ const run = async (scene: LabScene): Promise<void> => {
           row: r,
           tick: t,
           state: c?.state.kind,
+          player:
+            id === PLAYER_ID
+              ? {
+                  action: pa
+                    ? { kind: pa.kind, start: pa.start, activeAt: pa.activeAt ?? null, end: pa.end }
+                    : null,
+                  impactEvent: impactHere,
+                }
+              : undefined,
           action: a
             ? { name: a.name, start: a.start, activeAt: a.activeAt, end: a.end, phase: actionPhase(a, t) }
             : null,
@@ -249,7 +333,17 @@ const run = async (scene: LabScene): Promise<void> => {
       })
     })
     app.append(out)
-    return { id, firstAttack, cut, cutAction, fell, death, rows: rows.map((r) => r.title), frames }
+    return {
+      id,
+      firstAttack,
+      cut,
+      cutAction,
+      fell,
+      death,
+      gestures,
+      rows: rows.map((r) => r.title),
+      frames,
+    }
   }
 
   const q = (xs: number[], p: number): number => {

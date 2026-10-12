@@ -14,6 +14,7 @@ import {
   interrupt,
   playClip,
   SIM_FPS,
+  windupRecipe,
 } from './playback'
 
 // Clip linéaire : la valeur de la piste vaut le temps du clip, ce qui rend le temps lu observable sur l'objet.
@@ -122,5 +123,44 @@ describe('impactRate : le repère d’impact tombe au tick actif de la simulatio
   it('sans repère, ou repère au début, garde la vitesse du manifeste', () => {
     expect(impactRate({ name: 'b', boucle: false, startS: 0, rate: 1, impactS: null }, 24)).toBe(1)
     expect(impactRate({ name: 'f', boucle: false, startS: 0.567, rate: 1, impactS: 0.567 }, 21)).toBe(1)
+  })
+})
+
+describe('windupRecipe : anticipation du Bourreau (activeAt), repère au tick d’impact', () => {
+  const frappe: ClipRecipe = {
+    name: 'frappe.couperet.1',
+    boucle: false,
+    startS: 0.567,
+    rate: 1,
+    impactS: 0.567,
+  }
+  it('anticipation sautée par la Forge : le clip reprend les ticks qui précèdent son repère, à la vitesse du manifeste', () => {
+    const w = windupRecipe(frappe, 5)
+    expect(w.rate).toBe(1)
+    expect(w.startS).toBeCloseTo(0.567 - 5 * FRAME_S, 12)
+    expect(clipTimeAt(w, 1.5, 5 * FRAME_S)).toBeCloseTo(0.567, 9)
+    expect(clipTimeAt(w, 1.5, 4 * FRAME_S)).toBeLessThan(0.567)
+    // Dans un mélangeur three, la même recette donne le même temps lu (recette de la Forge, playClip).
+    const { mixer } = rig()
+    const action = playClip(mixer.clipAction(linearClip('f', 1.5)), w)
+    mixer.update(0)
+    for (let f = 0; f <= 30; f++) {
+      expect(action.time).toBeCloseTo(clipTimeAt(w, 1.5, f * FRAME_S), 6)
+      mixer.update(FRAME_S)
+    }
+  })
+  it('repère trop proche du début : le clip part de 0, plus lentement, le repère tombe toujours au tick d’impact', () => {
+    const w = windupRecipe({ ...frappe, startS: 0.05, impactS: 0.05 }, 5)
+    expect(w.startS).toBe(0)
+    expect(w.rate).toBeLessThan(1)
+    expect(clipTimeAt(w, 1.5, 5 * FRAME_S)).toBeCloseTo(0.05, 9)
+  })
+  it('recette qui a déjà son début d’anticipation : calée comme une attaque de créature', () => {
+    const r: ClipRecipe = { name: 'a', boucle: false, startS: 0.2, rate: 1, impactS: 0.6 }
+    expect(windupRecipe(r, 12)).toEqual({ ...r, rate: impactRate(r, 12) })
+  })
+  it('sans repère ou sans anticipation : recette inchangée', () => {
+    expect(windupRecipe({ ...frappe, impactS: null }, 5)).toEqual({ ...frappe, impactS: null })
+    expect(windupRecipe(frappe, 0)).toEqual(frappe)
   })
 })

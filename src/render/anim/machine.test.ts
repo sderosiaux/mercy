@@ -12,7 +12,7 @@ import {
   TUNING,
   type World,
 } from '../../sim/index'
-import { cmd, scene, withCreature } from '../../sim/testing'
+import { cmd, scene, withCreature, withPlayer } from '../../sim/testing'
 import {
   animate,
   type Catalog,
@@ -318,6 +318,9 @@ describe('Bourreau', () => {
     ['course', { recipe: r('course', true, null, 1.812), duration: 0.733 }],
     ['frappe.couperet.1', { recipe: r('frappe.couperet.1', false, 0.567, 1, 0.567), duration: 1.5 }],
     ['frappe.couperet.2', { recipe: r('frappe.couperet.2', false, 0.783, 1, 0.783), duration: 3.167 }],
+    ['frappe.masse.1', { recipe: r('frappe.masse.1', false, 1.55, 1, 1.55), duration: 1.8 }],
+    ['balayage', { recipe: r('balayage', false, 1.6, 1, 1.6), duration: 5.667 }],
+    ['esquive', { recipe: r('esquive', false, null, 4.222, 0), duration: 1.267 }],
     [
       'sentence.tranchant.petite',
       { recipe: r('sentence.tranchant.petite', false, 1.633, 2.722, 0), duration: 1.967 },
@@ -334,19 +337,96 @@ describe('Bourreau', () => {
     alertedAt: null,
     toPlayer: 0,
   })
-  it('une frappe joue le clip du coup du combo, impact au tick de départ', () => {
-    const w0 = scene([{ family: 'souriant', pos: { x: 1.2, z: 0 }, facing: Math.PI, state: 'hostile' }], {
+  const timeOf = (f: { layers: readonly Layer[] }, clip: string): number =>
+    layer(f.layers, clip)?.time ?? Number.NaN
+  const weightOf = (f: { layers: readonly Layer[] }, clip: string): number =>
+    layer(f.layers, clip)?.weight ?? 0
+  // Tick d'impact d'un geste du joueur dans la simulation : celui de son évènement `player-impact`.
+  const impactTick = (worlds: readonly World[]): number | null =>
+    worlds.flatMap((x) => x.events).find((e) => e.type === 'player-impact')?.tick ?? null
+
+  // E3 : la simulation frappe `windup` ticks après le début du geste (PlayerAction.activeAt).
+  for (const weapon of ['couperet', 'masse'] as const) {
+    it(`frappe (${weapon}) : anticipation pendant les ${TUNING.weapons[weapon].windup} ticks, repère d'impact au tick d'impact de la simulation`, () => {
+      const w0 = withPlayer(
+        scene([{ family: 'souriant', pos: { x: 1.2, z: 0 }, facing: Math.PI, state: 'hostile' }], {
+          families: FAMILIES,
+        }),
+        { weapon },
+      )
+      const { mem, w, worlds } = play(
+        w0,
+        (x) => cmd({ strike: x.player.action === null && x.tick === 0, aim: { x: 1.2, z: 0 } }),
+        (x) => x.events.some((e) => e.type === 'player-impact'),
+      )
+      const a = worlds.find((x) => x.player.action?.kind === 'frappe')?.player.action
+      expect(a?.activeAt).toBe((a?.start ?? 0) + TUNING.weapons[weapon].windup)
+      if (!a || a.activeAt === undefined) return
+      expect(impactTick(worlds)).toBe(a.activeAt)
+      const clip = `frappe.${weapon}.1`
+      const impactS = (BOURREAU.get(clip) as ClipInfo).recipe.impactS as number
+      // Pendant l'anticipation, le clip avance image par image vers son repère sans l'atteindre ; il y est au tick
+      // d'impact, à vitesse 1 (celle du manifeste).
+      const times = [...Array(a.activeAt - a.start + 1).keys()].map((k) => {
+        const f = animate(pin(w, mem, a.start + k))
+        expect(weightOf(f, clip)).toBe(1)
+        return timeOf(f, clip)
+      })
+      for (let k = 1; k < times.length; k++)
+        expect(times[k] as number).toBeGreaterThan(times[k - 1] as number)
+      expect(times.slice(0, -1).every((x) => x < impactS)).toBe(true)
+      expect(times.at(-1)).toBeCloseTo(impactS, 9)
+      expect((times[1] as number) - (times[0] as number)).toBeCloseTo(FRAME_S, 9)
+    })
+  }
+
+  it("balayage : repère d'impact au tick d'impact de la simulation, anticipation avant", () => {
+    const w0 = withPlayer(
+      scene([{ family: 'souriant', pos: { x: 3, z: 0 }, facing: Math.PI, state: 'rituel' }], {
+        families: FAMILIES,
+      }),
+      { ferveur: 30 },
+    )
+    const { mem, w, worlds } = play(
+      w0,
+      (x) => cmd({ rite: x.tick === 0 ? 'balayage' : null }),
+      (x) => x.events.some((e) => e.type === 'player-impact'),
+    )
+    const a = worlds.find((x) => x.player.action?.kind === 'balayage')?.player.action
+    expect(a?.activeAt).toBeGreaterThan(a?.start ?? 0)
+    if (!a || a.activeAt === undefined) return
+    expect(impactTick(worlds)).toBe(a.activeAt)
+    expect(timeOf(animate(pin(w, mem, a.activeAt - 1)), 'balayage')).toBeLessThan(1.6)
+    expect(timeOf(animate(pin(w, mem, a.activeAt)), 'balayage')).toBeCloseTo(1.6, 9)
+  })
+
+  it("une Esquive pendant l'anticipation coupe le geste en 2 images, sans jamais montrer l'impact", () => {
+    const w0 = scene([{ family: 'souriant', pos: { x: 5, z: 0 }, facing: Math.PI, state: 'rituel' }], {
       families: FAMILIES,
     })
-    const { mem, w } = play(
+    // Frappe commandée au tick 0 (geste à partir du tick 1), Esquive commandée au tick 2 (esquive au tick 3).
+    const { mem, w, worlds } = play(
       w0,
-      () => cmd({ strike: true, aim: { x: 1.2, z: 0 } }),
-      (x) => x.player.action !== null,
+      (x) => cmd({ strike: x.tick === 0, dodge: x.tick === 2, aim: { x: 5, z: 0 } }),
+      (x) => x.tick >= 12,
     )
-    const a = w.player.action
-    expect(a?.kind).toBe('frappe')
-    const f = animate(pin(w, mem, a?.start ?? 0))
-    expect(f.layers.find((l) => l.clip.startsWith('frappe.couperet.'))?.time).toBeCloseTo(0.567, 9)
+    const frappe = worlds.find((x) => x.player.action?.kind === 'frappe')?.player.action
+    const esquive = worlds.find((x) => x.player.action?.kind === 'esquive')?.player.action
+    expect(frappe?.activeAt).toBeDefined()
+    if (!frappe || !esquive || frappe.activeAt === undefined) return
+    expect(esquive.start).toBeLessThan(frappe.activeAt)
+    expect(impactTick(worlds)).toBeNull()
+    const clip = 'frappe.couperet.1'
+    const atCut = timeOf(animate(pin(w, mem, esquive.start)), clip)
+    expect(atCut).toBeLessThan(0.567)
+    // Fondu de la recette d'interruption : 0, 1/2, 1 ; le geste coupé reste figé où l'Esquive l'a pris.
+    expect([0, 1, 2].map((k) => weightOf(animate(pin(w, mem, esquive.start + k)), 'esquive'))).toEqual([
+      0, 0.5, 1,
+    ])
+    for (let t = frappe.start; t <= frappe.activeAt + 2; t++) {
+      const f = animate(pin(w, mem, t))
+      if (weightOf(f, clip) > 0) expect(timeOf(f, clip)).toBeLessThanOrEqual(atCut)
+    }
   })
   it('une Sentence est calée sur sa durée : la mort tombe au repère d’impact', () => {
     let w = scene([{ family: 'souriant', pos: { x: 1.2, z: 0 }, facing: 0, state: 'abattu' }], {

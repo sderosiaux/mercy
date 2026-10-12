@@ -44,6 +44,7 @@ export type BaseKey =
       readonly kind: 'player-action'
       readonly action: 'frappe' | 'esquive' | 'balayage' | 'charge' | 'sentence'
       readonly start: number
+      readonly activeAt: number | null // Frappe, Balayage : tick d'impact de la simulation (après l'anticipation)
       readonly end: number
       readonly comboStep: number
       readonly weapon: string
@@ -153,6 +154,7 @@ export const playerKey = (w: World, T: number, step: number): BaseKey => {
       kind: 'player-action',
       action: a.kind,
       start: a.start,
+      activeAt: a.activeAt ?? null,
       end: a.end,
       comboStep: a.comboStep ?? 0,
       weapon: p.weapon,
@@ -168,6 +170,11 @@ const backward = (c: Creature, dx: number, dz: number): boolean =>
 
 // Clé de la piste du joueur (hors de l'espace des ids de créatures).
 export const PLAYER_TRACK = -1
+
+// Un geste du Bourreau (Frappe, Balayage) encore dans son anticipation au tick T : ce qui le remplace à T le coupe
+// avant l'impact (la simulation n'a pas frappé).
+export const cutsWindup = (k: BaseKey, T: number): boolean =>
+  k.kind === 'player-action' && k.activeAt !== null && T < k.activeAt && T < k.end
 
 const struckId = (e: SimEvent): number | null => {
   if (e.type === 'hit') return e.target === 'player' ? null : e.target
@@ -275,8 +282,12 @@ export class AnimMemory {
     const ptr = this.ensure(PLAYER_TRACK)
     const pstep = this.odometer(ptr, T, w.player.pos.x, w.player.pos.z)
     const pk = playerKey(w, T, pstep)
-    // Le coup du Bourreau touche au tick de départ de son action : la pose du coup est là dès cette image.
-    this.push(ptr, pk, T, pk.kind === 'player-action' ? 0 : BASE_FADE_TICKS)
+    // Une action du Bourreau part dès l'image de la commande (anticipation d'une Frappe ou d'un Balayage, ou geste
+    // sans impact). Une action qui coupe un geste avant son impact (Esquive pendant l'anticipation) l'interrompt
+    // comme une réaction : fondu de la recette d'interruption, le geste coupé figé (machine.ts, sans impact).
+    const prev = ptr.segments[ptr.segments.length - 1]
+    const cut = prev !== undefined && cutsWindup(prev.key, T)
+    this.push(ptr, pk, T, cut ? INTERRUPT_FADE_FRAMES : pk.kind === 'player-action' ? 0 : BASE_FADE_TICKS)
     for (const id of [...this.tracks.keys()])
       if (id !== PLAYER_TRACK && !present.has(id)) this.tracks.delete(id)
     this.lastTick = T

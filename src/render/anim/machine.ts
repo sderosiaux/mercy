@@ -9,7 +9,7 @@
 // - morte, elle se fige : la pose est celle du tick de la mort (l'horloge de la pose s'arrête), puis plus rien ;
 // - tout ce qui vit tremble (gain du tremblement procédural, nul à la mort).
 import { type Creature, TICK_HZ, TUNING } from '../../sim/index'
-import { BASE_FADE_TICKS, type BaseKey, odometerAt, type Segment, type Track } from './memory'
+import { BASE_FADE_TICKS, type BaseKey, cutsWindup, odometerAt, type Segment, type Track } from './memory'
 import {
   type ClipRecipe,
   clipTimeAt,
@@ -17,6 +17,7 @@ import {
   fadeWeightAt,
   INTERRUPT_FADE_FRAMES,
   impactRate,
+  windupRecipe,
 } from './playback'
 
 export interface ClipInfo {
@@ -257,8 +258,13 @@ const playerAction = (
     // Le clip couvre la durée de l'action de la simulation (la simulation déplace le joueur).
     return single(name, once(info, sec(e), windowRate(info, win)))
   }
-  // Frappe et Balayage : le coup touche au tick de départ (impact au début du clip) ; Sentence : la mort tombe à la
-  // fin de l'action, le repère d'impact y est calé.
+  // Frappe et Balayage : le repère d'impact du clip tombe au tick d'impact de la simulation (activeAt), l'anticipation
+  // du clip se joue avant (windupRecipe) ; sans anticipation (activeAt absent ou au départ), le coup touche au tick de
+  // départ et le clip part de son repère. Sentence : la mort tombe à la fin de l'action, le repère d'impact y est calé.
+  if ((key.action === 'frappe' || key.action === 'balayage') && key.activeAt !== null) {
+    const wr = windupRecipe(info.recipe, key.activeAt - key.start)
+    return single(name, clipTimeAt(wr, info.duration, sec(e), true))
+  }
   const rate = key.action === 'sentence' ? impactRate(info.recipe, win) : info.recipe.rate
   return single(name, once(info, sec(e), rate))
 }
@@ -275,7 +281,11 @@ const evalSegments = (inp: MachineInput, segs: readonly Segment[], t: number): L
   const layers = evalKey(inp, cur.key, t)
   const w = fadeWeightAt(sec(t - cur.from), sec(cur.fade))
   if (w >= 1 || i === 0) return layers
-  return blend(evalSegments(inp, segs.slice(0, i), t), layers, w)
+  // Un geste du Bourreau coupé pendant son anticipation s'arrête là où on l'a coupé : pendant le fondu, il ne
+  // continue pas jusqu'à son repère d'impact (la simulation n'a pas frappé).
+  const before = segs[i - 1] as Segment
+  const tBefore = cutsWindup(before.key, cur.from) ? Math.min(t, cur.from) : t
+  return blend(evalSegments(inp, segs.slice(0, i), tBefore), layers, w)
 }
 
 const reactionWeight = (t: number, hitTick: number, cutAt: number | null): number => {

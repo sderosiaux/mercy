@@ -153,6 +153,9 @@ ${CLASS_SHIFT_GLSL}`,
   if ( e2Sac ) totalEmissiveRadiance += uSacTint * uSacGlow;
   if ( e2Halo ) totalEmissiveRadiance += uHaloTint * uHaloGlow;`,
       )
+      // Masque des personnages (E3) : alpha 0 dans la scène (matière opaque, sans mélange), lu par la composition pour
+      // leur laisser la couleur que l'étalonnage froid retire au décor (post.ts, LOOK.modelSaturation).
+      .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n  gl_FragColor.a = 0.0;')
   }
   m.customProgramCacheKey = () => 'e2-body'
   return m

@@ -16,7 +16,13 @@ import {
 import { poteau, testWave, withCreature } from '../sim/testing'
 import { LAB_FAMILIES, LAB_FAMILIES_QUIET } from './families'
 import { b2Script, immobile, negligent, type Policy } from './policies'
-import { SEQUENCE_FAMILIES, sequencePolicy, sequenceWorld } from './sequences'
+import {
+  bourreauSequencePolicy,
+  bourreauSequenceWorld,
+  SEQUENCE_FAMILIES,
+  sequencePolicy,
+  sequenceWorld,
+} from './sequences'
 
 export interface LabScene {
   readonly id: string
@@ -497,6 +503,12 @@ export const SCENES: readonly LabScene[] = [
       policy: sequencePolicy,
     }),
   ),
+  {
+    id: 'seq-bourreau',
+    title: 'Séquence (E3) : Frappe du Bourreau, Frappe coupée par une Esquive, Balayage',
+    world: bourreauSequenceWorld,
+    policy: bourreauSequencePolicy,
+  },
   {
     id: 'charge',
     title: '§24 : 40 créatures, 250 morts, 400 décalques',

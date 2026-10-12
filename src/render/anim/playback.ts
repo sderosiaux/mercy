@@ -89,3 +89,18 @@ export const impactRate = (recipe: ClipRecipe, windowTicks: number): number => {
   const span = recipe.impactS - recipe.startS
   return span > 0 ? span / (windowTicks * FRAME_S) : recipe.rate
 }
+
+// Recette d'un geste dont l'anticipation dure `windowTicks` ticks avant l'impact (Frappe et Balayage du Bourreau,
+// `PlayerAction.activeAt`, E3). Quand la recette de la Forge saute l'anticipation (le coup touchait au tick de
+// départ : `startS` au repère d'impact), le clip reprend les `windowTicks` ticks qui précèdent son repère, à la
+// vitesse du manifeste : le repère tombe au tick d'impact, l'anticipation se joue pendant la fenêtre. Un clip trop
+// court pour cela part de 0, plus lentement. Une recette qui a déjà son début d'anticipation garde ce début, et sa
+// vitesse est calée comme pour une attaque de créature (impactRate).
+export const windupRecipe = (recipe: ClipRecipe, windowTicks: number): ClipRecipe => {
+  if (recipe.impactS === null || windowTicks <= 0) return recipe
+  if (recipe.startS < recipe.impactS) return { ...recipe, rate: impactRate(recipe, windowTicks) }
+  const back = recipe.impactS - windowTicks * FRAME_S * recipe.rate
+  if (back >= 0) return { ...recipe, startS: back }
+  const r = { ...recipe, startS: 0 }
+  return { ...r, rate: impactRate(r, windowTicks) }
+}
