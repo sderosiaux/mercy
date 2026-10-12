@@ -886,3 +886,5 @@ L'agent qui construit ce jeu ne doit pas réinterpréter ces points :
 - 2026-10-12 (phase C) : un sac de Porteur n'avale jamais un Membre errant. Le cas du §26 « membre mort dans le sac » ne peut donc pas se produire en P0 ; le stade du sac suit son contenu à chaque tick.
 - 2026-10-12 (phase C) : l'éclatement provoqué par un coup s'applique après tous les dégâts de ce coup. Un même geste n'achève jamais ce que l'éclatement qu'il déclenche vient d'abattre (L4).
 - 2026-10-12 (phase C) : un corps avalé par un Porteur ou assemblé par un Chirurgien perd sa canalisation en cours (un Confesseur qui priait à terre).
+- 2026-10-12 (phase C) : les zones de télégraphe au sol sont rouge brun, puis rouge vif pendant les 0,2 dernières secondes (§18). C'est la seule exception au « jamais pour des signaux » du rouge brun (§17) : la règle du §18, plus précise, l'emporte.
+- 2026-10-12 (phase C) : P0 se rend sans anticrénelage multi-échantillons, pour que les mesures au pixel de B2 portent sur l'image que voit le joueur. À revoir en P1.
