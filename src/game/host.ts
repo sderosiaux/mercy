@@ -18,6 +18,9 @@ export interface GameHost {
   restart(next: GameStart): void
   // Remplace les commandes du joueur (bot dans le navigateur). null : retour au clavier et à la souris.
   setCommandSource(source: CommandSource | null): void
+  // Rendu piloté (B2 I2) : en pause, la boucle n'avance plus ; stepOnce() avance d'un tick et rend avec alpha = 1.
+  setPaused(paused: boolean): void
+  stepOnce(): void
   // Appelé après chaque step, avec les commandes appliquées à ce step.
   onStep(listener: (world: World, commands: PlayerCommands) => void): () => void
   // Appelé à chaque image affichée, avec sa durée en ms.

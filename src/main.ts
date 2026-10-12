@@ -55,6 +55,14 @@ const host: GameHost = {
   setCommandSource: (s) => {
     source = s
   },
+  setPaused: (p) => {
+    paused = p
+  },
+  stepOnce: () => {
+    simulate()
+    renderer.render(world, prev, 1)
+    hud.update(world)
+  },
   onStep: (l) => {
     stepListeners.add(l)
     return () => stepListeners.delete(l)
@@ -69,6 +77,17 @@ const host: GameHost = {
 
 const playerStruck = (w: World): boolean => w.events.some((e) => e.type === 'hit' && e.by === 'player')
 
+const simulate = (): PlayerCommands => {
+  const commands = source ? source(world) : input.sample()
+  prev = world
+  world = step(world, commands)
+  renderer.setAim(commands.aim)
+  renderer.observe(world)
+  audio.update(world, world.player.pos) // après chaque step (requête C5 R2)
+  for (const l of stepListeners) l(world, commands)
+  return commands
+}
+
 let lastFrame: number | null = null
 const frame = (now: number): void => {
   requestAnimationFrame(frame)
@@ -78,13 +97,7 @@ const frame = (now: number): void => {
   const r = advance(loop, now, document.hidden || paused)
   loop = r.state
   for (let i = 0; i < r.steps; i++) {
-    const commands = source ? source(world) : input.sample()
-    prev = world
-    world = step(world, commands)
-    renderer.setAim(commands.aim)
-    renderer.observe(world)
-    audio.update(world, world.player.pos) // après chaque step (requête C5 R2)
-    for (const l of stepListeners) l(world, commands)
+    simulate()
     if (playerStruck(world)) frozenUntil = now + HIT_FREEZE_MS[world.player.weapon]
   }
   if (now < frozenUntil) return
