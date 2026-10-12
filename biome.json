@@ -1,0 +1,33 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "files": { "includes": ["src/**", "scripts/**", "*.ts", "!**/dist/**"] },
+  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 110 },
+  "javascript": { "formatter": { "quoteStyle": "single", "semicolons": "asNeeded" } },
+  "linter": { "rules": { "recommended": true } },
+  "overrides": [
+    {
+      "includes": ["src/sim/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedGlobals": {
+              "level": "error",
+              "options": {
+                "deniedGlobals": {
+                  "window": "src/sim est pur : pas de DOM",
+                  "document": "src/sim est pur : pas de DOM",
+                  "performance": "src/sim est pur : pas d'horloge",
+                  "Date": "src/sim est pur : pas d'horloge",
+                  "setTimeout": "src/sim est pur : le temps est le tick",
+                  "setInterval": "src/sim est pur : le temps est le tick",
+                  "requestAnimationFrame": "src/sim est pur : le temps est le tick",
+                  "AudioContext": "src/sim est pur : l'audio lit les évènements"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
