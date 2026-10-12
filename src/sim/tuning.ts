@@ -110,6 +110,10 @@ export const TUNING = {
 
   variantBExcessRatio: 0.5, // §27, variante B
 
+  // L4, §30.3 : agonie courte après la mort (réglage : 0,4 s). Présentation seulement : la simulation ne la lit pas
+  // (la créature est morte au tick du coup). Valeur unique partagée par le rendu (effondrement) et l'audio (râle).
+  agonie: ticks(0.4),
+
   radiusSmall: 0.4, // hors spec
   radiusLarge: 0.8, // hors spec
 
