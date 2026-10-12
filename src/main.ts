@@ -4,7 +4,7 @@ import { createAudio } from './audio/engine'
 import type { CommandSource, GameHost, GameStart } from './game/host'
 import { advance, initialLoop, type LoopState } from './game/loop'
 import { createInput } from './input/input'
-import { createHud, createRenderer, cssVariables } from './render/index'
+import { createHud, createRenderer, cssVariables, SCREEN_RIGHT } from './render/index'
 import { createWorld, FAMILIES, type PlayerCommands, step, type Variant, type World } from './sim/index'
 import { isWaveId, waveById } from './sim/waves'
 
@@ -30,7 +30,7 @@ canvas.style.cssText = 'display:block; width:100vw; height:100vh;'
 const renderer = createRenderer(canvas, { antialias: false }) // pas de MSAA en P0 (ruling C4 R9)
 const hud = createHud(shell)
 const input = createInput(canvas, renderer.screenToGround)
-const audio = createAudio()
+const audio = createAudio({ screenRight: SCREEN_RIGHT })
 
 let current = startOf()
 let world = newWorld(current)

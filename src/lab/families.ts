@@ -1,6 +1,7 @@
 // Registre du laboratoire. Seul le Souriant est écrit dans ce worktree ; le rendu ne dépend que de la famille, de
 // l'état et de familyData, donc les autres familles sont des doublures de src/sim/testing.ts sans comportement de
-// jeu propre. À l'intégration, remplacer ce registre par celui de src/sim/families/registry.ts.
+// jeu propre. Choix d'intégration (C8) : le laboratoire garde ces familles inertes, parce que ses scènes figées mesurent
+// le rendu d'un état, pas un comportement. Les mêlées réelles (scène S3 de B2) se jouent dans le jeu, avec FAMILIES.
 import { type FamilyModule, type FamilyRegistry, souriant } from '../sim/index'
 import { mannequin, poteau } from '../sim/testing'
 

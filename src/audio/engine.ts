@@ -8,6 +8,7 @@ import { loadBank } from './bank'
 import { direct, initialDirector, type Pools } from './director'
 import { type AudioLog, type Bank, createGraph, type Graph } from './graph'
 import { byRole, type Manifest } from './manifest'
+import { orientListener } from './orientation'
 
 export const poolsOf = (m: Manifest): Pools => ({
   cri: byRole(m, 'cri').map((e) => e.id),
@@ -66,7 +67,9 @@ export interface GameAudio {
   readonly context: BaseAudioContext | null
 }
 
-export const createAudio = (opts: { baseUrl?: string; context?: BaseAudioContext } = {}): GameAudio => {
+export const createAudio = (
+  opts: { baseUrl?: string; context?: BaseAudioContext; screenRight?: Vec2 } = {},
+): GameAudio => {
   let ctx: BaseAudioContext | null = opts.context ?? null
   let engine: AudioEngine | null = null
   let loading: Promise<void> | null = null
@@ -75,6 +78,7 @@ export const createAudio = (opts: { baseUrl?: string; context?: BaseAudioContext
       ctx ??= new AudioContext({ latencyHint: 'interactive' })
       if (ctx instanceof AudioContext && ctx.state !== 'running') await ctx.resume()
       const c = ctx
+      if (opts.screenRight) orientListener(c, opts.screenRight) // la droite de l'écran sonne à droite (C5 R1)
       loading ??= loadBank(c, opts.baseUrl ?? '/audio/').then((bank) => {
         engine = createAudioEngine(c, bank)
       })
