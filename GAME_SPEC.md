@@ -62,7 +62,7 @@ Rythme de la tranche : fausse quiétude (village) -> puissance (les Blés) -> ma
 
 1. Rien ne meurt sauf par le Porte-Mort. Ni les explosions, ni les chutes, ni les pièges. Aucune exception.
 2. Le corps à terre est la ressource centrale. Toute famille d'ennemis importante en fait quelque chose.
-3. Le silence est à la fois la récompense et l'information. Un son coupé signifie toujours une mort donnée.
+3. Le silence est à la fois la récompense et l'information. Un cri qui s'étrangle en râle puis se tait signifie toujours une mort donnée.
 4. Diablo d'abord. Les hordes tombent vite. La profondeur vient des corps et des combinaisons de familles, jamais d'ennemis-éponges.
 5. Le monde trouve l'anormal normal. Les créatures ne réagissent qu'au bruit et au contact, jamais à ce qu'elles voient : un Chirurgien peut continuer d'opérer un cadavre.
 6. Miséricorde et tactique vont dans le même sens. Donner la mort à un suppliant prive aussi l'ennemi de munitions. Le jeu n'a pas de jauge de morale.
@@ -161,7 +161,7 @@ Sept lois. Tout le reste du jeu en découle.
 | Résistant | 1,0 s | 30 % Vie | +40 | Stigmate (élite nommée, la première fois), derniers mots (créatures nommées) |
 | Délaissé | 0,8 s, animation douce, presque sans sang | 0 | 0 | Derniers mots, entrée au Registre |
 
-- Conséquence visible : le corps passe au gris cadavérique en 0,3 s, le liseré s'éteint, le cri est coupé net (pas de fondu), le corps ne bouge plus du tout. Les marques dorées d'un Résistant passent au gris avec le reste. Il reste au sol comme décor, définitivement, et ne bloque personne.
+- Conséquence visible : la mort ouvre une agonie courte (réglage : 0,4 s). Dans l'image du coup, le liseré s'éteint et le cri s'étrangle en râle ; pendant l'agonie, le corps s'effondre (debout, il tombe ; à terre, un dernier spasme) et passe au gris cadavérique. À la fin de l'agonie, le râle s'est tu et le corps ne bouge plus du tout. Les marques dorées d'un Résistant passent au gris avec le reste. Il reste au sol comme décor, définitivement, et ne bloque personne.
 - Rien ne relève un mort. Aucun support ne peut l'utiliser.
 - Cas limites : une explosion de Porteur déclenchée par le joueur n'achève personne (la source est le Porteur). Un coup sur un Résistant Abattu produit un son métallique et un éclat doré, sans effet.
 
@@ -215,7 +215,7 @@ Définie en L4. Ce qui compte pour le joueur :
 - Sur un ordinaire, la Sentence est un choix : l'Achèvement est plus rapide et donne de la Ferveur, la Sentence soigne mais immobilise 0,6 s dans un combat qui continue.
 - Sur un Résistant, elle est obligatoire et la fenêtre dure 8 s.
 - Sur un Délaissé, elle ne rapporte rien en combat. Elle rapporte un nom, une phrase, et prive les supports d'un corps.
-- Animations par combinaison : type d'arme (tranchant, contondant) × taille (petite, grande), plus Délaissé, plus Mère. La règle sonore est identique partout : le cri s'arrête à l'image du coup fatal, et l'ambiance baisse de 6 dB pendant 0,4 s pour que le silence s'entende.
+- Animations par combinaison : type d'arme (tranchant, contondant) × taille (petite, grande), plus Délaissé, plus Mère. La règle sonore est identique partout : le cri s'étrangle en râle dès l'image du coup fatal et se tait à la fin de l'agonie, et l'ambiance baisse de 6 dB jusqu'à 0,4 s après la fin du râle pour que le silence s'entende.
 
 ### 8.3 Ferveur
 
@@ -619,7 +619,7 @@ Interface : voir section 21. Typographie à empattements, ivoire sur noir, discr
 
 L'animation est procédurale d'abord (cinématique inverse, rotations indépendantes du buste, oscillateurs partagés). Deux règles communiquent l'état :
 
-- Tout ce qui vit tremble. Même immobile, une créature vivante a un micro-mouvement. Un mort est parfaitement immobile. L'absence de mouvement signale la mort aussi sûrement que la couleur.
+- Tout ce qui vit tremble. Même immobile, une créature vivante a un micro-mouvement. Un mort, son agonie finie, est parfaitement immobile. L'absence de mouvement signale la mort aussi sûrement que la couleur.
 - La synchronie signale l'Indifférence. Un groupe en Rituel bouge sur une phase commune (danse, fauche, prière). Passé Hostile, chaque créature retrouve sa propre phase. Une foule qui se désynchronise est une foule qui attaque.
 
 Télégraphes : anticipation exagérée avec une pose « fausse » propre à chaque famille. Le Souriant bascule la tête à 90°, le bras du Recousu traîne puis fouette, le Veilleur arme lentement mais ses mains partent vite. Les zones d'attaque au sol sont peintes en rouge brun, puis passent en rouge vif 0,2 s avant l'impact. Elles se dessinent toujours au-dessus des décalques de sang.
@@ -653,7 +653,7 @@ Impacts d'armes distincts par type (tranchant : chair fendue ; contondant : os q
 
 Budget de voix : 24 emplacements de cri au plus, un par corps (halètement, cri et inspiration compris), priorité aux plus proches, le reste part dans la nappe. Les sons de support (chant, scie, gargouillis) ont leur propre budget et ne passent jamais dans la nappe.
 
-Règles de coupure : la mort coupe net toutes les sources de la créature, à l'image du coup. Toute autre fin de son (relèvement, prière interrompue, absorption, voix volée par le budget, réinitialisation) se fait en fondu d'au moins 80 ms : un son coupé net signifie toujours une mort donnée. L'atténuation de −6 dB porte sur la nappe et l'ambiance, ne s'empile pas, et dure jusqu'à 0,4 s après la dernière mort d'une grappe. L'auditeur est le joueur.
+Règles de fin : à la mort, la voix de la créature passe au râle dans l'image du coup et se tait à la fin de l'agonie ; ses autres sources (gargouillis, chant, scie, coutures) s'éteignent pendant l'agonie. Rien de la créature ne sonne après la fin de l'agonie. Toute autre fin de son (relèvement, prière interrompue, absorption, voix volée par le budget, réinitialisation) se fait en fondu d'au moins 80 ms, sans râle : seul un râle signifie une mort donnée. L'atténuation de −6 dB porte sur la nappe et l'ambiance, ne s'empile pas, et dure jusqu'à 0,4 s après la dernière mort d'une grappe. L'auditeur est le joueur.
 
 ## 20. Caméra
 
@@ -859,7 +859,7 @@ L'agent qui construit ce jeu ne doit pas réinterpréter ces points :
 
 1. Aucune créature ne meurt sans une action du joueur : Achèvement ou Sentence. Les dégâts sur une créature debout ne tuent jamais, quelle que soit leur source : à 0 de Chair, elle tombe Abattue.
 2. Un Abattu ordinaire meurt à la première instance de dégâts du joueur. Un Abattu Résistant ne meurt que par la Sentence (ou le Glas).
-3. La mort coupe le son de la créature net, sans fondu, et l'immobilise totalement. Le vivant n'est jamais parfaitement immobile.
+3. La mort ouvre une agonie courte (réglage : 0,4 s) : la voix s'étrangle en râle et se tait, les autres sons de la créature s'éteignent, le corps s'effondre. À la fin de l'agonie, plus aucun son ni mouvement ne vient du corps. Le vivant n'est jamais parfaitement immobile.
 4. Les créatures en Rituel ne réagissent qu'aux dégâts, à la proximité (2,5 m) et au bruit. Jamais à ce qu'elles voient.
 5. Les Abattus non achevés se relèvent avec une Cicatrice. À 3 Cicatrices, la créature est Résistante.
 6. Union : la mort d'un tout tue toutes ses parties dans la même image.
@@ -898,3 +898,6 @@ L'agent qui construit ce jeu ne doit pas réinterpréter ces points :
 - 2026-10-12 (décision du concepteur) : le halo du Confesseur n'est vert que pendant une prière ; hors prière, il est de fer sombre. Le vert maladif garde son seul sens (§17), contre la planche de concept qui le montre vert en permanence.
 - 2026-10-12 (décision du concepteur) : les couleurs des modèles importés suivent d'abord leurs textures ; l'étalonnage de l'image ne désature plus ce que le contrat B2 n'exige pas de désaturer. Les seuils de lisibilité de B2 ne bougent pas.
 - 2026-10-12 (décision du concepteur) : quand on achève un corps qui crie, le mix doit se creuser (B5.O10). Si la retouche des fichiers d'impact et de cri ne suffit pas, le ducking d'une mise à mort baisse aussi les autres voix de cri pendant quelques centaines de millisecondes (§8.2 élargi).
+- 2026-10-12 (décision du concepteur, après son premier jeu) : la mort n'est plus une coupure sèche. Elle ouvre une agonie courte (réglage : 0,4 s) : le cri s'étrangle en râle dès l'image du coup, le corps s'effondre et grisit, puis silence et immobilité. Remplace la coupure nette du principe 3, de L4, du §19 et du §30.3, et l'immobilité dès l'image du coup du §18. La mort elle-même reste instantanée dans la simulation : au tick du coup, la créature est morte et n'agit plus ; l'agonie est de la présentation. Raison : en jeu, la coupure de tout (cri, son, mouvement) dans la même image se lisait comme trop rapide et étrange. La valeur 0,4 s est un choix de l'orchestrateur dans la fourchette proposée (0,3 à 0,5 s).
+- 2026-10-12 (décision du concepteur) : le Bourreau fait face à sa direction de marche quand il se déplace, se tourne vers le curseur au début d'un geste (Frappe, Balayage, Charge, Sentence), et garde son orientation à l'arrêt. Il ne regarde plus le curseur en marchant.
+- 2026-10-12 (décision du concepteur) : la lumière s'applique normalement aux créatures ; aucun éclairage d'appoint ne les rend lisibles dans le noir. Dans le noir, un Abattu se lit par son liseré ivoire et un vivant par son mouvement ; ce qui est dans le noir se devine.
