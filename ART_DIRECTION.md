@@ -43,14 +43,15 @@ Une fosse commune circulaire, à ciel ouvert, la nuit, telle que la planche la m
 
 ## Gore
 
-Physique, persistant, varié (§17, ce qu'en dit le §2.5 du GDD) :
+Le sang est le signe de la libération, et le jeu le célèbre (GAME_SPEC §17.1, qui fait foi). Physique, persistant, abondant : en cas de doute, plus de sang.
 
-- chaque coup qui touche projette du sang dans la direction du coup, selon l'arme : le tranchant éclabousse et coupe, le contondant écrase et projette des éclats ;
-- le sang frais est rouge vif pendant 2 s, puis brunit et reste au sol ; les flaques grandissent sous les corps ;
-- un corps qui rampe laisse une traînée ;
-- les membres sectionnés tombent et restent ; un éclatement de Porteur projette des morceaux ;
-- les morts restent au sol, gris, jusqu'à la fin de la partie ;
-- une mort donnée par une Sentence sur un corps muet peut presque ne pas saigner : le contraste fait partie du ton.
+- chaque coup qui touche fait saigner selon les dégâts et l'arme : le tranchant projette des arcs et des gerbes dans la direction du coup, le contondant écrase et projette en étoile avec des éclats ;
+- la libération, au coup fatal : une gerbe sort de la plaie, une flaque s'étend pendant l'agonie et après, une brume rouge traverse la lumière des torches. La Sentence en donne le plus ;
+- un Abattu saigne sous lui et laisse une traînée quand il rampe ; un Membre arraché part dans une fontaine ; un sac de Porteur qui éclate arrose tout autour ;
+- le sang frais est rouge vif et mouillé pendant 2 s, il brille sous les flammes ; puis il fonce vers le rouge brun et le noir, sèche, devient mat, et reste. Les flaques se rejoignent jusqu'à faire un lac ;
+- le Bourreau se tache à chaque libération et garde son sang ;
+- les morts restent au sol, gris, dans leur sang ;
+- seul le Délaissé meurt presque sans sang : le contraste fait partie du ton.
 
 ## Créatures et Bourreau
 

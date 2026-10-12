@@ -27,7 +27,7 @@ La tranche doit prouver quatre hypothèses :
 | Potions (convention du genre, le GDD n'en parle pas) | Aucune potion | La Miséricorde devient la survie |
 | Ennemis indifférents, suppliants (section 6) | Loi d'Indifférence (alerte au bruit seulement) et Délaissés | Des règles plutôt que des scripts |
 | Créatures fusionnées (3.5) | Loi d'Union : un tout et ses parties partagent une seule mort | Rend la fusion jouable et prépare le boss |
-| Gore réaliste extrême | Gore stylisé. L'horreur passe par le mouvement, la silhouette, le son et la lumière | Navigateur et géométrie produite par code : le réalisme de texture est hors de portée, la mise en scène ne l'est pas |
+| Gore réaliste extrême | Gore stylisé. L'horreur passe par le mouvement, la silhouette, le son et la lumière (révisé le 2026-10-12 : réalisme à la Diablo, et le sang célébré comme signe de la libération, §17.1) | Navigateur et géométrie produite par code : le réalisme de texture est hors de portée, la mise en scène ne l'est pas |
 | Le joueur renaît au Reliquaire | « Seule la mort est permanente » : tout ce qui n'est pas mort revient | La loi du monde devient le modèle de sauvegarde |
 
 ---
@@ -609,7 +609,29 @@ Silhouettes, lisibles en vue isométrique dans une foule :
 
 Matières : chair humide (spéculaire forte, fausse diffusion sous la surface), os mat ivoire, or terni métallique, pierre poreuse.
 
-Gore stylisé : décalques de sang persistants (plafond 400 par zone, les plus anciens s'effacent), segments qui se détachent avec une physique simple, blessures par segment (teinte, entaille). Les morts restent au sol (plafond 250 par zone, rendus en instances). Le gore varie : un Délaissé meurt presque sans sang.
+Gore : le sang est traité en 17.1. Les segments se détachent avec une physique simple, les blessures se voient par segment (teinte, entaille). Les morts restent au sol (plafond 250 par zone, rendus en instances). Le gore varie : un Délaissé meurt presque sans sang.
+
+### 17.1 Le sang, signe de la libération
+
+Dans La Fosse, la mort est une grâce, et le sang est ce qu'on en voit : la vie qui quitte le corps. Le jeu ne le cache pas, il le célèbre. Plus le joueur libère, plus la Fosse rougit, et ce rouge est sa récompense à l'image, comme le silence l'est au son. En cas de doute, on met plus de sang, pas moins.
+
+Le sang porte aussi de l'information. Tout ce qui suit sort des lois existantes ; aucune règle de simulation ne s'ajoute.
+
+- Chaque coup qui touche fait saigner, en proportion des dégâts et selon l'arme. Le tranchant projette des arcs et des gerbes dans la direction du coup ; le contondant écrase et projette en étoile, avec des éclats. Un coup sur un Résistant à terre ne fait pas saigner : il sonne et jette un éclat doré.
+- La libération : à l'image du coup fatal, au début de l'agonie, le corps rend son sang d'un coup. Une gerbe sort de la plaie, une flaque s'étend pendant l'agonie et continue de grandir quelques secondes, une brume rouge passe dans la lumière des torches. C'est le plus grand moment de sang du jeu. La Sentence en donne le plus : c'est une exécution, un rite.
+- Un Abattu saigne tant qu'il vit : une flaque se forme sous lui, et il laisse une traînée quand il rampe (L1). La traînée montre au joueur vers quel support il va.
+- Un Membre arraché part dans une fontaine et traîne son sang en rampant. Un sac de Porteur qui éclate arrose tout son rayon, et les corps expulsés en sortent trempés.
+- Le sang ne disparaît pas pendant un combat. Frais, il est rouge vif pendant 2 s et brille sous les flammes ; ensuite il fonce jusqu'au rouge brun et au noir, et sèche en perdant son brillant. Les flaques se rejoignent. À la fin d'une grande vague, le sol de la Fosse est un lac rouge et noir où se lit tout le combat.
+- Le Bourreau se couvre du sang qu'il fait couler : son arme, son tablier et ses bras se tachent à chaque libération et le gardent. Sa mort ne le lave pas (L6 : ce qui est mort ne revient pas, son sang non plus).
+- La jauge de Ferveur est du sang qui monte.
+- Le son suit le sang pendant les coups et l'agonie : chaque coup qui fait saigner a sa part humide, la libération jaillit sous le râle. Après l'agonie, plus rien ne coule au son : le silence reste la récompense.
+
+Ce qui ne bouge pas, parce que le joueur en a besoin pour lire le combat :
+
+- le corps d'un mort reste gris ; son sang, sous lui et autour de lui, ne l'est pas. Un corps gris dans une flaque rouge se lit comme mort ;
+- le rouge vif reste réservé au sang des 2 dernières secondes, au sac du Porteur au stade 3 et aux 0,2 dernières secondes d'un télégraphe ; le sang ancien n'y revient jamais, même sous une flamme ;
+- les télégraphes restent lisibles par-dessus le sang, dans tous les cas (§30.13) ;
+- le coût d'image ne dépend pas de la quantité de sang accumulée : le sol l'absorbe dans une couche de sang qui ne s'efface pas. Le plafond de 400 décalques du §24 ne vaut plus que pour les éclaboussures en vol et les flaques en train de s'étendre.
 
 Plans de beauté : la mer de blé au couchant avec la silhouette du Veilleur, le jardin du cloître, la nef aux rais dorés, la Mère assise sous son rai de lumière.
 
@@ -695,7 +717,7 @@ Comportements émergents attendus, à observer en test :
 ## 24. Contraintes techniques qui touchent au design
 
 - Navigateurs de bureau récents (Chrome, Edge, Firefox, Safari), WebGL2. Pas de mobile, pas de serveur, pas de réseau.
-- 60 i/s visés, 30 au minimum, sur une puce graphique intégrée récente (Apple M1, Intel Iris Xe) en 1080p, avec au plus 40 créatures actives, 250 morts au sol et 400 décalques. Ces plafonds sont des plafonds de design : aucune rencontre n'en demande plus.
+- 60 i/s visés, 30 au minimum, sur une puce graphique intégrée récente (Apple M1, Intel Iris Xe) en 1080p, avec au plus 40 créatures actives, 250 morts au sol et 400 décalques (éclaboussures en vol et flaques qui s'étendent ; le sang accumulé au sol est hors plafond, §17.1). Ces plafonds sont des plafonds de design : aucune rencontre n'en demande plus.
 - Le moteur 3D est au choix de l'implémenteur.
 - L'audio du navigateur ne démarre qu'après une action de l'utilisateur : l'écran titre exige un clic, et la scène de Jehanne ne doit jamais commencer avant.
 - Géométrie des créatures produite par code (segments). Physique simple (cinématique et intégration de Verlet pour les segments détachés). Pas de moteur physique complet obligatoire.
@@ -901,3 +923,4 @@ L'agent qui construit ce jeu ne doit pas réinterpréter ces points :
 - 2026-10-12 (décision du concepteur, après son premier jeu) : la mort n'est plus une coupure sèche. Elle ouvre une agonie courte (réglage : 0,4 s) : le cri s'étrangle en râle dès l'image du coup, le corps s'effondre et grisit, puis silence et immobilité. Remplace la coupure nette du principe 3, de L4, du §19 et du §30.3, et l'immobilité dès l'image du coup du §18. La mort elle-même reste instantanée dans la simulation : au tick du coup, la créature est morte et n'agit plus ; l'agonie est de la présentation. Raison : en jeu, la coupure de tout (cri, son, mouvement) dans la même image se lisait comme trop rapide et étrange. La valeur 0,4 s est un choix de l'orchestrateur dans la fourchette proposée (0,3 à 0,5 s).
 - 2026-10-12 (décision du concepteur) : le Bourreau fait face à sa direction de marche quand il se déplace, se tourne vers le curseur au début d'un geste (Frappe, Balayage, Charge, Sentence), et garde son orientation à l'arrêt. Il ne regarde plus le curseur en marchant.
 - 2026-10-12 (décision du concepteur) : la lumière s'applique normalement aux créatures ; aucun éclairage d'appoint ne les rend lisibles dans le noir. Dans le noir, un Abattu se lit par son liseré ivoire et un vivant par son mouvement ; ce qui est dans le noir se devine.
+- 2026-10-12 (décision du concepteur) : le sang devient un élément central du jeu, signe de la libération et célébré (§17.1). Chaque coup saigne, la mort libère une gerbe et une flaque, les Abattus saignent et laissent des traînées, le sang ne s'efface plus pendant un combat, le Bourreau se couvre de sang, la Ferveur est du sang. Aucune règle de simulation ne s'ajoute ; les sens de jeu (mort gris, rouge vif réservé, télégraphes lisibles) ne bougent pas. Ses mots : « mieux vaut plus que pas assez ».
