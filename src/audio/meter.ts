@@ -1,5 +1,5 @@
 // Mesure par quantum (B5 I3, I4) dans un AudioWorklet : énergie moyenne et crête de chaque prise, horodatées par
-// le numéro de quantum du rendu (currentFrame / 128). Aucun tampon multicanal n'est gardé en mémoire : seules deux
+// le numéro de quantum du rendu. Aucun tampon multicanal n'est gardé en mémoire : seules deux
 // valeurs par prise et par quantum remontent au fil principal.
 import type { Taps } from './graph'
 
@@ -16,7 +16,8 @@ export const METER_INPUTS = [
 export type MeterInput = (typeof METER_INPUTS)[number]
 
 // Source du processeur : chaîne de JavaScript, chargée par URL de blob (fonctionne en dev, en build et hors Vite).
-const PROCESSOR = `
+// Exportée pour les tests.
+export const METER_PROCESSOR = `
 class MercyMeter extends AudioWorkletProcessor {
   constructor(options) {
     super()
@@ -27,10 +28,17 @@ class MercyMeter extends AudioWorkletProcessor {
     this.qs = new Int32Array(this.batch)
     this.buf = new Float32Array(this.batch * this.n * 2)
     this.count = 0
+    this.next = -1
+    this.jitter = 0
     this.port.onmessage = () => this.flush()
   }
   process(inputs) {
-    const q = Math.floor(currentFrame / 128)
+    // Numéro du quantum : celui du premier appel, puis +1 par appel (un appel de process() par quantum rendu). Lu
+    // dans currentFrame à chaque appel, il a donné une fois sur quelques centaines de rendus le même numéro à deux
+    // quanta successifs : un quantum en double, le suivant jamais reçu, lu comme un silence sur toutes les prises.
+    if (this.next < 0) this.next = Math.round(currentFrame / 128)
+    const q = this.next++
+    if (currentFrame !== q * 128) this.jitter++
     const base = this.count * this.n * 2
     for (let i = 0; i < this.n; i++) {
       const inp = inputs[i]
@@ -58,8 +66,13 @@ class MercyMeter extends AudioWorkletProcessor {
   }
   flush() {
     if (!this.count) return
-    this.port.postMessage({ qs: this.qs.slice(0, this.count), data: this.buf.slice(0, this.count * this.n * 2) })
+    this.port.postMessage({
+      qs: this.qs.slice(0, this.count),
+      data: this.buf.slice(0, this.count * this.n * 2),
+      jitter: this.jitter,
+    })
     this.count = 0
+    this.jitter = 0
   }
 }
 registerProcessor('mercy-meter', MercyMeter)
@@ -68,7 +81,7 @@ registerProcessor('mercy-meter', MercyMeter)
 const loaded = new WeakSet<BaseAudioContext>()
 export const loadMeterModule = async (ctx: BaseAudioContext): Promise<void> => {
   if (loaded.has(ctx)) return
-  const url = URL.createObjectURL(new Blob([PROCESSOR], { type: 'application/javascript' }))
+  const url = URL.createObjectURL(new Blob([METER_PROCESSOR], { type: 'application/javascript' }))
   try {
     await ctx.audioWorklet.addModule(url)
   } finally {
@@ -96,7 +109,18 @@ export interface Meter {
   readonly node: AudioWorkletNode
   tables(): MeterTables
   received(): number
+  // Intégrité des tables : quanta reçus une fois au moins, quanta reçus deux fois, quanta jamais reçus (indices
+  // absolus). Un quantum jamais reçu se lirait comme un silence sur toutes les prises.
+  // `jitter` : appels où currentFrame ne valait pas 128 × le numéro compté (rapporté, sans effet sur les tables).
+  integrity(): {
+    readonly distinct: number
+    readonly duplicates: readonly number[]
+    readonly missing: readonly number[]
+    readonly jitter: number
+  }
   flush(): void
+  // Débranche le mesureur des prises et ferme son port (fin d'une mesure en direct, drapeau 9 de B5).
+  dispose(): void
 }
 
 // `quanta` : nombre de quanta attendus (hors ligne : longueur du rendu / 128) ; 0 en direct (tables extensibles).
@@ -128,9 +152,16 @@ export const attachMeter = (ctx: BaseAudioContext, taps: Taps, quanta: number, b
   let firstQ = -1
   let maxQ = -1
   let got = 0
+  let seen = new Uint8Array(cap)
+  let distinct = 0
+  const duplicates: number[] = []
+  let jitter = 0
   const grow = (need: number) => {
     if (need <= cap) return
     while (cap < need) cap *= 2
+    const s2 = new Uint8Array(cap)
+    s2.set(seen)
+    seen = s2
     ms = ms.map((a) => {
       const b = new Float32Array(cap)
       b.set(a)
@@ -142,8 +173,9 @@ export const attachMeter = (ctx: BaseAudioContext, taps: Taps, quanta: number, b
       return b
     })
   }
-  node.port.onmessage = (ev: MessageEvent<{ qs: Int32Array; data: Float32Array }>) => {
+  node.port.onmessage = (ev: MessageEvent<{ qs: Int32Array; data: Float32Array; jitter: number }>) => {
     const { qs, data } = ev.data
+    jitter += ev.data.jitter
     for (let k = 0; k < qs.length; k++) {
       const q = qs[k] as number
       if (firstQ < 0) firstQ = q
@@ -155,6 +187,11 @@ export const attachMeter = (ctx: BaseAudioContext, taps: Taps, quanta: number, b
       }
       maxQ = Math.max(maxQ, q)
       got++
+      if (seen[idx]) duplicates.push(q)
+      else {
+        seen[idx] = 1
+        distinct++
+      }
     }
   }
   return {
@@ -170,6 +207,18 @@ export const attachMeter = (ctx: BaseAudioContext, taps: Taps, quanta: number, b
       }
     },
     received: () => got,
+    integrity: () => {
+      const missing: number[] = []
+      const count = firstQ < 0 ? 0 : maxQ - firstQ + 1
+      for (let i = 0; i < count; i++) if (!seen[i]) missing.push(i + Math.max(0, firstQ))
+      return { distinct, duplicates: [...duplicates], missing, jitter }
+    },
     flush: () => node.port.postMessage('flush'),
+    dispose: () => {
+      node.port.onmessage = null
+      node.port.close()
+      split.disconnect()
+      node.disconnect()
+    },
   }
 }

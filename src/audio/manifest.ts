@@ -49,6 +49,9 @@ export interface ManifestEntry {
   readonly loopStart: number // échantillons, dans le tampon décodé à sampleRate
   readonly loopEnd: number // échantillons, exclusif
   readonly startOffset: number // échantillons : point de départ de la lecture
+  // Gain de lecture en dB, appliqué par le lecteur et par I9 (0 si absent). Corrige le niveau d'un fichier sans
+  // retoucher le WAV : cri-07 (B5.O11 g), consigné dans `retouches`.
+  readonly gainDb?: number
   readonly channels: number
   readonly sampleRate: number
   readonly format: 'wav-pcm16'

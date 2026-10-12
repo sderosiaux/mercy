@@ -1,6 +1,7 @@
 // Câblage de P0 (C8) : écran titre, boucle à pas fixe, entrées ou bot, simulation, rendu, HUD, audio.
 // Paramètres d'URL : wave (V1 par défaut), seed (1), variant (A).
 import { createAudio } from './audio/engine'
+import { type FreezeState, frameView, NO_FREEZE } from './game/freeze'
 import type { CommandSource, GameHost, GameStart } from './game/host'
 import { advance, initialLoop, type LoopState } from './game/loop'
 import { createInput } from './input/input'
@@ -38,7 +39,7 @@ let prev = world
 let loop: LoopState = initialLoop
 let running = false
 let paused = false
-let frozenUntil = 0
+let freeze: FreezeState = NO_FREEZE
 let source: CommandSource | null = null
 let filter: ((c: PlayerCommands) => PlayerCommands) | null = null
 const stepListeners = new Set<(w: World, c: PlayerCommands) => void>()
@@ -103,11 +104,23 @@ const frame = (now: number): void => {
   lastFrame = now
   const r = advance(loop, now, document.hidden || paused)
   loop = r.state
+  // Gel d'image (§8.1, drapeau 2 de B5) : le son coupe au pas qui porte le coup, l'image figée est donc ce pas-là.
+  const strikes: (number | null)[] = []
+  const shots: { readonly world: World; readonly prev: World }[] = []
   for (let i = 0; i < r.steps && !paused; i++) {
     simulate() // la pause est relue entre deux pas (requête C7 R7)
-    if (playerStruck(world)) frozenUntil = now + HIT_FREEZE_MS[world.player.weapon]
+    strikes.push(playerStruck(world) ? HIT_FREEZE_MS[world.player.weapon] : null)
+    shots.push({ world, prev })
   }
-  if (now < frozenUntil) return
+  const f = frameView(freeze, now, strikes)
+  freeze = f.state
+  if (f.view.kind === 'hold') return
+  const shot = f.view.kind === 'hit' ? shots[f.view.step] : undefined
+  if (shot) {
+    renderer.render(shot.world, shot.prev, 1)
+    hud.update(shot.world)
+    return
+  }
   renderer.render(world, prev, r.alpha)
   hud.update(world)
 }
@@ -117,9 +130,16 @@ title.style.cssText =
   'position:fixed; inset:0; display:grid; place-items:center; background: var(--noir); color: var(--ivoire); font-family: Georgia, serif;'
 title.innerHTML = `<div style="text-align:center"><h1 style="font-weight:400; letter-spacing:.2em">MERCY</h1>
   <p>P0 · La Fosse · vague ${current.wave} · graine ${current.seed}</p>
-  <button style="font: inherit; padding:.6em 2em; background:none; color: inherit; border:1px solid currentColor; cursor:pointer">Entrer</button></div>`
+  <button disabled style="font: inherit; padding:.6em 2em; background:none; color: inherit; border:1px solid currentColor; cursor:pointer">Chargement…</button></div>`
 shell.appendChild(title)
-title.querySelector('button')?.addEventListener('click', async () => {
+const enter = title.querySelector('button')
+// Requête E1 R2 : pas de partie avant que textures et reflets soient prêts (sinon le sol est nu quelques images).
+void renderer.ready().then(() => {
+  if (!enter) return
+  enter.disabled = false
+  enter.textContent = 'Entrer'
+})
+enter?.addEventListener('click', async () => {
   await audio.resume() // l'audio ne démarre qu'après un geste (§24)
   title.remove()
   running = true

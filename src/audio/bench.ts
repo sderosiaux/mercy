@@ -95,8 +95,19 @@ export const renderOffline = async (o: BenchOptions): Promise<BenchResult> => {
     })
   }
   const rendered = await ctx.startRendering()
-  const complete = await waitFor(() => meter.received() >= quanta, 10_000)
-  if (!complete) engine.log().warnings.push(`mesureur : ${meter.received()} quanta reçus sur ${quanta}`)
+  // Chaque quantum doit être reçu : on attend les quanta distincts, pas seulement le nombre de messages.
+  const complete = await waitFor(() => meter.integrity().distinct >= quanta, 10_000)
+  const integ = meter.integrity()
+  if (!complete || integ.duplicates.length > 0 || integ.missing.length > 0)
+    engine
+      .log()
+      .warnings.push(
+        `mesureur : ${integ.distinct} quanta distincts reçus sur ${quanta}, en double : [${integ.duplicates.slice(0, 20).join(', ')}], jamais reçus : [${integ.missing.slice(0, 20).join(', ')}]`,
+      )
+  if (integ.jitter > 0)
+    engine
+      .log()
+      .warnings.push(`mesureur : currentFrame hors du quantum compté ${integ.jitter} fois (tables justes)`)
   return {
     label: o.label,
     sampleRate: BENCH_RATE,

@@ -15,6 +15,7 @@ import {
   N_MAX,
   NAPPE_OFF_S,
   nappeOffShape,
+  QUANTUM_S,
   SOFT_END_MIN_S,
   SOFT_FADE_FLOOR_DB,
   SOFT_FADE_S,
@@ -95,9 +96,15 @@ export interface Taps {
   readonly impacts: GainNode
 }
 
+// Lecture d'un fichier. Son gain propre ne porte que les fondus enchaînés (changement de fichier d'une voix) ; on
+// garde la dernière courbe programmée pour connaître le gain réel à tout instant et en repartir (drapeau 1 de B5).
 interface Part {
   readonly src: AudioBufferSourceNode
   readonly gain: GainNode
+  readonly level: number // gain de lecture du fichier (manifeste, gainDb), linéaire
+  base: number // gain avant `curve`
+  curve: { readonly t0: number; readonly dur: number; readonly values: Float32Array } | null
+  stopAt: number | null
 }
 
 interface Chain {
@@ -105,9 +112,34 @@ interface Chain {
   readonly fade: GainNode
   readonly cut: GainNode
   readonly pan: PannerNode
-  parts: Part[]
+  parts: Part[] // toutes les lectures de la chaîne, fondus enchaînés en cours compris
+  live: Part | null // lecture du fichier courant
   stopAt: number | null
   pos: Vec2 // dernière position programmée sur le panoramique
+}
+
+// Journal I1 : complet (banc, mesure en direct), ou borné aux `ticks` derniers ticks (jeu : revue de code M5).
+export type JournalMode = 'complet' | { readonly ticks: number }
+
+// Gain d'une lecture à l'instant t, d'après sa dernière courbe (interpolation de la spécification Web Audio :
+// k = ⌊(N − 1)(t − T₀)/T_D⌋, puis linéaire entre c_k et c_k+1).
+const partGainAt = (p: Part, t: number): number => {
+  const c = p.curve
+  if (!c || t < c.t0) return p.base
+  const n = c.values.length
+  if (t >= c.t0 + c.dur) return c.values[n - 1] as number
+  const v = ((n - 1) * (t - c.t0)) / c.dur
+  const k = Math.floor(v)
+  const a = c.values[k] as number
+  const b = c.values[Math.min(n - 1, k + 1)] as number
+  return a + (b - a) * (v - k)
+}
+
+// Arrêt d'une lecture : jamais plus tard qu'un arrêt déjà programmé (le dernier stop() l'emporte, spec Web Audio).
+const stopPart = (p: Part, at: number): void => {
+  if (p.stopAt !== null && p.stopAt <= at) return
+  p.src.stop(at)
+  p.stopAt = at
 }
 
 const curve = (n: number, f: (x: number) => number): Float32Array =>
@@ -135,7 +167,12 @@ export interface Graph {
   dispose(): void
 }
 
-export const createGraph = (ctx: BaseAudioContext, bank: Bank): Graph => {
+export const createGraph = (
+  ctx: BaseAudioContext,
+  bank: Bank,
+  opts: { readonly journal?: JournalMode } = {},
+): Graph => {
+  const journal = opts.journal ?? 'complet'
   const entries = new Map(bank.manifest.files.map((e) => [e.id, e]))
   const entry = (id: string): ManifestEntry => {
     const e = entries.get(id)
@@ -195,7 +232,9 @@ export const createGraph = (ctx: BaseAudioContext, bank: Bank): Graph => {
       loopEnd: e.loopEnd / e.sampleRate,
       playbackRate: opts.rate ?? 1,
     })
-    const g = gain(opts.gain ?? 1)
+    // Gain de lecture du manifeste (B5 I8 : le lecteur lit ses réglages dans le manifeste, nulle part ailleurs).
+    const level = dbToGain(e.gainDb ?? 0)
+    const g = gain((opts.gain ?? 1) * level)
     src.connect(g)
     g.connect(dest)
     let offset = e.startOffset / e.sampleRate + (opts.offsetS ?? 0)
@@ -204,12 +243,13 @@ export const createGraph = (ctx: BaseAudioContext, bank: Bank): Graph => {
       offset = e.loopStart / e.sampleRate + ((offset - e.loopEnd / e.sampleRate) % period)
     }
     src.start(at, offset)
-    return { src, gain: g }
+    return { src, gain: g, level, base: (opts.gain ?? 1) * level, curve: null, stopAt: null }
   }
 
   // Ambiance permanente.
-  play(roleFile.vent, ctx.currentTime, ambPre)
-  play(roleFile.nappe, ctx.currentTime, nappe)
+  const ambient = [play(roleFile.vent, ctx.currentTime, ambPre), play(roleFile.nappe, ctx.currentTime, nappe)]
+  // Sons ponctuels (impacts…) : gardés jusqu'à leur fin, pour que dispose() les arrête aussi.
+  let oneshotParts: { readonly part: Part; readonly endAt: number }[] = []
 
   const log: AudioLog = { sources: [], frames: [], oneshots: [], ducks: [], nappe: [], warnings: [] }
   let uid = 0
@@ -217,6 +257,10 @@ export const createGraph = (ctx: BaseAudioContext, bank: Bank): Graph => {
   const srcChains = new Map<string, Chain>() // clé de source → chaîne
   const endingChains: Chain[] = [] // fins en cours (fondu) : une mort les coupe encore
   const retired: Chain[] = []
+  // Fin de la rampe de la dernière coupure de chaque emplacement de voix. Un emplacement coupé est réattribuable au
+  // même tick (B5.O1, O8 b) ; la voix suivante y démarre un quantum après cette fin, pour que l'emplacement montre la
+  // coupure (rampe, puis un quantum muet) avant la nouvelle voix (B5.O3, mesuré par emplacement).
+  const slotCutEnd = new Map<number, number>()
   let nappeRamp: Ramp = { v0: 0, t0: 0, v1: 0, t1: 0 }
   let duckRamps: Ramp[] = []
 
@@ -255,14 +299,28 @@ export const createGraph = (ctx: BaseAudioContext, bank: Bank): Graph => {
       cutDuringFade: null,
     }
     log.sources.push(entryLog)
-    return { log: entryLog, fade, cut, pan, parts: [], stopAt: null, pos }
+    return { log: entryLog, fade, cut, pan, parts: [], live: null, stopAt: null, pos }
   }
 
   const cutChain = (ch: Chain, now: number): void => {
     ch.cut.gain.setValueAtTime(1, now)
     ch.cut.gain.linearRampToValueAtTime(0, now + CUT_RAMP_S)
-    for (const p of ch.parts) p.src.stop(now + CUT_RAMP_S)
+    for (const p of ch.parts) stopPart(p, now + CUT_RAMP_S)
     ch.stopAt = now + CUT_RAMP_S
+    if (ch.log.kind === 'voix' && ch.log.slot !== null) slotCutEnd.set(ch.log.slot, now + CUT_RAMP_S)
+  }
+
+  // Fondu enchaîné, côté sortant : la lecture descend de son gain réel à `now` (elle peut être encore en train de
+  // monter) jusqu'à 0 en XFADE_S, puis s'arrête. Toute automatisation encore programmée sur ce gain est annulée
+  // d'abord : aucun chevauchement de courbes, quel que soit l'écart entre deux changements, même nul.
+  const fadeOutPart = (p: Part, now: number): void => {
+    const from = partGainAt(p, now)
+    const values = FADE_OUT.map((k) => k * from)
+    p.gain.gain.cancelScheduledValues(now)
+    p.gain.gain.setValueCurveAtTime(values, now, XFADE_S)
+    p.base = from
+    p.curve = { t0: now, dur: XFADE_S, values }
+    stopPart(p, now + XFADE_S)
   }
 
   const endChain = (
@@ -287,7 +345,7 @@ export const createGraph = (ctx: BaseAudioContext, bank: Bank): Graph => {
     ch.fade.gain.setValueAtTime(1, now)
     ch.fade.gain.exponentialRampToValueAtTime(dbToGain(SOFT_FADE_FLOOR_DB), end)
     ch.fade.gain.setValueAtTime(0, end)
-    for (const p of ch.parts) p.src.stop(end + CUT_RAMP_S)
+    for (const p of ch.parts) stopPart(p, end + CUT_RAMP_S)
     ch.stopAt = end + CUT_RAMP_S
     ch.log.endDurationS = SOFT_FADE_S
     if (strangle) {
@@ -299,6 +357,8 @@ export const createGraph = (ctx: BaseAudioContext, bank: Bank): Graph => {
         entry(roleFile.etranglement).startOffset / entry(roleFile.etranglement).sampleRate
       ch.stopAt = Math.max(ch.stopAt, now + len)
       ch.log.strangle = true
+      // La fin dure jusqu'au bout de l'étranglement : le journal le dit (I1), sinon un mesureur croit le bus libre.
+      ch.log.endDurationS = Math.max(SOFT_FADE_S, len)
     }
     endingChains.push(ch)
   }
@@ -379,18 +439,22 @@ export const createGraph = (ctx: BaseAudioContext, bank: Bank): Graph => {
           break
         }
         case 'voice-start': {
+          const cutEnd = slotCutEnd.get(c.slot)
+          const at = cutEnd !== undefined && cutEnd > now ? cutEnd + QUANTUM_S : now
           const ch = newChain(
             'voix',
             c.id,
             c.slot,
             tick,
-            now,
+            at,
             c.pos,
             familyOf(c.id),
             slotTaps[c.slot] as GainNode,
           )
-          ch.parts.push(play(c.file, now, ch.fade))
-          ch.log.phases.push({ tick, time: now, phase: c.phase, file: c.file, muffled: c.muffled })
+          const p = play(c.file, at, ch.fade)
+          ch.parts.push(p)
+          ch.live = p
+          ch.log.phases.push({ tick, time: at, phase: c.phase, file: c.file, muffled: c.muffled })
           voiceChains.set(c.slot, ch)
           break
         }
@@ -400,14 +464,15 @@ export const createGraph = (ctx: BaseAudioContext, bank: Bank): Graph => {
           const last = ch.log.phases[ch.log.phases.length - 1]
           ch.log.phases.push({ tick, time: now, phase: c.phase, file: c.file, muffled: c.muffled })
           if (last && last.file === c.file) break
-          // Fondu enchaîné à puissance constante : le cri ne s'interrompt jamais d'une phase à l'autre.
-          for (const p of ch.parts) {
-            p.gain.gain.setValueCurveAtTime(FADE_OUT, now, XFADE_S)
-            p.src.stop(now + XFADE_S)
-          }
+          // Fondu enchaîné à puissance constante : le cri ne s'interrompt jamais d'une phase à l'autre. La lecture
+          // sortante part de son gain réel ; les lectures déjà sortantes finissent leur propre fondu.
+          if (ch.live) fadeOutPart(ch.live, now)
           const np = play(c.file, now, ch.fade, { gain: 0 })
-          np.gain.gain.setValueCurveAtTime(FADE_IN, now, XFADE_S)
-          ch.parts = [np]
+          const fadeIn = np.level === 1 ? FADE_IN : FADE_IN.map((k) => k * np.level)
+          np.gain.gain.setValueCurveAtTime(fadeIn, now, XFADE_S)
+          np.curve = { t0: now, dur: XFADE_S, values: fadeIn }
+          ch.parts = [...ch.parts.filter((p) => p.stopAt === null || p.stopAt > now), np]
+          ch.live = np
           break
         }
         case 'src-start': {
@@ -430,7 +495,8 @@ export const createGraph = (ctx: BaseAudioContext, bank: Bank): Graph => {
         }
         case 'oneshot': {
           const file = roleFile[c.kind]
-          play(file, now, impacts)
+          const part = play(file, now, impacts)
+          oneshotParts.push({ part, endAt: now + (part.src.buffer?.duration ?? 0) })
           log.oneshots.push({ tick, time: now, kind: c.kind, file, id: c.id, pos: c.pos })
           break
         }
@@ -469,7 +535,8 @@ export const createGraph = (ctx: BaseAudioContext, bank: Bank): Graph => {
         }
       }
     }
-    // Ménage : chaînes arrêtées depuis plus d'une seconde.
+    // Ménage : sons ponctuels finis, chaînes arrêtées depuis plus d'une seconde.
+    oneshotParts = oneshotParts.filter((o) => o.endAt > now)
     for (let i = endingChains.length - 1; i >= 0; i--) {
       const ch = endingChains[i] as Chain
       if (ch.stopAt !== null && now > ch.stopAt) {
@@ -503,10 +570,57 @@ export const createGraph = (ctx: BaseAudioContext, bank: Bank): Graph => {
     const sources: [number, EntityId, number, number][] = []
     for (const ch of srcChains.values()) sources.push([ch.log.uid, ch.log.id, ch.pos.x, ch.pos.z])
     log.frames.push({ tick, time: now, listener, voices, sources })
+    trimJournal(tick)
   }
 
+  // Revue de code M5 : en jeu, le journal ne garde que les `journal.ticks` derniers ticks (entrées datées par tick,
+  // sources finies avant l'horizon). Taillé tous les `journal.ticks` ticks : au plus deux horizons en mémoire.
+  let trimmedAt = Number.NEGATIVE_INFINITY
+  const trimJournal = (tick: Tick): void => {
+    if (journal === 'complet' || tick - trimmedAt < journal.ticks) return
+    trimmedAt = tick
+    const from = tick - journal.ticks
+    const dropBefore = <T extends { readonly tick: Tick }>(xs: T[], keepLast: boolean): void => {
+      let i = 0
+      while (i < xs.length && (xs[i] as T).tick < from) i++
+      if (keepLast && i === xs.length) i = Math.max(0, xs.length - 1) // état courant (niveau de la nappe)
+      xs.splice(0, i)
+    }
+    dropBefore(log.frames, false)
+    dropBefore(log.oneshots, false)
+    dropBefore(log.ducks, false)
+    dropBefore(log.nappe, true)
+    let w = 0
+    for (const s of log.sources) {
+      const last = Math.max(s.endTick ?? Number.POSITIVE_INFINITY, s.cutDuringFade?.tick ?? -1)
+      if (last >= from) log.sources[w++] = s
+    }
+    log.sources.length = w
+    if (log.warnings.length > journal.ticks) log.warnings.splice(0, log.warnings.length - journal.ticks)
+  }
+
+  // Revue de code M6 : un graphe abandonné (nouvelle partie, fin d'une mesure en direct) arrête toutes ses lectures,
+  // ambiances en boucle, voix, sources, fins en cours et sons ponctuels, puis se déconnecte.
   const dispose = (): void => {
-    master.disconnect()
+    const now = ctx.currentTime
+    const chains = [...voiceChains.values(), ...srcChains.values(), ...endingChains, ...retired]
+    const parts = [...ambient, ...oneshotParts.map((o) => o.part), ...chains.flatMap((ch) => ch.parts)]
+    for (const p of parts) {
+      stopPart(p, now)
+      p.src.disconnect()
+      p.gain.disconnect()
+    }
+    for (const ch of chains) {
+      ch.fade.disconnect()
+      ch.cut.disconnect()
+      ch.pan.disconnect()
+    }
+    voiceChains.clear()
+    srcChains.clear()
+    endingChains.length = 0
+    retired.length = 0
+    oneshotParts = []
+    for (const n of [master, creatures, impacts, ambPre, ambPost, nappe, others, ...slotTaps]) n.disconnect()
   }
 
   return {

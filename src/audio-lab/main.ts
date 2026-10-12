@@ -12,14 +12,18 @@ import {
   runLive,
   SILENCE_DB,
 } from '../audio/index'
-import { S1_VARIANTS, type S1Variant, type SceneDef, s1Scene, sNappeScene, sSatScene } from './scenes'
+import { isS1Variant, S1_VARIANTS, type SceneDef, s1Scene, sNappeScene, sSatScene } from './scenes'
 import { deltaM, o1, o2, o3, o5, o6, o7abc, o7d, o8a } from './verdicts'
 
-const SCENES = [...S1_VARIANTS, 'S-nappe', 'S-sat'] as const
-type SceneId = (typeof SCENES)[number]
+const SCENES: readonly string[] = [...S1_VARIANTS, 'S-nappe', 'S-sat']
+type SceneId = string
 
-const sceneOf = (id: SceneId, seed: number): SceneDef =>
-  id === 'S-nappe' ? sNappeScene(seed) : id === 'S-sat' ? sSatScene(seed) : s1Scene(id as S1Variant, seed)
+const sceneOf = (id: SceneId, seed: number): SceneDef => {
+  if (id === 'S-nappe') return sNappeScene(seed)
+  if (id === 'S-sat') return sSatScene(seed)
+  if (isS1Variant(id)) return s1Scene(id, seed)
+  throw new Error(`scène inconnue : ${id} (connues : ${SCENES.join(', ')})`)
+}
 
 const results = new Map<string, BenchResult>()
 

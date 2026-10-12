@@ -4,9 +4,12 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { BENCH_RATE, QUANTUM } from '../audio/constants'
 import { type Cmd, type DirectorState, direct, initialDirector } from '../audio/director'
+import { vocalising } from '../audio/ends'
 import { poolsOf } from '../audio/engine'
 import type { Manifest } from '../audio/manifest'
-import { type SimEvent, step, type World } from '../sim/index'
+import { b5 } from '../bots/b2b4b5/b5'
+import { createWorld, FAMILIES, type SimEvent, step, type World } from '../sim/index'
+import { waveById } from '../sim/waves'
 import { type SceneDef, s1Scene, sSatScene } from './scenes'
 
 const manifest = JSON.parse(
@@ -170,5 +173,50 @@ describe('budget de 24 voix sur S-sat (B5.O8, 36 corps, auditeur qui se déplace
     const steals = cmdsOf(ticks, 'voice-end')
     expect(steals.length).toBeGreaterThan(0)
     expect(steals.every((x) => x.c.cause === 'vol' && x.c.mode === 'fade')).toBe(true)
+  })
+})
+
+describe('emplacement coupé par une mort, réattribué au même tick (B5.O1, O8 b)', () => {
+  // Parties où le vérificateur B5 a relevé des corps tombés sans voix au tick de leur chute (Balayage qui tue et
+  // abat au même tick, emplacements coupés libérés à t + 1) : V6, politique b5, graines 4, 7, 9 et 13.
+  const games = [
+    ['V6', 4, 'A', 60],
+    ['V6', 7, 'A', Number.POSITIVE_INFINITY],
+    ['V6', 9, 'A', Number.POSITIVE_INFINITY],
+    ['V6', 13, 'B', Number.POSITIVE_INFINITY],
+  ] as const
+  let reusedSameTick = 0
+
+  it.each(games)(
+    '%s graine %i %s, b5(%s) : toute chute a sa voix au tick même quand 24 corps au plus vocalisent',
+    (wave, seed, variant, D) => {
+      const policy = b5(D)
+      let w = createWorld({ seed, variant, wave: waveById(wave), families: FAMILIES })
+      let s = initialDirector()
+      const missing: string[] = []
+      for (let k = 0; k < 10_800; k++) {
+        if (k > 0) w = step(w, policy.decide(w, null)[0])
+        const r = direct(s, w, w.player.pos, tickTime(w.tick), pools)
+        s = r.state
+        const byId = new Map(w.creatures.map((c) => [c.id, c]))
+        const nV = w.creatures.filter((c) => vocalising(c, byId)).length
+        for (const e of w.events) {
+          if (e.type !== 'fell' || nV > 24) continue
+          const c = byId.get(e.id)
+          if (c && vocalising(c, byId) && !s.voices.has(e.id))
+            missing.push(`tick ${w.tick} : corps ${e.id} (${nV} vocalisent)`)
+        }
+        const cutSlots = new Set(
+          r.cmds.flatMap((c) => (c.t === 'voice-end' && c.mode === 'cut' ? [c.slot] : [])),
+        )
+        reusedSameTick += r.cmds.filter((c) => c.t === 'voice-start' && cutSlots.has(c.slot)).length
+        if (w.creatures.every((c) => c.state.kind === 'mort')) break
+      }
+      expect(missing).toEqual([])
+    },
+  )
+
+  it('ces parties réattribuent bien des emplacements coupés au tick de la coupure', () => {
+    expect(reusedSameTick).toBeGreaterThan(0)
   })
 })

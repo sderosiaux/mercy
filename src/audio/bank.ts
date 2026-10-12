@@ -25,6 +25,24 @@ export const fetchManifest = async (baseUrl = '/audio/'): Promise<Manifest> => {
 export const fetchFileBytes = (baseUrl: string, file: string): Promise<ArrayBuffer> =>
   fetchBytes(`${baseUrl}${file}`)
 
+// Banque décodée une fois par contexte et par adresse (drapeau 9 de B5 : la mesure en direct ne redécode plus la
+// banque à chaque passage ; le jeu et la mesure en direct partagent le même contexte, donc la même banque).
+const decodedBanks = new WeakMap<BaseAudioContext, Map<string, Promise<Bank>>>()
+export const bankFor = (ctx: BaseAudioContext, baseUrl = '/audio/'): Promise<Bank> => {
+  let byUrl = decodedBanks.get(ctx)
+  if (!byUrl) {
+    byUrl = new Map()
+    decodedBanks.set(ctx, byUrl)
+  }
+  let p = byUrl.get(baseUrl)
+  if (!p) {
+    p = loadBank(ctx, baseUrl)
+    byUrl.set(baseUrl, p)
+    p.catch(() => byUrl?.delete(baseUrl)) // un échec de chargement n'est pas gardé
+  }
+  return p
+}
+
 export const loadBank = async (
   ctx: BaseAudioContext,
   baseUrl = '/audio/',

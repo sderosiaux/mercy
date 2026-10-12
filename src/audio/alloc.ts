@@ -33,6 +33,8 @@ export const emptySlots = (): readonly Slot[] => Array.from({ length: VOICE_SLOT
 export const isFree = (s: Slot, tick: Tick): boolean =>
   s.kind === 'free' || (s.kind === 'ending' && tick >= s.freeAt)
 
+const freedNow = (s: Slot, tick: Tick): boolean => s.kind === 'ending' && s.freeAt === tick
+
 // `slots` doit déjà refléter les fins de ce tick (morts, relèvements, absorptions…) : seules les voix encore
 // tenues par un corps qui vocalise sont présentes en `voice`.
 export const allocate = (ranked: readonly Ranked[], slots: readonly Slot[], tick: Tick): Allocation => {
@@ -52,7 +54,15 @@ export const allocate = (ranked: readonly Ranked[], slots: readonly Slot[], tick
     }
   }
 
-  const free = slots.map((s, i) => (isFree(s, tick) ? i : -1)).filter((i) => i >= 0)
+  // Emplacements libres, ceux qui l'étaient déjà avant ce tick d'abord : un emplacement libéré à ce tick même (coupure
+  // d'une mort, ou fondu qui s'achève) ne sert que s'il n'y en a pas d'autre ; après une coupure, la voix n'y démarre
+  // qu'à la fin de la rampe (graph.ts).
+  const free = slots
+    .map((s, i) => (isFree(s, tick) ? i : -1))
+    .filter((i) => i >= 0)
+    .sort(
+      (a, b) => Number(freedNow(slots[a] as Slot, tick)) - Number(freedNow(slots[b] as Slot, tick)) || a - b,
+    )
   const assign: { id: EntityId; slot: number }[] = []
   const wanting = ranked.filter((r) => r.rank <= VOICE_SLOTS && !slotOf.has(r.id))
   // Voix volables pour un corps des 24 premiers : tenues hors des 24, plus mauvais rang d'abord.

@@ -38,6 +38,7 @@ export interface FileShape {
   readonly loopStart: number
   readonly loopEnd: number
   readonly startOffset: number
+  readonly gainDb?: number // gain de lecture du manifeste (0 si absent)
 }
 
 const db = (meanSquare: number): number =>
@@ -179,23 +180,36 @@ const MS_PER_Q = (QUANTUM / 48_000) * 1000
 
 export interface FileAnalysis {
   readonly rows: readonly O11Row[]
-  readonly mf: number // médiane des quanta non silencieux du fichier joué une fois
+  readonly mf: number // M_f : médiane des quanta non silencieux du fichier tel que joué
 }
 
+// Gain de lecture appliqué au tampon décodé : ce que le lecteur joue réellement.
+const withGain = (channels: readonly Float32Array[], gainDb: number): readonly Float32Array[] => {
+  if (gainDb === 0) return channels
+  const g = 10 ** (gainDb / 20)
+  return channels.map((ch) => ch.map((v) => v * g))
+}
+
+// Le fichier tel que joué (B5 « Définitions communes ») : depuis l'offset de départ, avec les points de boucle et le
+// gain de lecture du manifeste. Un fichier en boucle est lu trois tours, comme pour (c) : le contenu du tampon
+// au-delà de loopEnd n'est jamais joué et n'entre pas dans M_f (drapeau 8 de B5 : l'ancien calcul allait de l'offset
+// à la fin du tampon). (b) reste mesuré sans boucle, comme le contrat le demande.
 export const analyseFile = (
   id: string,
   shape: FileShape,
-  channels: readonly Float32Array[],
+  decoded: readonly Float32Array[],
   sampleRate: number,
 ): FileAnalysis => {
   const rows: O11Row[] = []
   const add = (r: Omit<O11Row, 'file' | 'role'>) => rows.push({ file: id, role: shape.role, ...r })
+  const channels = withGain(decoded, shape.gainDb ?? 0)
   const once = playedOnce(channels, shape.startOffset)
-  const mf = nonSilentMedian(once)
+  const played = shape.loop ? playedLooped(channels, shape, 3) : once
+  const mf = nonSilentMedian(played)
   const role = shape.role
 
   if (role === 'halètement' || role === 'cri' || role === 'inspiration' || role === 'cri-etouffe') {
-    const q = once.findIndex((l) => l >= mf - 20)
+    const q = played.findIndex((l) => l >= mf - 20)
     const ms = q < 0 ? Number.POSITIVE_INFINITY : q * MS_PER_Q
     add({
       criterion: 'a',
@@ -207,10 +221,11 @@ export const analyseFile = (
     })
   }
   if (role === 'halètement' || role === 'inspiration') {
+    const mfOnce = nonSilentMedian(once)
     let first = -1
     let last = -1
     once.forEach((l, i) => {
-      if (l >= mf - 30) {
+      if (l >= mfOnce - 30) {
         if (first < 0) first = i
         last = i
       }
@@ -227,7 +242,7 @@ export const analyseFile = (
     })
   }
   if (role === 'cri' || role === 'inspiration' || role === 'nappe' || shape.loop) {
-    const levels = shape.loop ? playedLooped(channels, shape, 3) : once
+    const levels = played
     const { gaps, worstRunQ } = continuityGaps(levels)
     add({
       criterion: 'c',
@@ -349,4 +364,5 @@ export const shapeOf = (e: ManifestEntry): FileShape => ({
   loopStart: e.loopStart,
   loopEnd: e.loopEnd,
   startOffset: e.startOffset,
+  gainDb: e.gainDb ?? 0,
 })

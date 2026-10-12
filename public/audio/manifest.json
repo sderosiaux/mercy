@@ -292,6 +292,7 @@
       "loopStart": 199680,
       "loopEnd": 229120,
       "startOffset": 195840,
+      "gainDb": -3.33,
       "channels": 1,
       "sampleRate": 48000,
       "format": "wav-pcm16",
@@ -304,7 +305,8 @@
         "PCM s16le 2 canal(aux) 48 kHz",
         "passage en mono : moyenne de 2 canaux",
         "point de boucle : région tenue 199680–229120, départ 195840, jonction en fondu enchaîné de 3840 éch. (boucle native refusée par les contrôles)",
-        "niveau -12.90 dB (M_f visé -24 dBFS)"
+        "niveau -12.90 dB (M_f visé -24 dBFS)",
+        "lecture : gain −3,33 dB (D-fix2, B5.O11 g) : M_f du fichier tel que joué (boucle 199680–229120) −20,67 → −24,00 dBFS, niveau visé des cris ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:03.638Z",
       "attempt": 2
@@ -897,7 +899,7 @@
       "loop": true,
       "loopStart": 36480,
       "loopEnd": 60544,
-      "startOffset": 5888,
+      "startOffset": 8448,
       "channels": 1,
       "sampleRate": 48000,
       "format": "wav-pcm16",
@@ -908,7 +910,8 @@
         "passage en mono : moyenne de 2 canaux",
         "offset de départ 5888 éch. (122.7 ms de silence de tête sauté)",
         "point de boucle dans la partie tenue : 36480–60544, jonction en fondu enchaîné de 3840 éch.",
-        "niveau -3.94 dB (M_f visé -27 dBFS, limité par la crête à −1 dBFS)"
+        "niveau -3.94 dB (M_f visé -27 dBFS, limité par la crête à −1 dBFS)",
+        "lecture : offset de départ 5888 → 8448 éch. (D-fix2, B5.O11 a) : premier quantum à M_f − 20 dB du fichier tel que joué (M_f −17,05 dBFS sur trois tours de boucle), attaque 53,3 → 0 ms ; WAV inchangé"
       ],
       "generatedAt": "2026-10-12T01:51:04.673Z",
       "attempt": 1

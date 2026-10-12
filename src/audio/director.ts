@@ -248,7 +248,9 @@ export const direct = (s: DirectorState, w: World, listener: Vec2, now: number, 
     const mode = endModeFor(cause)
     cmds.push({ t: 'voice-end', slot: v.slot, id, mode, cause })
     voices.delete(id)
-    slots[v.slot] = { kind: 'ending', id, freeAt: mode === 'cut' ? t + 1 : t + FADE_TICKS }
+    // Un emplacement coupé est libre dès ce tick (B5.O1, O8 b) : une chute du même tick (Balayage qui tue et abat)
+    // y prend sa voix tout de suite. Le graphe la démarre après la rampe de coupure (graph.ts, slotCutEnd).
+    slots[v.slot] = { kind: 'ending', id, freeAt: mode === 'cut' ? t : t + FADE_TICKS }
   }
   // Une mort coupe aussi une voix déjà en fondu (volée, relevée…) : rien ne survit à la mort.
   slots.forEach((sl, i) => {
@@ -259,7 +261,7 @@ export const direct = (s: DirectorState, w: World, listener: Vec2, now: number, 
       !cmds.some((c) => c.t === 'voice-end' && c.slot === i)
     ) {
       cmds.push({ t: 'voice-end', slot: i, id: sl.id, mode: 'cut', cause: 'mort' })
-      slots[i] = { kind: 'ending', id: sl.id, freeAt: t + 1 }
+      slots[i] = { kind: 'ending', id: sl.id, freeAt: t }
     }
   })
 

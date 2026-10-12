@@ -41,6 +41,11 @@ export const nappeOffShape = (u: number): number => 1 - u ** 8
 // §24 : au plus 40 créatures actives. La nappe a un niveau proportionnel à N, plein à 40.
 export const N_MAX = 40
 
+// Revue de code M5 : horizon du journal I1 en jeu (le banc garde tout). 300 s, la durée maximale d'une partie
+// mesurée par les outils de dev (délai du mode aveugle, src/dev/blind.ts) : l'export de télémétrie d'une telle
+// partie garde tout son journal audio ; au-delà, seules les 300 dernières secondes restent.
+export const GAME_JOURNAL_TICKS = 300 * TICK_HZ
+
 export const TICK_S = 1 / TICK_HZ
 export const dbToGain = (db: number): number => 10 ** (db / 20)
 export const gainToDb = (g: number): number => (g > 0 ? 20 * Math.log10(g) : Number.NEGATIVE_INFINITY)
