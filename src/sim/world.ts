@@ -11,6 +11,7 @@ import { proximityTick } from './laws/indifference'
 import { resetTick } from './laws/reset'
 import { riseTick } from './laws/rise'
 import { playerTick, playerTimersTick } from './player/bourreau'
+import { clampToArena } from './predicates'
 import { nextFloat, seedRng } from './rng'
 import { TUNING } from './tuning'
 import type {
@@ -137,11 +138,6 @@ const toDraft = (w: World): Draft => ({
   families: w.families,
 })
 
-const clamp = (p: { x: number; z: number }, r: number) => {
-  const h = TUNING.arenaHalf - r
-  return vec(Math.max(-h, Math.min(h, p.x)), Math.max(-h, Math.min(h, p.z)))
-}
-
 const collisionsTick = (d: Draft): void => {
   const standing = d.creatures.filter(isStanding)
   // Créatures entre elles : écartement symétrique, paires dans l'ordre des id.
@@ -170,8 +166,8 @@ const collisionsTick = (d: Draft): void => {
       p.pos = add(c.pos, scale(dir, min))
     }
   }
-  p.pos = clamp(p.pos, TUNING.playerRadius)
-  for (const c of d.creatures) if (c.state.kind !== 'absorbe') c.pos = clamp(c.pos, radiusOf(c))
+  p.pos = clampToArena(p.pos, TUNING.playerRadius)
+  for (const c of d.creatures) if (c.state.kind !== 'absorbe') c.pos = clampToArena(c.pos, radiusOf(c))
 }
 
 const waveEndTick = (d: Draft): void => {

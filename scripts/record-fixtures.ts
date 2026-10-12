@@ -1,16 +1,23 @@
-// Enregistre les 3 journaux d'entrées figés de fixtures/inputs/ (B7). À relancer seulement si le format change :
-// le contrôle de déterminisme compare des rejeux entre eux, pas à une valeur attendue.
+// Enregistre les journaux d'entrées figés de fixtures/inputs/ (B7) : trois combats de Souriants, et une partie de
+// V5 où les cinq familles agissent (revue P0, T1). À relancer seulement si le format change : le contrôle de
+// déterminisme compare des rejeux entre eux, pas à une valeur attendue. Sans argument, tout est réenregistré ;
+// avec des noms (`tsx scripts/record-fixtures.ts v5-cinq-familles`), seulement ceux-là.
 import { writeFileSync } from 'node:fs'
+import { DEFAULT_SPEC, playRun } from '../src/bots/harness'
 import {
   createWorld,
+  FAMILIES,
   IDLE_COMMANDS,
   type PlayerCommands,
-  souriant,
   step,
   type WaveDef,
   type World,
 } from '../src/sim/index'
 import { dist, norm, sub } from '../src/sim/vec'
+import { waveById } from '../src/sim/waves'
+
+const only = new Set(process.argv.slice(2))
+const wanted = (name: string): boolean => only.size === 0 || only.has(name)
 
 const wave: WaveDef = {
   id: 'fixture-souriants',
@@ -60,7 +67,8 @@ const fighter =
   }
 
 const record = (name: string, seed: number, variant: 'A' | 'B', policy: Policy, ticks: number) => {
-  let w = createWorld({ seed, variant, wave, families: { souriant } })
+  if (!wanted(name)) return
+  let w = createWorld({ seed, variant, wave, families: FAMILIES })
   const commands: PlayerCommands[] = []
   for (let i = 0; i < ticks; i++) {
     const c = policy(w)
@@ -72,6 +80,24 @@ const record = (name: string, seed: number, variant: 'A' | 'B', policy: Policy, 
   console.log(`${name} : ${ticks} ticks, morts du joueur ${deaths}, tick final ${w.tick}`)
 }
 
+// Une partie du banc (politique, vague, graine), commandes appliquées gardées telles quelles.
+const recordBench = (name: string, waveId: string, policy: string, seed: number, ticks: number) => {
+  if (!wanted(name)) return
+  const variant = 'A'
+  const { result, trace } = playRun(
+    { ...DEFAULT_SPEC, wave: waveId, policy, seed, variant, timeoutTicks: ticks },
+    { keepCommands: true },
+  )
+  const commands = trace.commands ?? []
+  const log = { seed, variant, wave: waveById(waveId), commands }
+  writeFileSync(`fixtures/inputs/${name}.json`, `${JSON.stringify(log)}\n`)
+  console.log(
+    `${name} : ${waveId}, ${policy}, graine ${seed}, ${commands.length} ticks, fin ${result.endTick}`,
+  )
+}
+
 record('combat-a', 11, 'A', fighter({ passiveUntil: 0 }), 1800)
 record('combat-b', 23, 'B', fighter({ passiveUntil: 0 }), 1800)
 record('mort-puis-combat', 37, 'A', fighter({ passiveUntil: 600 }), 2400)
+// Les cinq familles agissent (prière, opération, éclatement), et le joueur meurt une fois (L6 sur toutes).
+recordBench('v5-cinq-familles', 'V5', 'négligent', 2, 3600)

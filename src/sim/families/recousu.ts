@@ -2,6 +2,7 @@
 // la lui retire jusqu'au Relèvement (ou jusqu'à ce que son Membre errant soit recousu). Sans bras valide, il passe
 // au Coup de tête. Le cœur refuse déjà une attaque dont le membre n'est pas `ok` ; on ne la demande donc jamais.
 import { radiusOf } from '../draft'
+import { clampToArena } from '../predicates'
 import { TUNING } from '../tuning'
 import type { Area, Creature, Effect, FamilyModule, Intent, Vec2 } from '../types'
 import { add, dist, fromAngle, scale } from '../vec'
@@ -24,10 +25,7 @@ const strike = (area: Area, amount: number, knockback?: number): Effect => ({
 })
 
 // Même borne que l'effet dashSelf du cœur (effects.ts) : le centre du coup est là où le corps arrive.
-const clampArena = (p: Vec2): Vec2 => {
-  const h = TUNING.arenaHalf - TUNING.radiusLarge
-  return { x: Math.max(-h, Math.min(h, p.x)), z: Math.max(-h, Math.min(h, p.z)) }
-}
+const clampArena = (p: Vec2): Vec2 => clampToArena(p, TUNING.radiusLarge)
 
 // Choix par la portée, sans autre valeur que celles du réglage : l'Empoignade (1,8 m) si le joueur est collé,
 // le Marteau (2,5 m) un cran plus loin, le Coup de tête (ruée de 5 m) quand aucun bras ne tient plus.

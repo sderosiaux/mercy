@@ -1,7 +1,7 @@
 // Confesseur (§8.10, L7, D1, D2, D3, D6) : petit support qui garde 7 à 10 m du joueur, frappe du Bâton au
 // contact, et canalise une Prière qui relève d'un coup les Abattus ordinaires autour de lui, y compris lui-même
 // s'il prie à terre.
-import { canDecide } from '../laws/indifference'
+import { actionEnded, freeToDecide, raisableByPrayer } from '../predicates'
 import { TUNING } from '../tuning'
 import type { Creature, Effect, FamilyModule, Intent, Vec2, World } from '../types'
 import { add, angleOf, dist, fromAngle, len, scale, sub } from '../vec'
@@ -11,6 +11,7 @@ const B = C.baton
 
 export const PRIERE = 'priere'
 const BATON = 'baton'
+const CAN_ACT_WHILE_DOWN = true // il prie à terre (§8.10)
 
 // Clés de familyData.
 const READY = 'priereDes' // tick à partir duquel une nouvelle prière peut commencer (recharge, D1)
@@ -33,18 +34,9 @@ const wantsPrayer = (w: World, self: Creature, data: Creature['familyData']): bo
   ready(w, data) && bodiesNear(w, self) >= C.prayerTrigger
 
 // D3 : à la fin, tous les Abattus ordinaires à moins de 8 m, sauf ceux réservés par une Sentence ou une
-// opération. Mêmes filtres que l'effet `raise` du cœur.
+// opération : le prédicat de l'effet `raise` du cœur.
 const raisable = (w: World, self: Creature): number[] =>
-  w.creatures
-    .filter(
-      (c) =>
-        isBody(c) &&
-        c.state.kind === 'abattu' &&
-        c.state.claimedBy === null &&
-        !c.resistant &&
-        inPrayerRadius(self, c),
-    )
-    .map((c) => c.id)
+  w.creatures.filter((c) => raisableByPrayer(c) && inPrayerRadius(self, c)).map((c) => c.id)
 
 // Point à `radius` du joueur, sur la droite joueur → Confesseur.
 const ringPoint = (self: Creature, player: Vec2, radius: number): Vec2 => {
@@ -67,15 +59,13 @@ const decide = (w: World, self: Creature): Intent => {
   return { kind: 'idle' }
 }
 
-// Le cœur appellera-t-il decide() pour cette créature à ce tick ? Même condition que creatures.ts : aucune action
+// Le cœur appellera-t-il decide() pour cette créature à ce tick ? Les prédicats de creatures.ts : aucune action
 // après progressAction (une attaque qui finit sans impact à ce tick libère la créature ; une prière qui se résout
-// à ce tick pose sa recharge dans resolve), puis Hostile libre, ou Abattu non réservé et non vacillant.
+// à ce tick pose sa recharge dans resolve, d'où l'exclusion de activeAt), puis libre de décider.
 const decidesThisTick = (w: World, self: Creature): boolean => {
   const a = self.action
-  const free = a === null || (w.tick >= a.end && w.tick !== a.activeAt)
-  if (!free) return false
-  if (self.state.kind === 'abattu') return self.state.claimedBy === null && w.tick >= self.stunnedUntil
-  return canDecide(self, w.tick)
+  const idle = a === null || (actionEnded(a, w.tick) && w.tick !== a.activeAt)
+  return idle && freeToDecide(self, w.tick, CAN_ACT_WHILE_DOWN)
 }
 
 const setData = (key: string, value: number): Effect => ({ kind: 'setData', key, value })
@@ -130,7 +120,7 @@ export const confesseur: FamilyModule = {
   kind: 'confesseur',
   size: 'small',
   isSupport: true,
-  canActWhileDown: true,
+  canActWhileDown: CAN_ACT_WHILE_DOWN,
   base: { chair: C.chair, speed: C.speed, limbs: [] },
   actions: {
     [BATON]: {

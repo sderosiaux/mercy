@@ -66,7 +66,8 @@ export interface MeshyDeps {
 
 export interface LibraryEntry {
   readonly action_id: number
-  readonly name: string
+  readonly name: string // libellé lisible (« Hit Reaction »)
+  readonly key?: string // identifiant (« Hit_Reaction ») : c'est lui que les fiches citent
 }
 
 export interface MeshyClient {

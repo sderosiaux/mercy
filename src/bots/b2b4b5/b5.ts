@@ -3,12 +3,12 @@
 // Les scènes elles-mêmes sont dans src/sim/waves.ts (C6a). Arme : Couperet pour toutes les scènes et parties.
 // Jamais d'Esquive, jamais de Charge. Fin de partie (N = 0, t = 10 800, « mort + 180 », t = 265) : paramètres du
 // lanceur (--timeout-ticks, --tail-ticks), pas de la politique.
-import type { Creature, PlayerCommands, Vec2, World } from '../../sim/index'
+import { type Creature, dhypot, type PlayerCommands, type Vec2, type World } from '../../sim/index'
 import type { Policy } from '../policy'
 
 // Communes à toutes les politiques.
 // dist(c) = distance (x, z) entre p.pos et c.pos
-const dist = (w: World, c: Creature): number => Math.hypot(c.pos.x - w.player.pos.x, c.pos.z - w.player.pos.z)
+const dist = (w: World, c: Creature): number => dhypot(c.pos.x - w.player.pos.x, c.pos.z - w.player.pos.z)
 // tri(E) = E trié par (dist(c), c.id) croissants
 const tri = (w: World, E: readonly Creature[]): Creature[] =>
   [...E].sort((a, b) => dist(w, a) - dist(w, b) || a.id - b.id)
@@ -16,7 +16,7 @@ const ab = (c: Creature): boolean => c.state.kind === 'abattu'
 const debout = (c: Creature): boolean => c.state.kind === 'rituel' || c.state.kind === 'hostile'
 // unitaire(v) = v / |v| (0 si |v| = 0)
 const unitaire = (v: Vec2): Vec2 => {
-  const l = Math.hypot(v.x, v.z)
+  const l = dhypot(v.x, v.z)
   return l === 0 ? { x: 0, z: 0 } : { x: v.x / l, z: v.z / l }
 }
 const minus = (a: Vec2, b: Vec2): Vec2 => ({ x: a.x - b.x, z: a.z - b.z })

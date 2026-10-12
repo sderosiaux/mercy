@@ -1,8 +1,9 @@
 // Étapes Meshy : modèle (Multi-Image ou Image to 3D), rigging, animations (bibliothèque par paquets de 10, Text to
 // Motion puis application). Chaque tâche passe par runMeshyStep : jamais payée deux fois pour la même empreinte.
+
 import { cacheFile, type OutputRef, runMeshyStep, type StageRecord, stepFingerprint } from '../cache'
 import { SHEET_VIEWS } from '../gptimage'
-import type { MeshyTask } from '../meshy/client'
+import type { LibraryEntry, MeshyTask } from '../meshy/client'
 import {
   buildLibraryAnimRequest,
   buildModelRequest,
@@ -127,11 +128,23 @@ const checkLibrary = async (ctx: ForgeContext): Promise<string | null> => {
   const wanted = producedClips(ctx.sheet).flatMap((c) => (c.source.kind === 'bibliotheque' ? [c.source] : []))
   if (wanted.length === 0) return null
   const live = await ctx.meshy.library(wanted.map((w) => w.actionId))
-  const byId = new Map(live.map((l) => [l.action_id, l.name]))
-  const wrong = wanted.filter((w) => byId.get(w.actionId) !== w.nom)
+  const wrong = libraryMismatches(wanted, live)
+  const byId = new Map(live.map((l) => [l.action_id, l]))
   return wrong.length === 0
     ? null
-    : `bibliothèque Meshy : ${wrong.map((w) => `${w.actionId} = ${byId.get(w.actionId) ?? 'absent'} (fiche : ${w.nom})`).join(', ')}`
+    : `bibliothèque Meshy : ${wrong.map((w) => `${w.actionId} = ${byId.get(w.actionId)?.key ?? byId.get(w.actionId)?.name ?? 'absent'} (fiche : ${w.nom})`).join(', ')}`
+}
+
+// Une action de la fiche correspond si son nom est la clé (« Hit_Reaction ») ou le libellé (« Hit Reaction ») de l'id.
+export const libraryMismatches = <W extends { readonly actionId: number; readonly nom: string }>(
+  wanted: readonly W[],
+  live: readonly LibraryEntry[],
+): W[] => {
+  const byId = new Map(live.map((l) => [l.action_id, l]))
+  return wanted.filter((w) => {
+    const e = byId.get(w.actionId)
+    return !e || (e.key !== w.nom && e.name !== w.nom)
+  })
 }
 
 export const runAnimTasks = async (

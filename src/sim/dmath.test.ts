@@ -1,12 +1,13 @@
-// Maths déterministes d'un moteur JS à l'autre (requête C7 R1). Seules + − × ÷ et √ (arrondies au plus près
-// par IEEE 754) sont utilisées : le résultat est le même bit pour bit dans Chrome, Node, Firefox et Safari.
+// Précision de dmath (requête C7 R1), mesurée dans Node contre Math.sin, Math.cos et Math.atan2. Ce fichier ne
+// prouve pas l'identité d'un moteur à l'autre : elle découle de l'usage exclusif de + − × ÷ et √ (arrondies au plus
+// près par IEEE 754), et elle a été mesurée dans Chrome : .mercy/proofs/C8/empreinte-chrome-apres-dmath.json.
 import { describe, expect, it } from 'vitest'
 import { datan2, dcos, dhypot, dpowInt, dsin } from './dmath'
 
 const samples = (n: number, lo: number, hi: number) =>
   Array.from({ length: n }, (_, i) => lo + ((hi - lo) * i) / (n - 1))
 
-describe('dmath', () => {
+describe('dmath : précision contre Math (Node), pas identité entre moteurs', () => {
   it('dsin et dcos suivent Math.sin et Math.cos à 4e-16 près sur [−100, 100]', () => {
     for (const x of samples(20_001, -100, 100)) {
       expect(Math.abs(dsin(x) - Math.sin(x))).toBeLessThan(4e-16 * Math.max(1, Math.abs(x)))

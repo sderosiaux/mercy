@@ -7,6 +7,10 @@
 import {
   actionPhase,
   type Creature,
+  datan2,
+  dcos,
+  dhypot,
+  dsin,
   type PlayerCommands,
   PORTEUR_STAGE_KEY,
   TUNING,
@@ -49,8 +53,8 @@ interface Ctx {
   readonly ARC: number // radians
 }
 
-const d = (x: Ctx, c: Creature): number => Math.hypot(c.pos.x - x.P.x, c.pos.z - x.P.z)
-const ang = (v: Vec2): number => Math.atan2(v.z, v.x)
+const d = (x: Ctx, c: Creature): number => dhypot(c.pos.x - x.P.x, c.pos.z - x.P.z)
+const ang = (v: Vec2): number => datan2(v.z, v.x)
 const minus = (a: Vec2, b: Vec2): Vec2 => ({ x: a.x - b.x, z: a.z - b.z })
 // écart(a, b) = |a − b| ramené dans [0, π]
 export const ecart = (a: number, b: number): number => {
@@ -59,10 +63,8 @@ export const ecart = (a: number, b: number): number => {
 }
 // unit(v) = v / |v| si |v| > 0, sinon (cos(f + π/2), sin(f + π/2))
 const unit = (x: Ctx, v: Vec2): Vec2 => {
-  const l = Math.hypot(v.x, v.z)
-  return l > 0
-    ? { x: v.x / l, z: v.z / l }
-    : { x: Math.cos(x.f + Math.PI / 2), z: Math.sin(x.f + Math.PI / 2) }
+  const l = dhypot(v.x, v.z)
+  return l > 0 ? { x: v.x / l, z: v.z / l } : { x: dcos(x.f + Math.PI / 2), z: dsin(x.f + Math.PI / 2) }
 }
 const hostile = (c: Creature): boolean => c.state.kind === 'hostile'
 const rituel = (c: Creature): boolean => c.state.kind === 'rituel'
@@ -99,7 +101,7 @@ const proche = (x: Ctx, S: readonly Creature[]): Creature | undefined => {
 }
 const BASE = (x: Ctx): PlayerCommands => ({
   move: { x: 0, z: 0 },
-  aim: { x: x.P.x + Math.cos(x.f), z: x.P.z + Math.sin(x.f) },
+  aim: { x: x.P.x + dcos(x.f), z: x.P.z + dsin(x.f) },
   strike: false,
   dodge: false,
   sentence: false,

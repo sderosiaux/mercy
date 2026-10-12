@@ -888,3 +888,7 @@ L'agent qui construit ce jeu ne doit pas réinterpréter ces points :
 - 2026-10-12 (phase C) : un corps avalé par un Porteur ou assemblé par un Chirurgien perd sa canalisation en cours (un Confesseur qui priait à terre).
 - 2026-10-12 (phase C) : les zones de télégraphe au sol sont rouge brun, puis rouge vif pendant les 0,2 dernières secondes (§18). C'est la seule exception au « jamais pour des signaux » du rouge brun (§17) : la règle du §18, plus précise, l'emporte.
 - 2026-10-12 (phase C) : P0 se rend sans anticrénelage multi-échantillons, pour que les mesures au pixel de B2 portent sur l'image que voit le joueur. À revoir en P1.
+- 2026-10-12 (phase D) : une Charge est un seul geste du début à la fin de la ruée : elle n'achève jamais un corps que l'éclatement qu'elle a déclenché vient d'abattre, même aux ticks suivants.
+- 2026-10-12 (phase D) : le délai de 4 s du Porteur au stade 3 ne court que debout ; abattu, il est suspendu ; relevé, il repart de zéro.
+- 2026-10-12 (phase D) : la Sentence passe avant une opération de Chirurgien : elle reprend le corps réservé (même un Recousu Résistant) et interrompt l'opération. Un corps réservé qu'un éclatement déplace perd sa réservation, et l'opération qui le visait est interrompue.
+- 2026-10-12 (phase D) : quand une réservation tombe tout près ou après l'heure du Relèvement, le Relèvement est repoussé pour que son télégraphe de 1,5 s ait toujours lieu.

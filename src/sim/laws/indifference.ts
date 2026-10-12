@@ -20,11 +20,3 @@ export const noise = (
     if (c.state.kind === 'rituel' && dist(c.pos, center) <= radius) alert(d, c, cause)
   }
 }
-
-export const canDecide = (
-  c: { state: { kind: string; alertedAt?: number }; stunnedUntil: number },
-  tick: number,
-) =>
-  c.state.kind === 'hostile' &&
-  tick >= (c.state.alertedAt ?? 0) + TUNING.alertTurnTicks &&
-  tick >= c.stunnedUntil

@@ -1,7 +1,8 @@
 // Actions et décisions des créatures. Les familles décident et décrivent des effets ; le cœur les applique.
 import { byId, type Draft, emit, familyOf, isPresent, isStanding, type MCreature } from './draft'
 import { applyEffects, familyTick } from './effects'
-import { canDecide } from './laws/indifference'
+import { releaseClaim } from './laws/rise'
+import { actionEnded, freeToDecide } from './predicates'
 import type { Vec2 } from './types'
 import { angleOf, dist, moveToward } from './vec'
 
@@ -18,7 +19,7 @@ const progressAction = (d: Draft, c: MCreature): void => {
     emit(d, { type: 'action-hit', tick: d.tick, id: c.id, action: a.name })
     applyEffects(d, c, familyOf(d, c).resolve(d, c, a))
   }
-  if (c.action === a && d.tick >= a.end) {
+  if (c.action === a && actionEnded(a, d.tick)) {
     emit(d, { type: 'action-end', tick: d.tick, id: c.id, action: a.name })
     c.action = null
   }
@@ -28,13 +29,7 @@ const decideAndAct = (d: Draft, c: MCreature): void => {
   if (c.action) return
   const f = familyOf(d, c)
   const down = c.state.kind === 'abattu'
-  const free = down
-    ? !!f.canActWhileDown &&
-      c.state.kind === 'abattu' &&
-      c.state.claimedBy === null &&
-      d.tick >= c.stunnedUntil
-    : canDecide(c, d.tick)
-  if (!free) return
+  if (!freeToDecide(c, d.tick, !!f.canActWhileDown)) return
   const intent = f.decide(d, c)
   if (intent.kind === 'moveTo') {
     if (down) return
@@ -77,7 +72,7 @@ const releaseClaims = (d: Draft): void => {
     if (b.state.kind !== 'abattu' || typeof b.state.claimedBy !== 'number') continue
     const op = byId(d, b.state.claimedBy)
     const holds = op?.action?.kind === 'canalisation' && op.action.target === b.id && op.state.kind !== 'mort'
-    if (!holds) b.state = { ...b.state, claimedBy: null }
+    if (!holds) releaseClaim(d, b)
   }
 }
 

@@ -2,12 +2,12 @@
 // `B2-script(cible, mode)`. Toutes déterministes ; arme : Couperet (celle du départ, aucune ne demande le changement).
 // Notations du contrat : `dist` euclidienne au sol ; `norm(v)` = v / |v|, et (0, 0) si |v| = 0 ;
 // `debout(c)` = état `rituel` ou `hostile` ; IDLE(w) vise la position du joueur.
-import type { Creature, PlayerCommands, Vec2, World } from '../../sim/index'
+import { type Creature, dhypot, type PlayerCommands, type Vec2, type World } from '../../sim/index'
 import type { Policy } from '../policy'
 
-const dist = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.z - b.z)
+const dist = (a: Vec2, b: Vec2): number => dhypot(a.x - b.x, a.z - b.z)
 const norm = (v: Vec2): Vec2 => {
-  const l = Math.hypot(v.x, v.z)
+  const l = dhypot(v.x, v.z)
   return l === 0 ? { x: 0, z: 0 } : { x: v.x / l, z: v.z / l }
 }
 const minus = (a: Vec2, b: Vec2): Vec2 => ({ x: a.x - b.x, z: a.z - b.z })

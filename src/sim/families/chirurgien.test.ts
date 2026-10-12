@@ -1,11 +1,14 @@
 // C2 : le Chirurgien (§8.10), qui transforme les corps laissés à terre en Recousus (§9, L5, L6).
 import { describe, expect, it } from 'vitest'
+import { sentenceTarget } from '../index'
 import { CHANNEL_ACTIONS } from '../predicates'
 import { cmd, creature, ofType, run, scene, withCreature, withPlayer } from '../testing'
+import { TUNING } from '../tuning'
 import type { SimEvent, SpawnDef, Vec2, World } from '../types'
 import { add, dist, vec } from '../vec'
 import { chirurgien } from './chirurgien'
 import { recousu } from './recousu'
+import { FAMILIES as ALL } from './registry'
 
 const FAMILIES = { chirurgien, recousu }
 const FAR = vec(-12, -12)
@@ -307,5 +310,94 @@ describe('Chirurgien : attention 4 du plan, deux Chirurgiens au même tick', () 
     expect(ofType(r.events, 'rise')).toEqual([
       { type: 'rise', tick: FIRST_DECISION + OPERATION, id: 3, cicatrices: 1, cause: 'chirurgien' },
     ])
+  })
+})
+
+// Revue P0 H2 : un corps réservé avant son télégraphe, puis libéré quand l'heure du Relèvement est passée ou à
+// moins de 90 ticks, doit encore planter ses mains 1,5 s (L3) avant de se relever.
+describe('Réservation qui tombe : le télégraphe de Relèvement précède toujours le Relèvement', () => {
+  // Deux Souriants Abattus au tick 0 (Relèvement au tick 360, télégraphe au tick 270), Chirurgien retenu jusqu'au
+  // tick 250 qui les assemble ensuite : le corps d'ancrage est réservé avant son télégraphe.
+  const setup = (): World =>
+    withCreature(world([body(6, 0), body(6.6, 0), surgeon(6, 0.8)]), 3, { stunnedUntil: 250 })
+  const cases: [string, number][] = [
+    ['60 ticks avant l’heure du Relèvement', 300],
+    ['11 ticks après l’heure du Relèvement', 371],
+  ]
+  for (const [label, strikeAt] of cases) {
+    it(`opération interrompue ${label} : télégraphe au tick même, Relèvement 90 ticks plus tard`, () => {
+      const before = run(setup(), strikeAt - 1)
+      const anchor = before.world.creatures.find((c) => c.state.kind === 'abattu' && c.state.claimedBy === 3)
+      expect(anchor).toBeDefined()
+      const id = anchor?.id ?? 0
+      const close = withPlayer(before.world, { pos: vec(6, 3) })
+      const hit = run(close, 1, cmd({ strike: true, aim: creature(close, 3).pos }))
+      expect(ofType(hit.events, 'action-interrupted')).toMatchObject([
+        { id: 3, action: 'assembler', by: 'player' },
+      ])
+      const after = run(hit.world, 120)
+      const timeline = [...before.events, ...hit.events, ...after.events]
+        .filter((e) => (e.type === 'rise-telegraph' || e.type === 'rise') && e.id === id)
+        .map((e) => [e.type, e.tick])
+      expect(timeline).toEqual([
+        ['rise-telegraph', strikeAt],
+        ['rise', strikeAt + TUNING.relevementTelegraph],
+      ])
+    })
+  }
+})
+
+// Revue P0 M3 : la Sentence passe avant une opération (L4 : « sur tout Abattu à moins de 2,5 m »).
+describe('Sentence sur un corps opéré', () => {
+  it('Recousu Résistant opéré : cible valide ; la saisie reprend le corps et interrompt l’opération', () => {
+    const w = world(
+      [{ family: 'recousu', pos: vec(0, 0), state: 'abattu', cicatrices: 3 }, surgeon(1.25)],
+      vec(0, -6),
+    )
+    const operating = run(w, 60)
+    expect(starts(operating.events, 2).map((e) => [e.action, e.tick])).toEqual([['recoudre', FIRST_DECISION]])
+    const close = withPlayer(operating.world, { pos: vec(-1.4, 0) })
+    expect(sentenceTarget(close, vec(0, 0))).toBe(1)
+    const seized = run(close, 1, cmd({ sentence: true, aim: vec(0, 0) }))
+    expect(ofType(seized.events, 'sentence-none')).toHaveLength(0)
+    expect(ofType(seized.events, 'sentence-start')).toEqual([{ type: 'sentence-start', tick: 61, target: 1 }])
+    expect(ofType(seized.events, 'action-interrupted')).toEqual([
+      { type: 'action-interrupted', tick: 61, id: 2, action: 'recoudre', by: 'player' },
+    ])
+    const s = creature(seized.world, 1).state
+    expect(s.kind === 'abattu' && s.claimedBy).toBe('player')
+    const done = run(seized.world, TUNING.sentence.durationResistant + 5)
+    expect(ofType(done.events, 'death')).toEqual([
+      { type: 'death', tick: 61 + TUNING.sentence.durationResistant, id: 1, by: 'sentence' },
+    ])
+    expect(ofType(done.events, 'rise')).toHaveLength(0)
+  })
+})
+
+// Revue P0 M7 et §26 : « Le Porteur éclate pendant qu'un Chirurgien opère à côté : l'opération est interrompue,
+// les corps sont dispersés. » Le corps opéré est dans le rayon, le Chirurgien n'y est pas.
+describe('Éclatement pendant une opération', () => {
+  it('le corps projeté perd sa réservation, l’opération est interrompue par l’éclatement, Chirurgien hors du rayon', () => {
+    const w = scene(
+      [
+        { family: 'porteur', pos: vec(0, 0), facing: 0, state: 'rituel' }, // dos vers −x
+        { family: 'recousu', pos: vec(2, 0), state: 'abattu', cicatrices: 3 }, // Résistant : le sac ne le prend pas
+        { family: 'chirurgien', pos: vec(3.2, 0), state: 'hostile' },
+      ],
+      { families: ALL, playerStart: vec(-2.55, 0) }, // dans le dos du Porteur, hors de l'alerte de proximité
+    )
+    const operating = run(w, 30)
+    expect(starts(operating.events, 3).map((e) => [e.action, e.tick])).toEqual([['recoudre', FIRST_DECISION]])
+    const bodyBefore = creature(operating.world, 2).pos
+    const r = run(operating.world, 1, cmd({ strike: true, aim: vec(0, 0) }))
+    expect(ofType(r.events, 'burst').map((b) => [b.id, b.cause])).toEqual([[1, 'dos']])
+    const radius = TUNING.porteur.burstBaseRadius
+    expect(dist(creature(operating.world, 3).pos, vec(0, 0))).toBeGreaterThan(radius + TUNING.radiusSmall)
+    expect(dist(creature(r.world, 2).pos, bodyBefore)).toBeGreaterThanOrEqual(2)
+    expect(ofType(r.events, 'action-interrupted')).toEqual([
+      { type: 'action-interrupted', tick: 31, id: 3, action: 'recoudre', by: 'burst' },
+    ])
+    const s = creature(r.world, 2).state
+    expect(s.kind === 'abattu' && s.claimedBy).toBeNull()
   })
 })

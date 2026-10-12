@@ -351,6 +351,33 @@ describe('Porteur : stade 3', () => {
     ])
     expect(creature(world, 1).state.kind).toBe('abattu')
   })
+
+  // Revue P0 M2 : les 4 s du stade 3 ne courent que debout. Abattu, le délai est suspendu ; relevé, il repart de zéro.
+  it('abattu au stade 3 puis relevé : il n’éclate pas au premier tick debout, mais 240 ticks plus tard', () => {
+    const w = threeBodies(vec(-6, 0), vec(12, 0))
+    const at3 = run(w, stage3Tick + 20)
+    expect(stageOf(at3.world)).toBe(3)
+    // Abattu 20 ticks après le stade 3 (chirurgie d'état : seul compte ici le minuteur du Porteur).
+    const t = at3.world.tick
+    const down = withCreature(at3.world, 1, {
+      chair: 0,
+      state: {
+        kind: 'abattu',
+        since: t,
+        riseAt: t + TUNING.relevementOrdinaire,
+        cryAt: null,
+        claimedBy: null,
+      },
+    })
+    const r = run(down, TUNING.relevementOrdinaire + P.burstAfter + 5)
+    const [rise] = ofType(r.events, 'rise').filter((e) => e.id === 1)
+    expect(rise).toMatchObject({ tick: t + TUNING.relevementOrdinaire, cause: 'delai' })
+    const riseTick = rise?.tick ?? 0
+    // Premier tick debout : riseTick + 1 (le Relèvement a lieu après le tour des créatures).
+    expect(ofType(r.events, 'burst').map((b) => [b.tick, b.cause, b.stage])).toEqual([
+      [riseTick + 1 + P.burstAfter, 'delai', 3],
+    ])
+  })
 })
 
 describe('Porteur : coups et arc arrière', () => {
@@ -584,5 +611,34 @@ describe('Porteur : Charge (§9)', () => {
     expect(bursts.map((b) => [b.cause, b.stage, b.others])).toEqual([['dos', 2, [2, 3]]])
     expect(strikes[0]?.tick).toBe(bursts[0]?.tick)
     expect((bursts[0]?.tick ?? 999) - 1).toBeLessThanOrEqual(120)
+  })
+
+  // Revue P0 M1 et audit §30.2 (V-2) : une Charge est un seul geste (L4, « Écarts », phase C). Scénario de
+  // l'audit : la Charge frappe le Porteur dans le dos, l'éclatement abat un Souriant au tick 7 ; la même Charge
+  // passe sur lui au tick 12 et ne doit pas l'achever. Un corps déjà à terre avant la Charge, lui, est achevé.
+  it('n’achève jamais ce que l’éclatement qu’elle a déclenché vient d’abattre, même aux ticks suivants de la ruée', () => {
+    let w = scene(
+      [
+        { family: 'porteur', pos: vec(3, 0), facing: 0 }, // regarde +x : le joueur, en (0, 0), est dans son dos
+        { family: 'souriant', pos: vec(4.6, 0) }, // sur la ligne, à 1,6 m du Porteur
+        { family: 'souriant', pos: vec(6.5, 0), state: 'abattu' }, // à terre avant la Charge, hors du rayon
+      ],
+      { families },
+    )
+    w = withPlayer(w, { ferveur: 100 })
+    const r = run(w, TUNING.charge.duration, (x) =>
+      cmd({ rite: x.tick === 0 ? 'charge' : null, aim: vec(10, 0) }),
+    )
+    expect(ofType(r.events, 'burst').map((b) => [b.tick, b.id, b.cause])).toEqual([[7, 1, 'dos']])
+    expect(ofType(r.events, 'fell').map((e) => [e.tick, e.id])).toEqual([
+      [7, 2],
+      [7, 1],
+    ])
+    expect(ofType(r.events, 'death').map((e) => [e.id, e.by])).toEqual([[3, 'achevement']])
+    expect(creature(r.world, 2).state.kind).toBe('abattu')
+    // La ligne de la Charge est bien passée sur lui après l'éclatement.
+    const end = r.world.player.pos
+    expect(end.x).toBeGreaterThan(creature(r.world, 2).pos.x)
+    expect(Math.abs(creature(r.world, 2).pos.z)).toBeLessThan(TUNING.charge.hitHalfWidth)
   })
 })

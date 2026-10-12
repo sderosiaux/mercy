@@ -4,7 +4,7 @@
 // Le sac est l'unique source de vérité de son stade : le nombre de corps absorbés dans ce Porteur.
 // Le stade est recopié dans familyData[PORTEUR_STAGE_KEY] pour les bots, le rendu et l'audio.
 import { isStanding, radiusOf } from '../draft'
-import { inPorteurRearArc, PORTEUR_STAGE_KEY } from '../predicates'
+import { absorbableBody, inPorteurRearArc, PORTEUR_STAGE_KEY } from '../predicates'
 import { TICK_HZ, TUNING } from '../tuning'
 import type { Creature, Effect, FamilyModule, Intent, World } from '../types'
 import { angleDiff, angleOf, dist, turnToward } from '../vec'
@@ -13,7 +13,7 @@ const P = TUNING.porteur
 const B = P.bousculade
 
 // Clés privées de familyData. Absentes = valeur par défaut (L6 remet familyData à {}).
-const STAGE3_AT = 'stade3At' // tick où le sac a atteint le stade 3 ; -1 ou absent : pas au stade 3
+const STAGE3_AT = 'stade3At' // début du délai du stade 3, debout ; -1 ou absent : pas au stade 3, ou à terre
 const ABSORB_READY_AT = 'absorbeA' // tick à partir duquel une nouvelle absorption est permise ; absent : tout de suite
 
 // D4 : rotation bornée, en radians par tick.
@@ -24,16 +24,13 @@ const CONTACT_EPS = 1e-6
 const absorbedInto = (world: World, self: Creature): number =>
   world.creatures.filter((c) => c.state.kind === 'absorbe' && c.state.into === self.id).length
 
-// Ce que le sac peut prendre (§8.10, §26) : un Abattu ordinaire, non réservé, qui n'est pas un Membre errant.
-// Même prédicat que l'effet `absorb` du cœur, pour ne jamais viser un corps que le cœur refuserait.
-const absorbable = (c: Creature): boolean =>
-  c.state.kind === 'abattu' && c.state.claimedBy === null && !c.resistant && c.family !== 'membre'
-
+// Ce que le sac peut prendre (§8.10, §26) : le prédicat de l'effet `absorb` du cœur, pour ne jamais viser un corps
+// que le cœur refuserait.
 const nearestBody = (world: World, self: Creature, radius: number): Creature | undefined => {
   let best: Creature | undefined
   let bestD = Number.POSITIVE_INFINITY
   for (const c of world.creatures) {
-    if (c.id === self.id || !absorbable(c)) continue
+    if (c.id === self.id || !absorbableBody(c)) continue
     const d = dist(self.pos, c.pos)
     if (d > radius) continue
     if (d < bestD || (d === bestD && best !== undefined && c.id < best.id)) {
@@ -75,6 +72,8 @@ const burstEffects = (
 // Chaque tick, debout ou à terre : le stade suit le contenu du sac. Debout seulement : éclatement au stade 3
 // (contact ou délai), puis absorption d'un corps à moins de 3 m, au plus un toutes les 90 ticks.
 // Aussi en Rituel : le Porteur « mange des corps » sans voir le joueur.
+// Le délai de 4 s du stade 3 ne court que debout (décision de la revue P0, M2) : à terre il est suspendu, et il
+// repart de zéro au premier tick debout qui suit (Relèvement, prière).
 const tick = (world: World, self: Creature): readonly Effect[] => {
   const t = world.tick
   const stage = Math.min(P.maxStage, absorbedInto(world, self))
@@ -82,11 +81,13 @@ const tick = (world: World, self: Creature): readonly Effect[] => {
   const out: Effect[] = []
   // Écrit aussi quand la clé manque (monde neuf, après L6) : les lecteurs trouvent toujours un nombre.
   if (data[PORTEUR_STAGE_KEY] !== stage) out.push({ kind: 'setData', key: PORTEUR_STAGE_KEY, value: stage })
+  const standing = isStanding(self)
+  const counting = standing && stage >= P.maxStage
   const stage3At = data[STAGE3_AT] ?? -1
-  if (stage < P.maxStage && stage3At >= 0) out.push({ kind: 'setData', key: STAGE3_AT, value: -1 })
-  if (stage >= P.maxStage && stage3At < 0) out.push({ kind: 'setData', key: STAGE3_AT, value: t })
+  if (!counting && stage3At >= 0) out.push({ kind: 'setData', key: STAGE3_AT, value: -1 })
+  if (counting && stage3At < 0) out.push({ kind: 'setData', key: STAGE3_AT, value: t })
   // Abattu, il n'attaque plus (L1) : ni éclatement de lui-même, ni absorption.
-  if (!isStanding(self)) return out
+  if (!standing) return out
 
   if (stage >= P.maxStage) {
     if (touchesPlayer(world, self)) return [...out, ...burstEffects(self, stage, 'contact')]

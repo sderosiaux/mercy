@@ -1,11 +1,11 @@
 // Politiques de référence du banc. Elles servent à éprouver le banc (fin de vague, plafond, mémoire,
 // latence), pas à mesurer un contrat : les politiques des contrats vivent dans b1b3/ et b2b4b5/.
-import { IDLE_COMMANDS, type PlayerCommands, TUNING, type Vec2, type World } from '../sim/index'
+import { dhypot, IDLE_COMMANDS, type PlayerCommands, TUNING, type Vec2, type World } from '../sim/index'
 import type { Policy, PolicyFactory } from './policy'
 
 type Creature = World['creatures'][number]
 
-const dist = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.z - b.z)
+const dist = (a: Vec2, b: Vec2): number => dhypot(a.x - b.x, a.z - b.z)
 const unit = (from: Vec2, to: Vec2): Vec2 => {
   const d = dist(from, to)
   return d === 0 ? { x: 0, z: 0 } : { x: (to.x - from.x) / d, z: (to.z - from.z) / d }

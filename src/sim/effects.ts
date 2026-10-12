@@ -18,8 +18,15 @@ import {
 } from './draft'
 import { fall } from './laws/flesh'
 import { noise } from './laws/indifference'
-import { rise } from './laws/rise'
-import { PORTEUR_STAGE_KEY } from './predicates'
+import { releaseClaim, rise } from './laws/rise'
+import {
+  absorbableBody,
+  assemblableBy,
+  clampToArena,
+  freeForOperator,
+  PORTEUR_STAGE_KEY,
+  raisableByPrayer,
+} from './predicates'
 import { nextFloat } from './rng'
 import { TUNING } from './tuning'
 import type { Area, Effect, Vec2 } from './types'
@@ -34,10 +41,8 @@ const rand = (d: Draft): number => {
   return v
 }
 
-const clampArena = (p: Vec2): Vec2 => {
-  const h = TUNING.arenaHalf - TUNING.radiusLarge
-  return { x: Math.max(-h, Math.min(h, p.x)), z: Math.max(-h, Math.min(h, p.z)) }
-}
+// Borne commune des projections et des ruées : celle d'une grande créature.
+const clampArena = (p: Vec2): Vec2 => clampToArena(p, TUNING.radiusLarge)
 
 const damagePlayer = (
   d: Draft,
@@ -64,6 +69,15 @@ const damagePlayer = (
   }
 }
 
+// §26 : un corps opéré qu'un éclatement projette perd sa réservation, et l'opération qui le visait est
+// interrompue, même si l'opérateur est hors du rayon. Une Sentence (réservation du joueur) n'est pas touchée.
+const disperseOperation = (d: Draft, body: MCreature): void => {
+  if (body.state.kind !== 'abattu' || typeof body.state.claimedBy !== 'number') return
+  const op = byId(d, body.state.claimedBy)
+  if (op?.action?.kind === 'canalisation' && op.action.target === body.id) interrupt(d, op, 'burst')
+  releaseClaim(d, body)
+}
+
 const damageCreatures = (d: Draft, self: MCreature, e: Extract<Effect, { kind: 'damage' }>): void => {
   for (const c of d.creatures) {
     if (c.id === self.id || !isPresent(c) || !inArea(e.area, c.pos, radiusOf(c))) continue
@@ -73,6 +87,7 @@ const damageCreatures = (d: Draft, self: MCreature, e: Extract<Effect, { kind: '
       const center = e.area.kind === 'circle' ? e.area.center : e.area.origin
       const away = dist(center, c.pos) < 1e-9 ? rand(d) * 2 * Math.PI : angleOf(center, c.pos)
       c.pos = clampArena(add(c.pos, scale(fromAngle(away), 2 + 2 * rand(d))))
+      disperseOperation(d, c)
       continue
     }
     const wasRituel = c.state.kind === 'rituel'
@@ -89,9 +104,6 @@ const damageCreatures = (d: Draft, self: MCreature, e: Extract<Effect, { kind: '
   }
 }
 
-const absorbable = (c: MCreature | undefined): c is MCreature =>
-  !!c && c.state.kind === 'abattu' && c.state.claimedBy === null && !c.resistant && c.family !== 'membre'
-
 export const applyEffects = (d: Draft, self: MCreature, effects: readonly Effect[]): void => {
   for (const e of effects) {
     switch (e.kind) {
@@ -107,13 +119,7 @@ export const applyEffects = (d: Draft, self: MCreature, effects: readonly Effect
         const raised: number[] = []
         for (const id of e.ids) {
           const c = byId(d, id)
-          if (
-            c &&
-            c.state.kind === 'abattu' &&
-            c.state.claimedBy === null &&
-            !c.resistant &&
-            c.family !== 'membre'
-          ) {
+          if (c && raisableByPrayer(c)) {
             rise(d, c, 'priere')
             raised.push(c.id)
           }
@@ -123,7 +129,7 @@ export const applyEffects = (d: Draft, self: MCreature, effects: readonly Effect
       }
       case 'absorb': {
         const c = byId(d, e.id)
-        if (!absorbable(c)) break
+        if (!c || !absorbableBody(c)) break
         interrupt(d, c, 'creature') // un corps avalé perd sa canalisation (Confesseur qui priait à terre)
         c.state = { kind: 'absorbe', into: self.id, cryAt: c.state.kind === 'abattu' ? c.state.cryAt : null }
         c.unionOf = self.id
@@ -160,7 +166,9 @@ export const applyEffects = (d: Draft, self: MCreature, effects: readonly Effect
       }
       case 'assemble': {
         const recousu = d.families.recousu
-        const bodies = e.ids.map((id) => byId(d, id)).filter(absorbableOrClaimedBy(self.id))
+        const bodies = e.ids
+          .map((id) => byId(d, id))
+          .filter((b): b is MCreature => !!b && assemblableBy(b, self.id))
         if (!recousu || bodies.length < 2) break
         const id = d.nextId++
         const center = {
@@ -199,8 +207,7 @@ export const applyEffects = (d: Draft, self: MCreature, effects: readonly Effect
       }
       case 'repair': {
         const c = byId(d, e.id)
-        if (c?.state.kind !== 'abattu') break
-        if (c.state.claimedBy !== null && c.state.claimedBy !== self.id) break
+        if (!c || !freeForOperator(c, self.id)) break
         if (c.family === 'membre') reattach(d, c, self.id)
         else rise(d, c, 'chirurgien')
         break
@@ -220,15 +227,6 @@ export const applyEffects = (d: Draft, self: MCreature, effects: readonly Effect
     }
   }
 }
-
-const absorbableOrClaimedBy =
-  (surgeon: number) =>
-  (c: MCreature | undefined): c is MCreature =>
-    !!c &&
-    c.state.kind === 'abattu' &&
-    (c.state.claimedBy === null || c.state.claimedBy === surgeon) &&
-    !c.resistant &&
-    c.family !== 'membre'
 
 export const familyTick = (d: Draft, c: MCreature): void => {
   const f = familyOf(d, c)

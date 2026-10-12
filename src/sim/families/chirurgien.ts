@@ -8,6 +8,7 @@
 // Deux Chirurgiens libres au même tick : le cœur les fait décider par id croissant et la réservation du premier est
 // visible du second, qui écarte aussi les corps du groupe que le premier assemble. Le plus petit id l'emporte.
 import { radiusOf } from '../draft'
+import { assemblableBy, clampToArena, freeForOperator } from '../predicates'
 import { TICK_HZ, TUNING } from '../tuning'
 import type { Creature, EntityId, FamilyModule, Intent, Vec2, World } from '../types'
 import { add, dist, fromAngle, norm, scale, sub } from '../vec'
@@ -17,21 +18,17 @@ const IDLE: Intent = { kind: 'idle' }
 
 const byId = (world: World, id: EntityId): Creature | undefined => world.creatures.find((c) => c.id === id)
 
-const freeFor = (c: Creature, op: EntityId): boolean =>
-  c.state.kind === 'abattu' && (c.state.claimedBy === null || c.state.claimedBy === op)
-
 // (a) Membre errant d'un Recousu non mort, ou Recousu Abattu.
 const repairable = (world: World, c: Creature, op: EntityId): boolean => {
-  if (!freeFor(c, op)) return false
+  if (!freeForOperator(c, op)) return false
   if (c.family === 'recousu') return true
   if (c.family !== 'membre' || c.unionOf === null) return false
   const owner = byId(world, c.unionOf)
   return owner !== undefined && owner.family === 'recousu' && owner.state.kind !== 'mort'
 }
 
-// (b) Abattu ordinaire. Membres errants et Recousus relèvent de (a), qui passe avant.
-const assemblable = (c: Creature, op: EntityId): boolean =>
-  freeFor(c, op) && !c.resistant && c.family !== 'membre' && c.family !== 'recousu'
+// (b) Le prédicat de l'effet `assemble` du cœur, sauf les Recousus Abattus : ils relèvent de (a), qui passe avant.
+const assemblable = (c: Creature, op: EntityId): boolean => assemblableBy(c, op) && c.family !== 'recousu'
 
 const byDistanceFrom =
   (p: Vec2) =>
@@ -95,9 +92,7 @@ const assembleIntent = (world: World, self: Creature): Intent | null => {
 const flee = (self: Creature, player: Vec2): Intent => {
   const d = dist(self.pos, player)
   const away = d < 1e-9 ? fromAngle(self.facing) : norm(sub(self.pos, player))
-  const h = TUNING.arenaHalf - radiusOf(self)
-  const next = add(self.pos, scale(away, C.speed / TICK_HZ))
-  const to = { x: Math.max(-h, Math.min(h, next.x)), z: Math.max(-h, Math.min(h, next.z)) }
+  const to = clampToArena(add(self.pos, scale(away, C.speed / TICK_HZ)), radiusOf(self))
   if (dist(to, player) > d) return { kind: 'moveTo', target: to }
   if (d <= C.scalpel.reach + TUNING.playerRadius) return { kind: 'act', action: 'scalpel', target: player }
   return IDLE

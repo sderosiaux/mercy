@@ -9,8 +9,7 @@ import {
   keyDown,
   keyUp,
   MOVE_CODES,
-  mouseDown,
-  mouseUp,
+  mouseButtons,
   type ScreenAxes,
   sampleCommands,
 } from './keymap'
@@ -66,17 +65,28 @@ export const createInput = (
     const k = e as KeyboardEvent
     if (relevant(k.code)) state = keyUp(state, k.code)
   }
-  const onPointerMove = (e: Event): void => {
-    const m = e as MouseEvent
+  const aimAt = (m: MouseEvent): void => {
     const r = rectOf(target)
     cursor = { x: m.clientX - r.left, y: m.clientY - r.top }
   }
+  // Un second bouton pressé ou relâché pendant qu'un autre est tenu arrive ici (`button` ≠ −1, Pointer Events).
+  // Sans changement de bouton, l'évènement ne peut que révéler un relâchement manqué : jamais de Frappe bloquée,
+  // et un bouton pressé hors de la cible ne déclenche rien en y entrant.
+  const onPointerMove = (e: Event): void => {
+    const m = e as MouseEvent
+    aimAt(m)
+    state = mouseButtons(state, m.button !== -1 ? m.buttons : m.buttons & state.buttons)
+  }
   const onPointerDown = (e: Event): void => {
-    onPointerMove(e)
-    state = mouseDown(state, (e as MouseEvent).button)
+    const m = e as MouseEvent
+    aimAt(m)
+    state = mouseButtons(state, m.buttons)
   }
   const onPointerUp = (e: Event): void => {
-    state = mouseUp(state, (e as MouseEvent).button)
+    state = mouseButtons(state, (e as MouseEvent).buttons)
+  }
+  const onPointerCancel = (): void => {
+    state = mouseButtons(state, 0)
   }
   const onContext = (e: Event): void => e.preventDefault()
   const onBlur = (): void => {
@@ -89,6 +99,7 @@ export const createInput = (
   target.addEventListener('pointermove', onPointerMove)
   target.addEventListener('pointerdown', onPointerDown)
   keyTarget.addEventListener('pointerup', onPointerUp)
+  keyTarget.addEventListener('pointercancel', onPointerCancel)
   target.addEventListener('contextmenu', onContext)
 
   return {
@@ -107,6 +118,7 @@ export const createInput = (
       target.removeEventListener('pointermove', onPointerMove)
       target.removeEventListener('pointerdown', onPointerDown)
       keyTarget.removeEventListener('pointerup', onPointerUp)
+      keyTarget.removeEventListener('pointercancel', onPointerCancel)
       target.removeEventListener('contextmenu', onContext)
     },
   }

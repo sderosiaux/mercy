@@ -173,6 +173,8 @@ const startCharge = (d: Draft, aim: Vec2): void => {
 }
 
 // Chaque tick de ruée : avance et touche ce qui est sur le segment parcouru, une fois par créature.
+// Une Charge est un seul geste (L4, « Écarts », phase C) : ce que l'éclatement qu'elle déclenche abat rejoint
+// `charged`, et la ruée ne le touche plus aux ticks suivants.
 const chargeTick = (d: Draft): void => {
   const p = d.player
   const a = p.action
@@ -203,18 +205,20 @@ const chargeTick = (d: Draft): void => {
       c.pos = add(c.pos, scale(lateral, TUNING.charge.push))
     }
   }
+  const standingBeforeBurst = ctx.deferred.length > 0 ? d.creatures.filter(isStanding) : []
   flush(d, ctx)
+  for (const c of standingBeforeBurst) if (isDown(c) && !charged.includes(c.id)) charged.push(c.id)
   p.action = { ...a, charged, impact }
   if (d.tick - a.start === TUNING.charge.dashTicks - 1) {
     emit(d, { type: 'player-impact', tick: d.tick, source: 'charge', ...impact })
   }
 }
 
+// L4 : tout Abattu à portée, y compris un corps qu'une opération réserve (la Sentence passe avant l'opération).
 export const sentenceTargetOf = (w: World, aim: Vec2): number | null => {
   let best: { id: number; dAim: number; dPlayer: number } | null = null
   for (const c of w.creatures) {
     if (c.state.kind !== 'abattu') continue
-    if (c.state.claimedBy !== null && c.state.claimedBy !== 'player') continue
     const dPlayer = dist(c.pos, w.player.pos)
     if (dPlayer > TUNING.sentence.range) continue
     const dAim = dist(c.pos, aim)
@@ -237,8 +241,12 @@ const startSentence = (d: Draft, aim: Vec2): boolean => {
     return false
   }
   const duration = t.resistant ? TUNING.sentence.durationResistant : TUNING.sentence.durationOrdinaire
-  // La saisie interrompt une canalisation de la cible (un Confesseur qui prie à terre).
+  // La saisie interrompt une canalisation de la cible (un Confesseur qui prie à terre), et reprend le corps à
+  // l'opération qui le réservait : l'opérateur est interrompu.
   if (t.action?.kind === 'canalisation') interrupt(d, t, 'player')
+  const operator = typeof t.state.claimedBy === 'number' ? byId(d, t.state.claimedBy) : undefined
+  if (operator?.action?.kind === 'canalisation' && operator.action.target === t.id)
+    interrupt(d, operator, 'player')
   // La cible est réservée ; un corps encore muet le reste : l'exécution est silencieuse.
   const cryAt = t.state.cryAt !== null && t.state.cryAt > d.tick ? null : t.state.cryAt
   t.state = { ...t.state, claimedBy: 'player', cryAt }
@@ -262,7 +270,6 @@ const finishSentence = (d: Draft, targetId: number): void => {
 const startDodge = (d: Draft, cmds: PlayerCommands, aim: Vec2): boolean => {
   const p = d.player
   if (p.dodgeCharges <= 0) return false
-  if (p.action?.kind === 'frappe') p.comboStep = 0 // l'Esquive annule une Frappe
   p.dodgeCharges -= 1
   if (p.dodgeRechargeAt === null) p.dodgeRechargeAt = d.tick + TUNING.dodge.recharge
   const dir = len(cmds.move) > 0 ? norm(cmds.move) : fromAngle(facingToward(p.pos, aim, p.facing))
@@ -310,10 +317,14 @@ export const playerTick = (d: Draft, cmds: PlayerCommands): void => {
   const req = requested(cmds)
   if (req) p.buffer = { cmd: req, until: d.tick + TUNING.commandBuffer, aim: cmds.aim }
   if (p.buffer && d.tick > p.buffer.until) p.buffer = null
-  const canCancel = p.buffer?.cmd === 'dodge' && p.action?.kind === 'frappe'
+  // Seule une Esquive possible (une charge au moins) annule une Frappe ; elle remet alors la combinaison à zéro.
+  const canCancel = p.buffer?.cmd === 'dodge' && p.action?.kind === 'frappe' && p.dodgeCharges > 0
   if (p.buffer && (!p.action || canCancel)) {
     const b = p.buffer
-    if (canCancel) p.action = null
+    if (canCancel) {
+      p.action = null
+      p.comboStep = 0
+    }
     if (tryStart(d, b.cmd, cmds, b.aim)) p.buffer = null
   }
   // 3. Changement d'arme, puis Frappe maintenue.

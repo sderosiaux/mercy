@@ -20,11 +20,13 @@ export const EDGE_CODES: Readonly<Record<string, Edge>> = {
   KeyX: 'swap',
 }
 
-export const MOUSE_STRIKE = 0 // clic gauche maintenu : Frappe
+// Bits de PointerEvent.buttons (boutons tenus), pas les numéros de PointerEvent.button.
+export const MOUSE_STRIKE = 1 // clic gauche maintenu : Frappe
 export const MOUSE_BALAYAGE = 2 // clic droit : Rite Balayage
 
 export interface InputState {
   readonly held: ReadonlySet<string> // codes de touches enfoncées
+  readonly buttons: number // boutons de souris tenus (PointerEvent.buttons)
   readonly strikeHeld: boolean
   readonly strikePressed: boolean // clic gauche pressé depuis le dernier échantillon (clic bref entre deux ticks)
   readonly edges: ReadonlySet<Edge> // fronts montants depuis le dernier échantillon
@@ -32,6 +34,7 @@ export interface InputState {
 
 export const EMPTY_INPUT: InputState = {
   held: new Set(),
+  buttons: 0,
   strikeHeld: false,
   strikePressed: false,
   edges: new Set(),
@@ -51,17 +54,22 @@ export const keyUp = (s: InputState, code: string): InputState => {
   return { ...s, held }
 }
 
-export const mouseDown = (s: InputState, button: number): InputState => {
-  if (button === MOUSE_STRIKE) return { ...s, strikeHeld: true, strikePressed: true }
-  if (button === MOUSE_BALAYAGE) return { ...s, edges: new Set([...s.edges, 'balayage']) }
-  return s
+// Nouvel ensemble de boutons tenus. Pointer Events n'émet `pointerdown` qu'au premier bouton pressé et `pointerup`
+// qu'au dernier relâché : un bouton pressé ou relâché pendant qu'un autre est tenu n'arrive que par `pointermove`.
+// On compare donc les boutons tenus d'un évènement à l'autre : un bit qui apparaît est un front montant.
+export const mouseButtons = (s: InputState, buttons: number): InputState => {
+  const pressed = buttons & ~s.buttons
+  return {
+    ...s,
+    buttons,
+    strikeHeld: (buttons & MOUSE_STRIKE) !== 0,
+    strikePressed: s.strikePressed || (pressed & MOUSE_STRIKE) !== 0,
+    edges: (pressed & MOUSE_BALAYAGE) !== 0 ? new Set([...s.edges, 'balayage']) : s.edges,
+  }
 }
 
-export const mouseUp = (s: InputState, button: number): InputState =>
-  button === MOUSE_STRIKE ? { ...s, strikeHeld: false } : s
-
 // Perte de focus : plus rien n'est tenu, les fronts déjà vus restent valables pour le prochain échantillon.
-export const blur = (s: InputState): InputState => ({ ...s, held: new Set(), strikeHeld: false })
+export const blur = (s: InputState): InputState => ({ ...s, held: new Set(), buttons: 0, strikeHeld: false })
 
 export interface ScreenAxes {
   readonly up: Vec2 // direction au sol du haut de l'écran

@@ -112,6 +112,42 @@ describe('Esquive', () => {
     expect(ofType(all, 'hit').filter((h) => h.target === 'player')).toHaveLength(0)
     expect(rest.world.player.ferveur).toBe(10)
   })
+
+  // Revue P0, C1 : une Esquive impossible ne doit pas annuler la Frappe (sinon une Frappe par tick).
+  it("sans charge, Espace pendant une Frappe tenue n'annule rien : le coup suivant tombe à la période de l'arme", () => {
+    const w0 = scene([{ family: 'confesseur', pos: vec(1.5, 0), state: 'rituel' }], {
+      families: { confesseur: poteau },
+    })
+    const w = withPlayer(
+      { ...w0, creatures: w0.creatures.map((c) => ({ ...c, chair: 500, chairMax: 500 })) },
+      { dodgeCharges: 0, dodgeRechargeAt: 100_000 },
+    )
+    // Un seul appui sur Espace, au tick 2, Frappe tenue tout du long.
+    const r = run(w, 30, (x) => cmd({ strike: true, aim: vec(5, 0), dodge: x.tick === 1 }))
+    const period = TUNING.weapons.couperet.period
+    expect(ofType(r.events, 'player-impact').map((e) => [e.tick, e.comboStep])).toEqual([
+      [1, 0],
+      [1 + period, 1],
+    ])
+    expect(ofType(r.events, 'player-dodge')).toHaveLength(0)
+  })
+
+  // Revue P0, M4 : l'Esquive qui annule une Frappe remet la combinaison à zéro, Frappe relâchée ou tenue.
+  for (const held of [false, true]) {
+    it(`une Esquive qui annule une Frappe remet la combinaison à zéro (Frappe ${held ? 'tenue' : 'reprise'})`, () => {
+      const w0 = scene([{ family: 'confesseur', pos: vec(1.5, 0), state: 'rituel' }], {
+        families: { confesseur: poteau },
+      })
+      const w = { ...w0, creatures: w0.creatures.map((c) => ({ ...c, chair: 500, chairMax: 500 })) }
+      // Frappe au tick 1 (étape 0), Esquive au tick 5 pendant la Frappe, puis Frappe de nouveau.
+      const r = run(w, 60, (x) =>
+        cmd({ aim: vec(5, 0), strike: held || x.tick < 1 || x.tick > 25, dodge: x.tick === 4 }),
+      )
+      expect(ofType(r.events, 'player-dodge').map((e) => e.tick)).toEqual([5])
+      const steps = ofType(r.events, 'player-impact').map((e) => e.comboStep)
+      expect(steps.slice(0, 3)).toEqual([0, 0, 1])
+    })
+  }
 })
 
 describe('Rites', () => {

@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest'
 import {
   type Action,
   CHANNEL_ACTIONS,
+  dcos,
+  dsin,
   FAMILIES,
   type PlayerAction,
   type PlayerCommands,
@@ -35,9 +37,10 @@ const W = (spawns: readonly SpawnDef[]): World => scene(spawns, { families: FAMI
 const decide = (w: World, arme: 'couperet' | 'masse' = 'couperet'): PlayerCommands => decideFaucheur(arme, w)
 const rule = (w: World, arme: 'couperet' | 'masse' = 'couperet'): string => faucheurRule(arme, w)
 
+// cos et sin du contrat, calculés comme la politique (revue P0, DT1 : dmath dans les bots).
 const BASE = (w: World): PlayerCommands => ({
   move: v(0, 0),
-  aim: v(w.player.pos.x + Math.cos(w.player.facing), w.player.pos.z + Math.sin(w.player.facing)),
+  aim: v(w.player.pos.x + dcos(w.player.facing), w.player.pos.z + dsin(w.player.facing)),
   strike: false,
   dodge: false,
   sentence: false,

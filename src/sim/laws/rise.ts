@@ -18,6 +18,16 @@ export const rise = (d: Draft, c: MCreature, cause: 'delai' | 'priere' | 'chirur
   emit(d, { type: 'rise', tick: d.tick, id: c.id, cicatrices: cic, cause })
 }
 
+// Un corps réservé ne se relève pas et son télégraphe ne part pas (riseTick l'ignore). Quand la réservation tombe
+// alors que l'heure du Relèvement est passée ou à moins de 1,5 s, le Relèvement est reporté : le télégraphe part
+// au tick même (riseTick passe après tout ce qui libère un corps) et précède toujours le Relèvement (L3).
+export const releaseClaim = (d: Draft, c: MCreature): void => {
+  if (c.state.kind !== 'abattu' || c.state.claimedBy === null) return
+  const earliest = d.tick + TUNING.relevementTelegraph
+  const riseAt = c.state.riseAt !== null && c.state.riseAt < earliest ? earliest : c.state.riseAt
+  c.state = { ...c.state, claimedBy: null, riseAt }
+}
+
 export const riseTick = (d: Draft): void => {
   for (const c of d.creatures) {
     if (c.state.kind !== 'abattu' || c.state.riseAt === null || c.state.claimedBy !== null) continue
