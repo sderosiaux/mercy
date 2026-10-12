@@ -2,6 +2,7 @@
 // HUD. Deux modes : libre (vague ou scène, graine, variante, politique, redémarrer, pause, pas, export) et aveugle
 // (B4 §11, I7 : n'affiche que « Réglage 1 » ou « Réglage 2 », jamais la variante).
 import { cssVariables } from '../render/palette'
+import { variantOrDefault } from '../sim/index'
 import { SCENE_IDS, WAVE_IDS } from '../sim/waves'
 import { type BlindStep, blindSteps } from './blind'
 
@@ -151,7 +152,7 @@ export const createPanel = (doc: Document, parent: HTMLElement, actions: PanelAc
           actions.restart({
             wave: wave.value,
             seed: Number(seed.value),
-            variant: variant.value === 'B' ? 'B' : 'A',
+            variant: variantOrDefault(variant.value),
             policy: policy.value.trim() === '' ? null : policy.value.trim(),
           }),
         ),

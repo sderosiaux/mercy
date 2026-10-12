@@ -3,6 +3,7 @@
 // navigateur, nom du registre de src/bots, paramètres compris : b5:D=60), until (tick où la partie se met en pause),
 // aveugle (indice du testeur : ouvre le panneau du playtest A/B), panel=0 (panneau masqué au départ).
 import type { GameStart } from '../game/host'
+import { DEFAULT_VARIANT, type Variant } from '../sim/index'
 import { isWaveId } from '../sim/waves'
 
 export interface DevParams {
@@ -57,6 +58,14 @@ export const startOfParams = (p: DevParams, host: GameStart): GameStart => ({
   seed: p.seed ?? host.seed,
   variant: p.variant ?? host.variant,
 })
+
+// Départ d'une partie libre (panneau, window.__mercy.restart) : graine 1 et variante du jeu si absentes.
+export const freeStart = (o: { wave: string; seed?: number; variant?: Variant }): GameStart => {
+  if (!isWaveId(o.wave)) throw new Error(`vague ou scène inconnue : ${o.wave}`)
+  const seed = o.seed ?? 1
+  if (!Number.isInteger(seed) || seed < 0) throw new Error(`graine invalide : ${o.seed}`)
+  return { wave: o.wave, seed, variant: o.variant ?? DEFAULT_VARIANT }
+}
 
 export const sameStart = (a: GameStart, b: GameStart): boolean =>
   a.wave === b.wave && a.seed === b.seed && a.variant === b.variant

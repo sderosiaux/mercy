@@ -1,7 +1,7 @@
 // Confesseur (§8.10, L7, D1, D2, D3, D6) : petit support qui garde 7 à 10 m du joueur, frappe du Bâton au
 // contact, et canalise une Prière qui relève d'un coup les Abattus ordinaires autour de lui, y compris lui-même
 // s'il prie à terre.
-import { actionEnded, freeToDecide, raisableByPrayer } from '../predicates'
+import { actionEnded, CONFESSEUR_INVECTIVE_KEY, freeToDecide, raisableByPrayer } from '../predicates'
 import { TUNING } from '../tuning'
 import type { Creature, Effect, FamilyModule, Intent, Vec2, World } from '../types'
 import { add, angleOf, dist, fromAngle, len, scale, sub } from '../vec'
@@ -16,7 +16,7 @@ const CAN_ACT_WHILE_DOWN = true // il prie à terre (§8.10)
 // Clés de familyData.
 const READY = 'priereDes' // tick à partir duquel une nouvelle prière peut commencer (recharge, D1)
 const SINCE = 'priereDebut' // tick de début de la prière suivie, -1 si aucune
-const BARKED = 'invective' // 1 une fois l'invective lancée
+const BARKED = CONFESSEUR_INVECTIVE_KEY // 1 une fois l'invective lancée, lue aussi par le rendu
 
 // Un corps au sens de la prière : un Abattu qui n'est pas un Membre errant (B4 : ils se recousent, ils ne se
 // relèvent pas). Tranché par l'orchestrateur (requête C3 R2) ; le cœur les exclut aussi de `raise`.

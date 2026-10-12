@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { confesseur } from './families/confesseur'
 import { porteur } from './families/porteur'
 import { cmd, creature, ofType, run, scene } from './testing'
+import { TUNING } from './tuning'
 import { vec } from './vec'
 
 describe('éclatement provoqué pendant un coup (C1 R1)', () => {
@@ -14,7 +15,8 @@ describe('éclatement provoqué pendant un coup (C1 R1)', () => {
       ],
       { families: { porteur }, playerStart: vec(-2.55, 0) },
     )
-    const r = run(w, 1, cmd({ strike: true, aim: vec(0, 0) }))
+    // Le coup touche après l'anticipation de la Frappe (décision du 2026-10-12).
+    const r = run(w, 1 + TUNING.weapons.couperet.windup, cmd({ strike: true, aim: vec(0, 0) }))
     expect(ofType(r.events, 'burst').map((b) => b.cause)).toEqual(['dos'])
     expect(ofType(r.events, 'death')).toHaveLength(0)
     expect(creature(r.world, 2).state.kind).toBe('abattu')

@@ -103,13 +103,28 @@ const strikeCone = (d: Draft) => {
   return { origin: d.player.pos, facing: d.player.facing, reach: w.reach, arcDeg: w.arcDeg }
 }
 
+// Frappe et Balayage (§18, décision du 2026-10-12) : la commande lance le geste, l'impact tombe `windup` ticks plus
+// tard, à `activeAt`. La durée du geste ne change pas : la récupération est ce qui reste après l'impact.
 const startStrike = (d: Draft, aim: Vec2): void => {
   const p = d.player
   const w = weaponOf(d)
   const step = p.comboStep
   p.facing = facingToward(p.pos, aim, p.facing)
-  p.action = { kind: 'frappe', start: d.tick, end: d.tick + w.period, comboStep: step }
+  p.action = {
+    kind: 'frappe',
+    start: d.tick,
+    activeAt: d.tick + w.windup,
+    end: d.tick + w.period,
+    comboStep: step,
+  }
   p.comboStep = ((step + 1) % 3) as 0 | 1 | 2
+  if (w.windup === 0) strikeImpact(d, step)
+}
+
+// Impact d'une Frappe, depuis la position et l'orientation du joueur à ce tick.
+const strikeImpact = (d: Draft, step: 0 | 1 | 2): void => {
+  const p = d.player
+  const w = weaponOf(d)
   const third = step === 2
   const amount = third ? w.thirdDamage : w.damage
   const cone = strikeCone(d)
@@ -146,8 +161,19 @@ const startBalayage = (d: Draft): void => {
   const p = d.player
   const w = weaponOf(d)
   p.ferveur -= TUNING.balayage.cost
-  p.action = { kind: 'balayage', start: d.tick, end: d.tick + TUNING.balayage.duration }
+  p.action = {
+    kind: 'balayage',
+    start: d.tick,
+    activeAt: d.tick + w.windup,
+    end: d.tick + TUNING.balayage.duration,
+  }
   emit(d, { type: 'player-rite', tick: d.tick, rite: 'balayage' })
+  if (w.windup === 0) balayageImpact(d)
+}
+
+const balayageImpact = (d: Draft): void => {
+  const p = d.player
+  const w = weaponOf(d)
   const inZone = (c: MCreature) => dist(c.pos, p.pos) <= TUNING.balayage.radius + radiusOf(c)
   emit(d, { type: 'player-impact', tick: d.tick, source: 'balayage', ...snapshotImpact(d, inZone) })
   const ctx: HitContext = { heavy: false, charge: false, deferred: [] }
@@ -199,7 +225,7 @@ const chargeTick = (d: Draft): void => {
     else if (isStanding(c)) impact.debout.push(c.id)
     else (c.resistant ? impact.abattusRes : impact.abattusOrd).push(c.id)
     const out = playerHit(d, c, TUNING.charge.damage, weaponOf(d).type, ctx)
-    if (out === 'standing-hit') {
+    if (out === 'standing-hit' && !familyOf(d, c).notPushedByCharge) {
       const side = (c.pos.x - from.x) * -a.dir.z + (c.pos.z - from.z) * a.dir.x
       const lateral = fromAngle(angleOf({ x: 0, z: 0 }, a.dir) + (side < 0 ? -Math.PI / 2 : Math.PI / 2))
       c.pos = add(c.pos, scale(lateral, TUNING.charge.push))
@@ -306,6 +332,13 @@ const requested = (cmds: PlayerCommands): BufferedCommand | null =>
 
 export const playerTick = (d: Draft, cmds: PlayerCommands): void => {
   const p = d.player
+  // 0. Impact d'une Frappe ou d'un Balayage lancé à un tick précédent. Avant toute annulation : au tick d'impact,
+  // l'anticipation est finie (comme la phase « active » d'une créature) ; une Esquive ne coupe plus que la récupération.
+  const due = p.action
+  if (due && due.activeAt === d.tick && due.start < d.tick) {
+    if (due.kind === 'frappe') strikeImpact(d, due.comboStep ?? 0)
+    else if (due.kind === 'balayage') balayageImpact(d)
+  }
   // 1. Fin d'action.
   if (p.action && d.tick >= p.action.end) {
     const a = p.action

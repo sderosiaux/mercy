@@ -1,5 +1,6 @@
 // Extensions de l'API avant la phase C : réservation des corps par une canalisation, projection du joueur, ruée.
 import { describe, expect, it } from 'vitest'
+import { DEFAULT_VARIANT, variantOrDefault } from './index'
 import { cmd, creature, ofType, run, scene } from './testing'
 import type { FamilyModule } from './types'
 import { vec } from './vec'
@@ -171,5 +172,20 @@ describe('prière (requêtes C3)', () => {
     expect(ofType(r.events, 'action-interrupted')).toHaveLength(0)
     expect(ofType(r.events, 'action-end').map((e) => e.action)).toEqual(['priere'])
     expect(ofType(r.events, 'prayer-complete')).toHaveLength(1)
+  })
+})
+
+// Décision du concepteur (2026-10-12) : la variante B (§27) est retenue. Le jeu (main.ts, paramètre d'URL absent) et
+// les outils de dev la prennent par défaut ; A reste jouable sur demande explicite (?variant=A).
+describe('Variante par défaut du jeu', () => {
+  it('B sans demande ou sur une demande inconnue ; A et B sur demande explicite', () => {
+    expect(DEFAULT_VARIANT).toBe('B')
+    expect(variantOrDefault(null)).toBe('B')
+    expect(variantOrDefault(undefined)).toBe('B')
+    expect(variantOrDefault('')).toBe('B')
+    expect(variantOrDefault('C')).toBe('B')
+    expect(variantOrDefault('a')).toBe('B')
+    expect(variantOrDefault('A')).toBe('A')
+    expect(variantOrDefault('B')).toBe('B')
   })
 })

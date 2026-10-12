@@ -8,6 +8,8 @@ import { add, angleDiff, angleOf, dist, fromAngle, norm, scale, sub, vec } from 
 import { porteur } from './porteur'
 
 const P = TUNING.porteur
+// Anticipation (décision du 2026-10-12) : une Frappe commandée au tick 1 touche au tick IMPACT.
+const IMPACT = 1 + TUNING.weapons.couperet.windup
 const MAX_TURN = (P.turnRateDegPerSecond * Math.PI) / 180 / TICK_HZ
 const FAR = vec(-14, -14)
 const families = { porteur }
@@ -388,10 +390,10 @@ describe('Porteur : coups et arc arrière', () => {
   const R = 2.55
 
   it('un coup dans le dos (arc arrière de 120°) le fait éclater sur-le-champ, même vide (cause dos)', () => {
-    const { world, events } = run(lone(vec(-R, 0)), 1, strikeAt(vec(0, 0)))
-    expect(byPlayerOn(events, 1).map((h) => h.tick)).toEqual([1])
+    const { world, events } = run(lone(vec(-R, 0)), IMPACT, strikeAt(vec(0, 0)))
+    expect(byPlayerOn(events, 1).map((h) => h.tick)).toEqual([IMPACT])
     expect(ofType(events, 'burst').map((b) => [b.tick, b.cause, b.stage, b.others])).toEqual([
-      [1, 'dos', 0, []],
+      [IMPACT, 'dos', 0, []],
     ])
     expect(creature(world, 1).state.kind).toBe('abattu')
     // Sac vide : rayon 2 m, le joueur à 2,55 m n'est pas touché.
@@ -402,15 +404,15 @@ describe('Porteur : coups et arc arrière', () => {
     for (const side of [1, -1]) {
       const inside = atPolar(vec(0, 0), Math.PI + side * ((59 * Math.PI) / 180), R)
       const outside = atPolar(vec(0, 0), Math.PI + side * ((61 * Math.PI) / 180), R)
-      expect(ofType(run(lone(inside), 1, strikeAt(vec(0, 0))).events, 'burst')).toHaveLength(1)
-      const front = run(lone(outside), 1, strikeAt(vec(0, 0)))
+      expect(ofType(run(lone(inside), IMPACT, strikeAt(vec(0, 0))).events, 'burst')).toHaveLength(1)
+      const front = run(lone(outside), IMPACT, strikeAt(vec(0, 0)))
       expect(byPlayerOn(front.events, 1)).toHaveLength(1)
       expect(ofType(front.events, 'burst')).toHaveLength(0)
     }
   })
 
   it('de face, le coup touche son corps : Chair entamée, pas d’éclatement', () => {
-    const { world, events } = run(lone(vec(R, 0)), 1, strikeAt(vec(0, 0)))
+    const { world, events } = run(lone(vec(R, 0)), IMPACT, strikeAt(vec(0, 0)))
     const hits = byPlayerOn(events, 1)
     expect(hits.map((h) => h.amount)).toEqual([TUNING.weapons.couperet.damage])
     expect(ofType(events, 'burst')).toHaveLength(0)
@@ -480,8 +482,8 @@ describe('Porteur : éclatement', () => {
     )
     const w = loaded(w0, 3, [1, 2])
     const resistantChair = creature(w, 6).chair
-    const { world, events } = run(w, 1, cmd({ strike: true, aim: vec(0, 0) }))
-    const t = 1
+    const { world, events } = run(w, IMPACT, cmd({ strike: true, aim: vec(0, 0) }))
+    const t = IMPACT
     const dmg = P.burstDamageBase + 2 * P.burstDamagePerStage
 
     expect(ofType(events, 'burst')).toEqual([
@@ -577,6 +579,64 @@ describe('Porteur : Union (L5)', () => {
 })
 
 describe('Porteur : Charge (§9)', () => {
+  // Décision du concepteur (2026-10-12) : la Charge ne pousse plus un Porteur sur le côté. Il reste où il est, dans
+  // son orientation, et le joueur le traverse comme il traverse les autres créatures pendant une Charge.
+  it('la Charge ne pousse pas un Porteur (place et orientation gardées) ; les autres créatures sont poussées', () => {
+    const w = withPlayer(
+      scene(
+        [
+          { family: 'porteur', pos: vec(3, 0), facing: Math.PI, state: 'rituel' },
+          { family: 'souriant', pos: vec(5.5, 0.3), state: 'rituel', cicatrices: 3 },
+        ],
+        { families },
+      ),
+      { ferveur: TUNING.charge.cost },
+    )
+    // La ruée seule : alertés par les dégâts, ni l'un ni l'autre ne décide avant la fin de leur pivot de tête (L7).
+    const r = run(w, TUNING.charge.dashTicks, (x) =>
+      cmd({ rite: x.tick === 0 ? 'charge' : null, aim: vec(10, 0) }),
+    )
+    expect(byPlayerOn(r.events, 1).map((h) => h.amount)).toEqual([TUNING.charge.damage])
+    expect(ofType(r.events, 'burst')).toHaveLength(0) // touché de face
+    expect(creature(r.world, 1).pos).toEqual(vec(3, 0))
+    expect(creature(r.world, 1).facing).toBe(Math.PI)
+    expect(r.world.player.pos.x).toBeCloseTo(TUNING.charge.length, 9) // traversé
+    expect(byPlayerOn(r.events, 2).map((h) => h.amount)).toEqual([TUNING.charge.damage])
+    expect(creature(r.world, 2).pos.z).toBeCloseTo(0.3 + TUNING.charge.push, 9)
+  })
+
+  // L'intention de D4 (§9 : « la Charge traverse : elle met le joueur dans le dos du Porteur »), que la poussée
+  // latérale empêchait : sans se replacer, la Frappe lancée dès la fin de la Charge touche le sac, au pivot actuel.
+  // Porteur Hostile tourné vers le joueur (pivot de tête fini), ou en Rituel, sac au stade 2, à 5 m sur la ligne.
+  for (const state of ['hostile', 'rituel'] as const) {
+    it(`D4 (${state}) : charger à travers un Porteur puis frapper dès la fin de la Charge touche son dos (le sac éclate)`, () => {
+      expect(P.turnRateDegPerSecond).toBe(90)
+      let w = scene(
+        [
+          { family: 'porteur', pos: vec(5, 0), facing: Math.PI, state },
+          { family: 'souriant', pos: vec(5, 0), state: 'abattu' },
+          { family: 'souriant', pos: vec(5, 0), state: 'abattu' },
+        ],
+        { families },
+      )
+      w = loaded(w, 1, [2, 3])
+      if (state === 'hostile') w = settled(w, 1)
+      w = withPlayer(w, { ferveur: TUNING.charge.cost })
+      // Charge au tick 1 vers le Porteur, Frappe tenue ensuite, curseur sur le Porteur ; aucun déplacement.
+      const impact = 1 + TUNING.charge.duration + TUNING.weapons.couperet.windup
+      const r = trace(w, impact, (x) =>
+        cmd({ rite: x.tick === 0 ? 'charge' : null, strike: x.tick > 0, aim: creature(x, 1).pos }),
+      )
+      const frappes = ofType(r.events, 'player-impact').filter((e) => e.source === 'frappe')
+      expect(frappes.map((e) => [e.tick, e.debout])).toEqual([[impact, [1]]])
+      const before = r.worlds[impact - 1] as World // monde lu par le coup, au début du tick de l'impact
+      expect(inPorteurRearArc(creature(before, 1), before.player.pos)).toBe(true)
+      expect(ofType(r.events, 'burst').map((b) => [b.tick, b.cause, b.stage, b.others])).toEqual([
+        [impact, 'dos', 2, [2, 3]],
+      ])
+    })
+  }
+
   it('une Charge qui le traverse finit dans son dos, et la Frappe suivante fait éclater le sac', () => {
     let w = scene(
       [
@@ -596,13 +656,17 @@ describe('Porteur : Charge (§9)', () => {
     expect(byPlayerOn(dash.events, 1).map((h) => h.amount)).toEqual([TUNING.charge.damage])
     expect(ofType(dash.events, 'burst')).toHaveLength(0) // touché de face pendant la ruée
     expect(inPorteurRearArc(p, dash.world.player.pos)).toBe(true) // la ruée finit dans son dos
-    // Après la Charge, le joueur se replace derrière le sac et ne frappe que de dos, à portée.
+    // Après la Charge, le joueur se replace derrière le sac et ne frappe que de dos, à portée. La Frappe touche
+    // après l'anticipation : il la lance quand le dos lui restera tourné malgré le pivot du Porteur d'ici l'impact.
     const reach = TUNING.weapons.couperet.reach + TUNING.radiusSmall
+    const rearHalf = (P.rearArcDeg * Math.PI) / 360
+    const turnBeforeImpact = TUNING.weapons.couperet.windup * MAX_TURN
     const flank = (x: World) => {
       if (x.player.action) return cmd()
       const q: Creature = creature(x, 1)
       const behind = add(q.pos, scale(fromAngle(q.facing + Math.PI), 1.2))
-      const ok = inPorteurRearArc(q, x.player.pos) && dist(x.player.pos, q.pos) <= reach
+      const offBack = angleDiff(angleOf(q.pos, x.player.pos), q.facing + Math.PI)
+      const ok = offBack <= rearHalf - turnBeforeImpact && dist(x.player.pos, q.pos) <= reach
       return cmd({ move: norm(sub(behind, x.player.pos)), aim: q.pos, strike: ok })
     }
     const after = run(dash.world, 120 - TUNING.charge.dashTicks, flank)

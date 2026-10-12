@@ -8,7 +8,10 @@ export const ticks = (seconds: number): number => Math.round(seconds * TICK_HZ)
 export interface WeaponTuning {
   readonly damage: number
   readonly thirdDamage: number
-  readonly period: number // ticks entre deux coups (§8.5)
+  readonly period: number // ticks entre deux coups (§8.5) : durée d'un geste de Frappe, anticipation comprise
+  // Anticipation (§18) : ticks entre le début d'une Frappe ou d'un Balayage et son impact. La récupération qui suit
+  // l'impact est le reste du geste. Décision du concepteur (2026-10-12) : « de l'ordre de 4 à 6 ticks ».
+  readonly windup: number
   readonly thirdKnockback: number // m
   readonly arcDeg: number
   readonly reach: number
@@ -50,6 +53,7 @@ export const TUNING = {
       damage: 12,
       thirdDamage: 18,
       period: ticks(0.35),
+      windup: 5,
       thirdKnockback: 1,
       arcDeg: 120,
       reach: 2.2,
@@ -59,6 +63,7 @@ export const TUNING = {
       damage: 20,
       thirdDamage: 30,
       period: ticks(0.55),
+      windup: 5,
       thirdKnockback: 3,
       arcDeg: 100,
       reach: 2.4,
@@ -66,7 +71,7 @@ export const TUNING = {
     },
   } satisfies Record<string, WeaponTuning>,
 
-  balayage: { cost: 25, radius: 4, damage: 25, duration: ticks(0.8) },
+  balayage: { cost: 25, radius: 4, damage: 25, duration: ticks(0.8) }, // impact au `windup` de l'arme en main
   charge: {
     cost: 35,
     length: 7,

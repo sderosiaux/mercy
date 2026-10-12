@@ -1,5 +1,6 @@
 // C3 : Confesseur (§8.10, L7, D1, D2, D3, D6 ; B3 §3, §5.5, §12 I3, I4, I5, I12).
 import { describe, expect, it } from 'vitest'
+import { CONFESSEUR_INVECTIVE_KEY } from '../index'
 import { cmd, creature, ofType, type Run, run, scene, withCreature, withPlayer } from '../testing'
 import { TUNING } from '../tuning'
 import type { CreatureState, SimEvent, World } from '../types'
@@ -11,6 +12,8 @@ const TURN = TUNING.alertTurnTicks // première décision d'une créature placé
 const families = { confesseur }
 const BAND = vec(-8, 0) // joueur à 8 m d'un Confesseur placé en (0, 0) : il ne bouge pas
 const NEVER = 1_000_000
+// Anticipation (décision du 2026-10-12) : une Frappe commandée au tick t touche au tick t + WINDUP.
+const WINDUP = TUNING.weapons.couperet.windup
 
 const down = (since: number, riseAt: number | null = NEVER): CreatureState => ({
   kind: 'abattu',
@@ -233,18 +236,23 @@ describe('Confesseur : interruption (L7, D1, D6)', () => {
       ],
       { families, playerStart: vec(-2.65, 0) },
     )
-    const w = withCreature(withCreature(w0, 1, { state: down(0) }), 2, { state: down(0) })
-    // Prière lancée au tick 1 (à terre, lui-même compris : 2 Abattus) ; coup au tick 2.
-    const r = run(w, 610, (wo) => cmd({ strike: wo.tick === 1, aim: vec(0, 0) }))
-    expect(ofType(r.events, 'clang').map((e) => [e.id, e.tick])).toEqual([[1, 2]])
+    // Le second corps, d'abord hors du rayon de prière (8 m), y est posé au tick WINDUP - 1 : la prière part au tick
+    // WINDUP (à terre, lui-même compris : 2 Abattus). La Frappe, lancée au tick 1, touche au tick WINDUP + 1.
+    const w = withCreature(withCreature(w0, 1, { state: down(0) }), 2, { state: down(0), pos: vec(9, 0) })
+    const launched = run(w, WINDUP - 1, (wo) => cmd({ strike: wo.tick === 0, aim: vec(0, 0) }))
+    expect(prayerStarts(launched.events)).toEqual([])
+    const rest = run(withCreature(launched.world, 2, { pos: vec(3, 0) }), 610, () => cmd({ aim: vec(0, 0) }))
+    const r = { world: rest.world, events: [...launched.events, ...rest.events] }
+    const start = WINDUP
+    expect(ofType(r.events, 'clang').map((e) => [e.id, e.tick])).toEqual([[1, start + 1]])
     expect(ofType(r.events, 'action-interrupted').map((e) => [e.id, e.action, e.by, e.tick])).toEqual([
-      [1, PRIERE, 'player', 2],
+      [1, PRIERE, 'player', start + 1],
     ])
     expect(creature(r.world, 1).chair).toBe(0)
     expect(creature(r.world, 2).state.kind).toBe('abattu')
     expect(prayerStarts(r.events)).toEqual([
-      [1, 1],
-      [1, 2 + C.prayerCooldown],
+      [1, start],
+      [1, start + 1 + C.prayerCooldown],
     ])
   })
 })
@@ -280,10 +288,12 @@ describe('Confesseur : à terre', () => {
       { families },
     )
     const w = withCreature(w0, 1, { chair: 10 })
-    const r = run(w, 5 + C.prayerChannel, (wo) => cmd({ strike: wo.tick === 4, aim: vec(1.5, 0) }))
-    expect(ofType(r.events, 'fell').map((e) => [e.id, e.tick])).toEqual([[1, 5]])
-    expect(prayerStarts(r.events)).toEqual([[1, 5]])
-    expect(completes(r.events)).toEqual([[1, 5 + C.prayerChannel, [1, 2]]])
+    // Frappe lancée au tick 5, qui touche au tick 5 + WINDUP.
+    const at = 5 + WINDUP
+    const r = run(w, at + C.prayerChannel, (wo) => cmd({ strike: wo.tick === 4, aim: vec(1.5, 0) }))
+    expect(ofType(r.events, 'fell').map((e) => [e.id, e.tick])).toEqual([[1, at]])
+    expect(prayerStarts(r.events)).toEqual([[1, at]])
+    expect(completes(r.events)).toEqual([[1, at + C.prayerChannel, [1, 2]]])
   })
 
   it('relevé au délai pendant sa prière, il la finit debout : fin normale, la recharge part de la fin', () => {
@@ -319,6 +329,30 @@ describe('Confesseur : à terre', () => {
 })
 
 describe('Confesseur : invective', () => {
+  // Requête E2 R2 : le rendu lit le tick de l'invective dans familyData, par une clé exportée (comme le stade du sac).
+  it('la clé exportée est absente avant l’invective, puis vaut 1 dès son tick', () => {
+    let w = scene(
+      [
+        { family: 'confesseur', pos: vec(0, 0), state: 'rituel' },
+        { family: 'souriant', pos: vec(0, -9.5), state: 'rituel' },
+      ],
+      { families, playerStart: vec(2.3, 0) },
+    )
+    const events: SimEvent[] = []
+    const keyAt: (number | undefined)[] = [creature(w, 1).familyData[CONFESSEUR_INVECTIVE_KEY]]
+    for (let i = 0; i < 60; i++) {
+      w = run(w, 1).world
+      events.push(...w.events)
+      keyAt.push(creature(w, 1).familyData[CONFESSEUR_INVECTIVE_KEY])
+    }
+    const barks = ofType(events, 'alert').filter((a) => a.cause === 'bark')
+    expect(barks.map((a) => a.id)).toEqual([2])
+    const t = barks[0]?.tick ?? -1
+    expect(t).toBeGreaterThan(0)
+    expect(keyAt.slice(0, t)).toEqual(Array(t).fill(undefined))
+    expect(keyAt.slice(t)).toEqual(Array(keyAt.length - t).fill(1))
+  })
+
   it('en passant Hostile, il alerte une seule fois les créatures en Rituel à moins de 10 m', () => {
     let w = scene(
       [

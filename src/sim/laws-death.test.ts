@@ -1,6 +1,7 @@
 // B4 : L1 Chair et Abattu, L2 Cri, L4 La Mort, variante B (GAME_SPEC §7).
 import { describe, expect, it } from 'vitest'
 import { cmd, creature, ofType, poteau, run, scene, withCreature, withPlayer } from './testing'
+import { TUNING } from './tuning'
 import type { FamilyModule } from './types'
 import { vec } from './vec'
 
@@ -28,12 +29,14 @@ const petard: FamilyModule = {
 }
 
 const strike = (x: number, z = 0) => cmd({ strike: true, aim: vec(x, z) })
+// Anticipation (décision du 2026-10-12) : un coup commandé au tick 1 touche au tick 1 + WINDUP.
+const WINDUP = TUNING.weapons.couperet.windup
 const FAR = vec(-12, -12)
 
 describe('L1 Chair et Abattu', () => {
   it('à 0 de Chair, la créature tombe Abattue, sans mourir', () => {
     const w = scene([{ family: 'souriant', pos: vec(1.5, 0), state: 'rituel' }])
-    const { world, events } = run(w, 22, strike(5))
+    const { world, events } = run(w, 22 + WINDUP, strike(5))
     const s = creature(world, 1)
     expect(s.state.kind).toBe('abattu')
     expect(s.chair).toBe(0)
@@ -122,7 +125,7 @@ describe('L4 La Mort', () => {
   it('Achèvement : un coup tue un Abattu ordinaire, coupe son cri au même tick, +4 Ferveur', () => {
     const w = scene([{ family: 'souriant', pos: vec(1.5, 0), state: 'abattu' }])
     const crying = run(w, 40)
-    const { world, events } = run(crying.world, 1, strike(5))
+    const { world, events } = run(crying.world, 1 + WINDUP, strike(5))
     const death = ofType(events, 'death')[0]
     const stop = ofType(events, 'cry-stop')[0]
     expect(death?.by).toBe('achevement')
@@ -134,7 +137,7 @@ describe('L4 La Mort', () => {
 
   it('un coup sur un Résistant à terre : bruit métallique, pas de mort', () => {
     const w = scene([{ family: 'souriant', pos: vec(1.5, 0), state: 'abattu', cicatrices: 3 }])
-    const { events, world } = run(w, 1, strike(5))
+    const { events, world } = run(w, 1 + WINDUP, strike(5))
     expect(ofType(events, 'clang')).toHaveLength(1)
     expect(creature(world, 1).state.kind).toBe('abattu')
   })
@@ -225,21 +228,22 @@ describe('Variante B (§27, D10, D11)', () => {
     })
 
   it('excédent ≥ 50 % de la Chair max : mort directe en B, +4 Ferveur ; Abattu en A', () => {
-    const b = run(lowChair('B', 2), 1, strike(5))
+    const b = run(lowChair('B', 2), 1 + WINDUP, strike(5))
     expect(ofType(b.events, 'death')[0]?.by).toBe('variant-b')
     expect(b.world.player.ferveur).toBe(2 + 4)
-    const a = run(lowChair('A', 2), 1, strike(5))
+    const a = run(lowChair('A', 2), 1 + WINDUP, strike(5))
     expect(creature(a.world, 1).state.kind).toBe('abattu')
   })
 
   it('excédent sous 50 % : Abattu, même en B', () => {
-    const b = run(lowChair('B', 5), 1, strike(5))
+    const b = run(lowChair('B', 5), 1 + WINDUP, strike(5))
     expect(creature(b.world, 1).state.kind).toBe('abattu')
   })
 
   it("s'applique au Balayage et à la Charge", () => {
     const sweep = withPlayer(lowChair('B', 2), { ferveur: 30 })
-    expect(ofType(run(sweep, 1, cmd({ rite: 'balayage' })).events, 'death')[0]?.by).toBe('variant-b')
+    const swept = run(sweep, 1 + WINDUP, (x) => cmd({ rite: x.tick === 0 ? 'balayage' : null }))
+    expect(ofType(swept.events, 'death')[0]?.by).toBe('variant-b')
     const charge = withPlayer(lowChair('B', 2), { ferveur: 40 })
     expect(ofType(run(charge, 10, cmd({ rite: 'charge', aim: vec(9, 0) })).events, 'death')[0]?.by).toBe(
       'variant-b',
@@ -252,6 +256,6 @@ describe('Variante B (§27, D10, D11)', () => {
       1,
       { chair: 1 },
     )
-    expect(creature(run(w, 1, strike(5)).world, 1).state.kind).toBe('abattu')
+    expect(creature(run(w, 1 + WINDUP, strike(5)).world, 1).state.kind).toBe('abattu')
   })
 })

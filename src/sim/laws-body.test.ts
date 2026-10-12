@@ -1,10 +1,13 @@
 // B5 : L3 Relèvement et Cicatrices, L5 Union, anatomie des membres (§7, §8.4).
 import { describe, expect, it } from 'vitest'
 import { cmd, creature, mannequin, ofType, run, scene, withCreature, withPlayer } from './testing'
+import { TUNING } from './tuning'
 import type { World } from './types'
 import { vec } from './vec'
 
 const FAR = vec(-12, -12)
+// Anticipation (décision du 2026-10-12) : un coup commandé au tick t touche au tick t + WINDUP.
+const WINDUP = TUNING.weapons.couperet.windup
 
 describe('L3 Relèvement et Cicatrices', () => {
   it('ordinaire : télégraphe à t+270, relèvement à t+360, +1 Cicatrice, Chair ×1,5 et pleine', () => {
@@ -53,8 +56,10 @@ const armed = (weapon: 'couperet' | 'masse', armHp: number): World => {
   const withArm = withCreature(w, 1, { limbs: [{ id: 'brasDroit', hp: armHp, hpMax: 40, state: 'ok' }] })
   return withPlayer(withArm, { weapon })
 }
-// Le mannequin commence son coup au tick 24 ; on frappe au tick 30, pendant le télégraphe.
-const hitDuringAttack = (w: World) => run(w, 31, (wo) => cmd({ strike: wo.tick === 29, aim: vec(2, 0) }))
+// Le mannequin commence son coup au tick 24 (impact au tick 78) ; la Frappe part au tick 30 et touche au tick
+// 30 + l'anticipation de l'arme en main, pendant le télégraphe.
+const hitDuringAttack = (w: World) =>
+  run(w, 31 + TUNING.weapons[w.player.weapon].windup, (wo) => cmd({ strike: wo.tick === 29, aim: vec(2, 0) }))
 
 describe('Anatomie (§8.4)', () => {
   it('tranchant : le bras qui attaque tombe à 0, il est sectionné et devient un Membre errant', () => {
@@ -97,7 +102,7 @@ describe('Anatomie (§8.4)', () => {
 
   it("les dégâts hors de l'attaque d'un membre ne touchent pas ce membre", () => {
     const w = armed('couperet', 40)
-    const { world } = run(w, 1, cmd({ strike: true, aim: vec(2, 0) }))
+    const { world } = run(w, 1 + WINDUP, cmd({ strike: true, aim: vec(2, 0) }))
     expect(creature(world, 1).limbs[0]?.hp).toBe(40)
     expect(creature(world, 1).chair).toBe(160 - 12)
   })
@@ -146,7 +151,7 @@ describe('L5 Union', () => {
     const memberId = ofType(cut.events, 'sever')[0]?.member ?? -1
     const m = creature(cut.world, memberId)
     const atMember = withPlayer(cut.world, { pos: vec(m.pos.x - 1, m.pos.z), action: null, comboStep: 0 })
-    const { world } = run(atMember, 1, cmd({ strike: true, aim: m.pos }))
+    const { world } = run(atMember, 1 + WINDUP, cmd({ strike: true, aim: m.pos }))
     expect(creature(world, memberId).state.kind).toBe('mort')
     expect(creature(world, 1).state.kind).not.toBe('mort')
   })
@@ -160,7 +165,7 @@ describe('L5 Union', () => {
       {},
     )
     const w = withCreature(w0, 2, { state: { kind: 'absorbe', into: 1, cryAt: 30 }, unionOf: 1 })
-    const { events } = run(w, 1, cmd({ strike: true, aim: vec(5, 0) }))
+    const { events } = run(w, 1 + WINDUP, cmd({ strike: true, aim: vec(5, 0) }))
     expect(ofType(events, 'death').map((d) => [d.id, d.by])).toEqual([
       [1, 'achevement'],
       [2, 'union'],

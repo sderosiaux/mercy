@@ -1,6 +1,7 @@
 // B6 : L6 Seule la mort est permanente, L7 Indifférence, règle d'interruption (§7).
 import { describe, expect, it } from 'vitest'
 import { cmd, creature, mannequin, ofType, run, scene, withCreature, withPlayer } from './testing'
+import { TUNING } from './tuning'
 import type { FamilyModule } from './types'
 import { vec } from './vec'
 
@@ -91,8 +92,10 @@ describe('L6 Seule la mort est permanente', () => {
 
 describe('L7 Indifférence', () => {
   it('les dégâts réveillent', () => {
-    const w = scene([{ family: 'souriant', pos: vec(1.5, 0), state: 'rituel' }])
-    const { events } = run(w, 1, cmd({ strike: true, aim: vec(5, 0) }))
+    // Hors de la proximité (2,5 m), à portée du Couperet (2,2 m + rayon 0,4) : seul le coup peut la réveiller, et il
+    // touche après l'anticipation (décision du 2026-10-12).
+    const w = scene([{ family: 'souriant', pos: vec(2.55, 0), state: 'rituel' }])
+    const { events } = run(w, 1 + TUNING.weapons.couperet.windup, cmd({ strike: true, aim: vec(5, 0) }))
     expect(ofType(events, 'alert').map((a) => a.cause)).toEqual(['damage'])
   })
 
@@ -154,8 +157,10 @@ describe("Règle d'interruption", () => {
     const w = scene([
       { family: 'souriant', pos: vec(1.2, 0), state: 'hostile', facing: Math.PI, cicatrices: 3 },
     ])
-    // Le Souriant décide au tick 24 (morsure, télégraphe 24) ; on frappe au tick 30.
-    const { events } = run(w, 31, (wo) => cmd({ strike: wo.tick === 29, aim: vec(5, 0) }))
+    // Le Souriant décide au tick 24 (morsure, télégraphe 24) ; la Frappe part au tick 30, touche après l'anticipation.
+    const { events } = run(w, 31 + TUNING.weapons.couperet.windup, (wo) =>
+      cmd({ strike: wo.tick === 29, aim: vec(5, 0) }),
+    )
     expect(ofType(events, 'action-interrupted').map((e) => [e.id, e.by])).toEqual([[1, 'player']])
   })
 

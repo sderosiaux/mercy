@@ -93,6 +93,9 @@ export type PlayerActionKind = 'frappe' | 'esquive' | 'sentence' | 'balayage' | 
 export interface PlayerAction {
   readonly kind: PlayerActionKind
   readonly start: Tick
+  // Frappe et Balayage : tick d'impact (dégâts, `player-impact`, `hit`), comme `Action.activeAt` des créatures.
+  // Avant : anticipation, qu'une Esquive réelle annule ; après : récupération jusqu'à `end`.
+  readonly activeAt?: Tick
   readonly end: Tick
   readonly comboStep?: 0 | 1 | 2
   readonly target?: EntityId
@@ -198,6 +201,8 @@ export interface FamilyModule {
   tick?(world: World, self: Creature): readonly Effect[]
   // Hook appelé quand le joueur touche la créature : le Porteur éclate si le coup vient de dos.
   onPlayerHit?(world: World, self: Creature, from: Vec2): readonly Effect[]
+  // La Charge la touche et la traverse sans la pousser sur le côté : elle garde sa place et son orientation.
+  readonly notPushedByCharge?: boolean
 }
 
 export type FamilyRegistry = Readonly<Partial<Record<FamilyKind, FamilyModule>>>

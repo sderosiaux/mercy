@@ -3,15 +3,14 @@
 //   if (import.meta.env.DEV) void import('./dev/index').then(({ installDev }) => installDev(host))
 // L'import dynamique sous import.meta.env.DEV sort tout src/dev du build de production.
 import { POLICIES } from '../bots/harness'
-import type { GameHost, GameStart } from '../game/host'
+import type { GameHost } from '../game/host'
 import type { Variant } from '../sim/index'
-import { isWaveId } from '../sim/waves'
 import { type BlindStep, blindSteps, correspondence, correspondenceFileName } from './blind'
 import { createMercyApi, exposeMercy } from './mercy'
 import { createPanel } from './panel'
 import { createSession, isExported, type Run, type RunSetup } from './session'
 import { telemetryFileName, telemetryJson } from './telemetry'
-import { parseDevParams, sameStart, searchOf, startOfParams } from './url'
+import { freeStart, parseDevParams, sameStart, searchOf, startOfParams } from './url'
 
 export interface DevOptions {
   readonly search?: string // défaut : location.search
@@ -66,10 +65,7 @@ export const installDev = (host: GameHost, options: DevOptions = {}): DevHandle 
     variant?: Variant
     policy?: string | null
   }): void => {
-    if (!isWaveId(o.wave)) throw new Error(`vague ou scène inconnue : ${o.wave}`)
-    const seed = o.seed ?? 1
-    if (!Number.isInteger(seed) || seed < 0) throw new Error(`graine invalide : ${o.seed}`)
-    const start: GameStart = { wave: o.wave, seed, variant: o.variant ?? 'A' }
+    const start = freeStart(o)
     const politique = o.policy ?? null
     session.restart({ start, politique, blind: null })
     host.setCommandFilter(null)

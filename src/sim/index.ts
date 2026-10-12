@@ -2,14 +2,22 @@
 
 import { hashValue } from './hash'
 import { sentenceTargetOf } from './player/bourreau'
-import type { Action, ActionPhase, PlayerCommands, Tick, Vec2, World } from './types'
+import type { Action, ActionPhase, PlayerCommands, Tick, Variant, Vec2, World } from './types'
 
 export { datan2, dcos, dhypot, dpowInt, dsin } from './dmath'
 export { souriant } from './families/souriant'
-export { CHANNEL_ACTIONS, inPorteurRearArc, PORTEUR_STAGE_KEY } from './predicates'
+export { CHANNEL_ACTIONS, CONFESSEUR_INVECTIVE_KEY, inPorteurRearArc, PORTEUR_STAGE_KEY } from './predicates'
 export { TICK_HZ, TUNING, ticks } from './tuning'
 export * from './types'
 export { createWorld, step } from './world'
+
+// Variante du jeu (§27) : B, retenue par le concepteur le 2026-10-12. A reste jouable sur demande explicite. Le banc
+// des bots n'en dépend pas : ses parties nomment toujours leur variante.
+export const DEFAULT_VARIANT: Variant = 'B'
+
+// Variante demandée (paramètre d'URL, panneau de dev) ; absente ou inconnue : celle du jeu.
+export const variantOrDefault = (v: string | null | undefined): Variant =>
+  v === 'A' || v === 'B' ? v : DEFAULT_VARIANT
 
 export const hashWorld = (w: World): string => {
   const { families: _f, events: _e, ...state } = w

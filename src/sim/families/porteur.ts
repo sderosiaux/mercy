@@ -143,6 +143,9 @@ export const porteur: FamilyModule = {
       arcDeg: B.arcDeg,
     },
   },
+  // Décision du concepteur (2026-10-12) : la Charge le traverse sans le pousser, pour que le joueur finisse dans son
+  // dos (D4, §9 « la Charge traverse : elle met le joueur dans le dos du Porteur »).
+  notPushedByCharge: true,
   decide,
   resolve: (_world, self, action) =>
     action.name === 'bousculade'

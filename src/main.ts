@@ -1,12 +1,12 @@
 // Câblage de P0 (C8) : écran titre, boucle à pas fixe, entrées ou bot, simulation, rendu, HUD, audio.
-// Paramètres d'URL : wave (V1 par défaut), seed (1), variant (A).
+// Paramètres d'URL : wave (V1 par défaut), seed (1), variant (B, la variante retenue ; A sur demande).
 import { createAudio } from './audio/engine'
 import { type FreezeState, frameView, NO_FREEZE } from './game/freeze'
 import type { CommandSource, GameHost, GameStart } from './game/host'
 import { advance, initialLoop, type LoopState } from './game/loop'
 import { createInput } from './input/input'
 import { createHud, createRenderer, cssVariables, SCREEN_RIGHT } from './render/index'
-import { createWorld, FAMILIES, type PlayerCommands, step, type Variant, type World } from './sim/index'
+import { createWorld, FAMILIES, type PlayerCommands, step, variantOrDefault, type World } from './sim/index'
 import { isWaveId, waveById } from './sim/waves'
 
 // Gel d'image au coup du joueur (§8.1) : 50 ms au Couperet, 90 ms à la Masse. Rendu seulement.
@@ -16,7 +16,7 @@ const params = new URLSearchParams(location.search)
 const startOf = (): GameStart => {
   const wave = params.get('wave') ?? 'V1'
   const seed = Number(params.get('seed') ?? '1')
-  const variant: Variant = params.get('variant') === 'B' ? 'B' : 'A'
+  const variant = variantOrDefault(params.get('variant'))
   return { wave: isWaveId(wave) ? wave : 'V1', seed: Number.isFinite(seed) ? seed : 1, variant }
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseDevParams, sameStart, searchOf, startOfParams } from './url'
+import { freeStart, parseDevParams, sameStart, searchOf, startOfParams } from './url'
 
 const host = { wave: 'V1', seed: 1, variant: 'A' } as const
 
@@ -38,5 +38,25 @@ describe('paramètres d’URL (B5 I5, B2 I3)', () => {
     expect(searchOf(host, 'b5:D=60')).toBe('?wave=V1&seed=1&variant=A&policy=b5%3AD%3D60')
     expect(sameStart(host, { ...host })).toBe(true)
     expect(sameStart(host, { ...host, seed: 2 })).toBe(false)
+  })
+})
+
+// Décision du concepteur (2026-10-12) : variante B retenue. Une partie libre lancée sans variante (panneau,
+// window.__mercy.restart) prend celle du jeu ; A reste disponible sur demande.
+describe('partie libre (restartFree)', () => {
+  it('sans variante : B ; graine 1 par défaut ; A sur demande', () => {
+    expect(freeStart({ wave: 'V1' })).toEqual({ wave: 'V1', seed: 1, variant: 'B' })
+    expect(freeStart({ wave: 'S-sat', seed: 4, variant: 'A' })).toEqual({
+      wave: 'S-sat',
+      seed: 4,
+      variant: 'A',
+    })
+    expect(freeStart({ wave: 'V2', variant: 'B' }).variant).toBe('B')
+  })
+
+  it('vague inconnue ou graine invalide : refusées', () => {
+    expect(() => freeStart({ wave: 'V9' })).toThrow('vague ou scène inconnue : V9')
+    expect(() => freeStart({ wave: 'V1', seed: -1 })).toThrow('graine invalide : -1')
+    expect(() => freeStart({ wave: 'V1', seed: 1.5 })).toThrow('graine invalide : 1.5')
   })
 })

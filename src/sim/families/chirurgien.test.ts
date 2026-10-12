@@ -14,6 +14,8 @@ const FAMILIES = { chirurgien, recousu }
 const FAR = vec(-12, -12)
 const FIRST_DECISION = 24 // créature placée Hostile au tick 0 : pivot de tête de 0,4 s (L7)
 const OPERATION = 180
+// Anticipation (décision du 2026-10-12) : une Frappe commandée au tick t touche au tick t + WINDUP.
+const WINDUP = TUNING.weapons.couperet.windup
 
 const world = (spawns: readonly SpawnDef[], playerStart: Vec2 = FAR): World =>
   scene(spawns, { families: FAMILIES, playerStart })
@@ -101,12 +103,13 @@ describe('Chirurgien : (a) recoudre et relever', () => {
   })
 
   it('recoud un Membre errant de Recousu à son propriétaire (reattach par le Chirurgien)', () => {
-    // Recousu à 2,6 m du joueur : Marteau au tick 24 ; trois coups de Couperet sectionnent le bras droit au tick 67.
+    // Recousu à 2,6 m du joueur : Marteau au tick 24 (impact au tick 78) ; trois coups de Couperet lancés aux ticks
+    // 25, 46 et 67 sectionnent le bras droit au tick 67 + WINDUP.
     const w = world(
       [{ family: 'recousu', pos: vec(2.6, 0), state: 'hostile', facing: Math.PI }, surgeon(2.6, -7)],
       vec(0, 0),
     )
-    const cut = run(w, 67, (wo) => cmd({ strike: wo.tick >= 24, aim: vec(2.6, 0) }))
+    const cut = run(w, 67 + WINDUP, (wo) => cmd({ strike: wo.tick >= 24, aim: vec(2.6, 0) }))
     const member = ofType(cut.events, 'sever')[0]?.member ?? -1
     expect(creature(cut.world, member).family).toBe('membre')
     const r = run(withPlayer(cut.world, { pos: vec(-12, 12), action: null }), 300)
@@ -229,9 +232,9 @@ describe('Chirurgien : une opération est interrompue par tout coup', () => {
       const channeling = run(w, 40)
       expect(starts(channeling.events, 1).map((e) => e.action)).toEqual([action])
       const close = withPlayer(channeling.world, { pos: vec(-0.5, 0) })
-      const hit = run(close, 1, cmd({ strike: true, aim: vec(1.5, 0) }))
+      const hit = run(close, 1 + WINDUP, cmd({ strike: true, aim: vec(1.5, 0) }))
       expect(ofType(hit.events, 'action-interrupted')).toEqual([
-        { type: 'action-interrupted', tick: 41, id: 1, action, by: 'player' },
+        { type: 'action-interrupted', tick: 41 + WINDUP, id: 1, action, by: 'player' },
       ])
       const later = run(hit.world, OPERATION)
       expect(ofType(later.events, 'assemble')).toHaveLength(0)
@@ -252,7 +255,7 @@ describe('Recousu assemblé : L5 et L6', () => {
     const pos = creature(w, 5).pos
     const near = withPlayer(w, { pos: add(pos, vec(-1.8, 0)) })
     const weak = withCreature(near, 5, { chair: 1 })
-    const r = run(weak, 22, (wo) => cmd({ strike: true, aim: creature(wo, 5).pos }))
+    const r = run(weak, 22 + WINDUP, (wo) => cmd({ strike: true, aim: creature(wo, 5).pos }))
     expect(ofType(r.events, 'fell').map((e) => e.id)).toContain(5)
     const deaths = ofType(r.events, 'death')
     expect(deaths.map((d) => [d.id, d.by])).toEqual([
@@ -326,14 +329,15 @@ describe('Réservation qui tombe : le télégraphe de Relèvement précède touj
   ]
   for (const [label, strikeAt] of cases) {
     it(`opération interrompue ${label} : télégraphe au tick même, Relèvement 90 ticks plus tard`, () => {
-      const before = run(setup(), strikeAt - 1)
+      // La Frappe part WINDUP ticks avant `strikeAt` pour toucher à `strikeAt`.
+      const before = run(setup(), strikeAt - 1 - WINDUP)
       const anchor = before.world.creatures.find((c) => c.state.kind === 'abattu' && c.state.claimedBy === 3)
       expect(anchor).toBeDefined()
       const id = anchor?.id ?? 0
       const close = withPlayer(before.world, { pos: vec(6, 3) })
-      const hit = run(close, 1, cmd({ strike: true, aim: creature(close, 3).pos }))
+      const hit = run(close, 1 + WINDUP, cmd({ strike: true, aim: creature(close, 3).pos }))
       expect(ofType(hit.events, 'action-interrupted')).toMatchObject([
-        { id: 3, action: 'assembler', by: 'player' },
+        { tick: strikeAt, id: 3, action: 'assembler', by: 'player' },
       ])
       const after = run(hit.world, 120)
       const timeline = [...before.events, ...hit.events, ...after.events]
@@ -389,13 +393,13 @@ describe('Éclatement pendant une opération', () => {
     const operating = run(w, 30)
     expect(starts(operating.events, 3).map((e) => [e.action, e.tick])).toEqual([['recoudre', FIRST_DECISION]])
     const bodyBefore = creature(operating.world, 2).pos
-    const r = run(operating.world, 1, cmd({ strike: true, aim: vec(0, 0) }))
+    const r = run(operating.world, 1 + WINDUP, cmd({ strike: true, aim: vec(0, 0) }))
     expect(ofType(r.events, 'burst').map((b) => [b.id, b.cause])).toEqual([[1, 'dos']])
     const radius = TUNING.porteur.burstBaseRadius
     expect(dist(creature(operating.world, 3).pos, vec(0, 0))).toBeGreaterThan(radius + TUNING.radiusSmall)
     expect(dist(creature(r.world, 2).pos, bodyBefore)).toBeGreaterThanOrEqual(2)
     expect(ofType(r.events, 'action-interrupted')).toEqual([
-      { type: 'action-interrupted', tick: 31, id: 3, action: 'recoudre', by: 'burst' },
+      { type: 'action-interrupted', tick: 31 + WINDUP, id: 3, action: 'recoudre', by: 'burst' },
     ])
     const s = creature(r.world, 2).state
     expect(s.kind === 'abattu' && s.claimedBy).toBeNull()

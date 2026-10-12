@@ -6,6 +6,8 @@ import type { Action, Creature, EntityId, Tick, Vec2 } from './types'
 import { angleDiff, angleOf } from './vec'
 
 export const PORTEUR_STAGE_KEY = 'stade'
+// Clé de familyData du Confesseur : 1 dès le tick de son invective (§8.10, L7), absente avant ; L6 la remet à zéro.
+export const CONFESSEUR_INVECTIVE_KEY = 'invective'
 export const CHANNEL_ACTIONS: ReadonlySet<string> = new Set(['priere', 'recoudre', 'assembler'])
 
 // Arc arrière du Porteur (§8.10) : 120° centrés sur son dos.

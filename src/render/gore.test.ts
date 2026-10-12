@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { type SimEvent, step, type World } from '../sim/index'
+import { type SimEvent, step, TUNING, type World } from '../sim/index'
 import { cmd, scene } from '../sim/testing'
 import { ballistic, DROPLET_TICKS, decalScale, GoreMemory, isFresh, SPARK_TICKS } from './gore'
 
@@ -100,14 +100,17 @@ describe('gore de E1 : direction, arme, flaques, traînées, morceaux', () => {
 describe('mémoire du gore, tirée des évènements', () => {
   it('pose un décalque à chaque coup qui touche, une seule fois par tick', () => {
     const w0 = scene([{ family: 'souriant', pos: { x: 1.2, z: 0 }, state: 'hostile' }])
-    const w1 = step(w0, cmd({ strike: true, aim: { x: 1.2, z: 0 } }))
+    // La Frappe touche après son anticipation (décision du 2026-10-12) : au tick 1 + windup.
+    const impact = 1 + TUNING.weapons.couperet.windup
+    let w1 = w0
+    for (let i = 0; i < impact; i++) w1 = step(w1, cmd({ strike: true, aim: { x: 1.2, z: 0 } }))
     expect(w1.events.some((e) => e.type === 'hit')).toBe(true)
     const g = new GoreMemory()
     g.ingest(w1)
     g.ingest(w1)
     expect(g.decals.length).toBe(1)
-    expect(g.decals[0]?.born).toBe(1)
-    expect(g.lastHit).toBe(1)
+    expect(g.decals[0]?.born).toBe(impact)
+    expect(g.lastHit).toBe(impact)
   })
 
   it('n’ensanglante pas les Abattus placés au tick 0 d’une scène de test', () => {
@@ -125,7 +128,10 @@ describe('mémoire du gore, tirée des évènements', () => {
 
   it('fait jaillir un éclat doré d’un coup sur un Résistant à terre, puis l’éteint', () => {
     const w0 = scene([{ family: 'souriant', pos: { x: 1.2, z: 0 }, state: 'abattu', cicatrices: 3 }])
-    const w1 = step(w0, cmd({ strike: true, aim: { x: 1.2, z: 0 } }))
+    // La Frappe touche après son anticipation (décision du 2026-10-12) : au tick 1 + windup.
+    let w1 = w0
+    for (let i = 0; i < 1 + TUNING.weapons.couperet.windup; i++)
+      w1 = step(w1, cmd({ strike: true, aim: { x: 1.2, z: 0 } }))
     expect(w1.events.some((e) => e.type === 'clang')).toBe(true)
     const g = new GoreMemory()
     g.ingest(w1)

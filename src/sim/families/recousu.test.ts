@@ -1,6 +1,7 @@
 // C2 : le Recousu (§8.10), brute qu'on désarme membre par membre (§8.4).
 import { describe, expect, it } from 'vitest'
 import { cmd, creature, ofType, run, scene, withCreature, withPlayer } from '../testing'
+import { TUNING } from '../tuning'
 import type { Limb, SimEvent, Vec2, World } from '../types'
 import { add, dist, fromAngle, scale, vec } from '../vec'
 import { recousu } from './recousu'
@@ -134,12 +135,14 @@ describe('Recousu : Coup de tête (plus aucun bras valide)', () => {
 
 describe('Recousu : chaque attaque dépend de son bras', () => {
   it('trois coups de Couperet pendant le Marteau sectionnent le bras droit (40 PV) : plus de Marteau', () => {
-    // Le Marteau part au tick 24 ; le joueur frappe aux ticks 25, 46 et 67 (12 + 12 + 18 = 42).
-    const r = run(facing(2.6), 66, (wo) => cmd({ strike: wo.tick >= 24, aim: vec(2.6, 0) }))
+    // Le Marteau part au tick 24 (impact au tick 78) ; le joueur lance ses coups aux ticks 25, 46 et 67, qui
+    // touchent WINDUP ticks plus tard (12 + 12 + 18 = 42).
+    const W = TUNING.weapons.couperet.windup
+    const r = run(facing(2.6), 66 + W, (wo) => cmd({ strike: wo.tick >= 24, aim: vec(2.6, 0) }))
     expect(ofType(r.events, 'sever')).toHaveLength(0)
     expect(creature(r.world, 1).limbs[0]).toMatchObject({ id: 'brasDroit', hp: 16, state: 'ok' })
     const cut = run(r.world, 1, cmd({ strike: true, aim: vec(2.6, 0) }))
-    expect(ofType(cut.events, 'sever')[0]).toMatchObject({ owner: 1, limb: 'brasDroit', tick: 67 })
+    expect(ofType(cut.events, 'sever')[0]).toMatchObject({ owner: 1, limb: 'brasDroit', tick: 67 + W })
     expect(ofType(cut.events, 'action-interrupted')[0]).toMatchObject({ id: 1, action: 'marteau' })
     // Joueur à 2,6 m du Recousu, hors de portée d'Empoignade : avec son bras droit il frapperait du Marteau.
     const self = creature(cut.world, 1)
@@ -150,8 +153,10 @@ describe('Recousu : chaque attaque dépend de son bras', () => {
   })
 
   it("deux coups de Masse pendant l'Empoignade brisent le bras gauche : plus d'Empoignade, pas de Membre errant", () => {
+    // Empoignade au tick 24 (impact au tick 84) ; coups de Masse lancés aux ticks 25 et 58, qui touchent WINDUP plus tard.
     const w = withPlayer(facing(2), { weapon: 'masse' })
-    const r = run(w, 60, (wo) => cmd({ strike: wo.tick >= 24 && wo.tick < 59, aim: vec(2, 0) }))
+    const W = TUNING.weapons.masse.windup
+    const r = run(w, 60 + W, (wo) => cmd({ strike: wo.tick >= 24 && wo.tick < 59, aim: vec(2, 0) }))
     expect(ofType(r.events, 'break')[0]).toMatchObject({ owner: 1, limb: 'brasGauche' })
     expect(ofType(r.events, 'action-interrupted')[0]).toMatchObject({ id: 1, action: 'empoignade' })
     expect(r.world.creatures.filter((c) => c.family === 'membre')).toHaveLength(0)
