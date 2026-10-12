@@ -14,6 +14,7 @@ import {
   type World,
 } from '../sim/index'
 import { poteau, testWave, withCreature } from '../sim/testing'
+import { standingDeathPolicy, standingDeathWorld, unionPolicy, unionWorld } from './agonie'
 import { LAB_FAMILIES, LAB_FAMILIES_QUIET } from './families'
 import { b2Script, immobile, negligent, type Policy } from './policies'
 import {
@@ -517,6 +518,18 @@ export const SCENES: readonly LabScene[] = [
       'Armes en main et orientation (E6) : Couperet, Masse, changements, demi-tour, Sentence, rites, marche',
     world: armesWorld,
     policy: armesPolicy,
+  },
+  {
+    id: 'agonie-debout',
+    title: 'Agonie (E7) : morts debout en variante B, une créature de chaque famille',
+    world: standingDeathWorld,
+    policy: standingDeathPolicy,
+  },
+  {
+    id: 'agonie-union',
+    title: 'Agonie (E7) : achever un Recousu à terre tue son Membre errant dans la même image (L5)',
+    world: unionWorld,
+    policy: unionPolicy,
   },
   {
     id: 'charge',

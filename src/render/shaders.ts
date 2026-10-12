@@ -195,3 +195,108 @@ float e1Fbm( vec2 p ) {
   return s;
 }
 `
+
+// Garde du rouge vif (E7, §17, §30.10, audit de la clause 10) : le rouge vif ne dit que le danger imminent et le
+// sang des 2 dernières secondes. Une lumière chaude (torche, chandelle du Bourreau) sur une chair, un sac aux stades
+// 0 à 2 ou du sang séché pousse le produit vers le primaire rouge de l'écran, que la courbe ACES rend tel quel : le
+// rouge vif. La garde agit sur la couleur de sortie (linéaire d'affichage, après tons, étalonnage, vignettage et
+// grain) : si le pixel tombe à moins de uReservedDE (CIEDE2000) du rouge vif de la palette, sa chroma CIELAB est
+// réduite juste assez pour en sortir. La clarté ne bouge pas : la lumière reçue n'est ni retirée ni affaiblie
+// (décision du concepteur), seule la teinte cesse de se lire « rouge vif ». Les pixels qui ont le droit au rouge vif
+// (sang frais, sac au stade 3) ne passent pas par la garde.
+export const GUARD_GLSL = /* glsl */ `
+uniform vec3 uReservedLab;
+uniform float uReservedDE;
+float e7LabF( float t ) { return t > 0.008856452 ? pow( t, 1.0 / 3.0 ) : 7.787037 * t + 0.137931; }
+vec3 e7Lab( vec3 c ) {
+  float x = 0.4124564 * c.r + 0.3575761 * c.g + 0.1804375 * c.b;
+  float y = 0.2126729 * c.r + 0.7151522 * c.g + 0.0721750 * c.b;
+  float z = 0.0193339 * c.r + 0.1191920 * c.g + 0.9503041 * c.b;
+  float fx = e7LabF( x / 0.95047 );
+  float fy = e7LabF( y );
+  float fz = e7LabF( z / 1.08883 );
+  return vec3( 116.0 * fy - 16.0, 500.0 * ( fx - fy ), 200.0 * ( fy - fz ) );
+}
+vec3 e7LabToLinear( vec3 lab ) {
+  float fy = ( lab.x + 16.0 ) / 116.0;
+  float fx = fy + lab.y / 500.0;
+  float fz = fy - lab.z / 200.0;
+  float x3 = fx * fx * fx;
+  float z3 = fz * fz * fz;
+  float xr = x3 > 0.008856452 ? x3 : ( 116.0 * fx - 16.0 ) / 903.2963;
+  float yr = lab.x > 8.0 ? fy * fy * fy : lab.x / 903.2963;
+  float zr = z3 > 0.008856452 ? z3 : ( 116.0 * fz - 16.0 ) / 903.2963;
+  vec3 xyz = vec3( xr * 0.95047, yr, zr * 1.08883 );
+  return vec3(
+    3.2404542 * xyz.x - 1.5371385 * xyz.y - 0.4985314 * xyz.z,
+    -0.9692660 * xyz.x + 1.8760108 * xyz.y + 0.0415560 * xyz.z,
+    0.0556434 * xyz.x - 0.2040259 * xyz.y + 1.0572252 * xyz.z );
+}
+float e7Hue( float b, float a ) {
+  if ( a == 0.0 && b == 0.0 ) return 0.0;
+  float h = atan( b, a );
+  return h < 0.0 ? h + 6.2831853 : h;
+}
+// CIEDE2000 (Sharma 2005), kL = kC = kH = 1, angles en radians.
+float e7De00( vec3 p, vec3 q ) {
+  float cm = 0.5 * ( length( p.yz ) + length( q.yz ) );
+  float cm7 = pow( cm, 7.0 );
+  float g = 0.5 * ( 1.0 - sqrt( cm7 / ( cm7 + 6103515625.0 ) ) );
+  float a1 = ( 1.0 + g ) * p.y;
+  float a2 = ( 1.0 + g ) * q.y;
+  float c1 = length( vec2( a1, p.z ) );
+  float c2 = length( vec2( a2, q.z ) );
+  float h1 = e7Hue( p.z, a1 );
+  float h2 = e7Hue( q.z, a2 );
+  float dL = q.x - p.x;
+  float dC = c2 - c1;
+  float dh = 0.0;
+  if ( c1 * c2 != 0.0 ) {
+    dh = h2 - h1;
+    if ( dh > 3.1415927 ) dh -= 6.2831853;
+    else if ( dh < -3.1415927 ) dh += 6.2831853;
+  }
+  float dH = 2.0 * sqrt( c1 * c2 ) * sin( dh * 0.5 );
+  float lb = 0.5 * ( p.x + q.x );
+  float cb = 0.5 * ( c1 + c2 );
+  float hb = h1 + h2;
+  if ( c1 * c2 != 0.0 ) {
+    if ( abs( h1 - h2 ) <= 3.1415927 ) hb = 0.5 * ( h1 + h2 );
+    else hb = h1 + h2 < 6.2831853 ? 0.5 * ( h1 + h2 + 6.2831853 ) : 0.5 * ( h1 + h2 - 6.2831853 );
+  }
+  float t = 1.0 - 0.17 * cos( hb - 0.5235988 ) + 0.24 * cos( 2.0 * hb ) + 0.32 * cos( 3.0 * hb + 0.1047198 )
+    - 0.20 * cos( 4.0 * hb - 1.0995574 );
+  float hd = ( hb * 57.2957795 - 275.0 ) / 25.0;
+  float dTh = 0.5235988 * exp( - hd * hd );
+  float cb7 = pow( cb, 7.0 );
+  float rc = 2.0 * sqrt( cb7 / ( cb7 + 6103515625.0 ) );
+  float l50 = ( lb - 50.0 ) * ( lb - 50.0 );
+  float sl = 1.0 + 0.015 * l50 / sqrt( 20.0 + l50 );
+  float sc = 1.0 + 0.045 * cb;
+  float sh = 1.0 + 0.015 * cb * t;
+  float rt = - sin( 2.0 * dTh ) * rc;
+  float x = dL / sl;
+  float y = dC / sc;
+  float z = dH / sh;
+  return sqrt( max( 0.0, x * x + y * y + z * z + rt * y * z ) );
+}
+// Clarté CIELAB seule, depuis la luminance linéaire (test rapide : un écart de clarté suffit à sortir du rouge vif).
+float e7Lightness( vec3 c ) { return 116.0 * e7LabF( dot( c, vec3( 0.2126729, 0.7151522, 0.0721750 ) ) ) - 16.0; }
+// Couleur linéaire d'affichage, gardée hors du rouge vif : chroma réduite par dichotomie, clarté inchangée. Un pixel
+// dont la clarté est à 1,25 × uReservedDE ou plus de celle du rouge vif (L* 49,3) est sûr sans calcul de plus :
+// ΔE00 ≥ ΔL / SL (le terme de rotation est nul loin des bleus) et, à cet écart, SL ≤ 1,07, puis ΔL / SL croît avec ΔL.
+vec3 e7Guard( vec3 c ) {
+  vec3 lin = clamp( c, 0.0, 1.0 );
+  if ( abs( e7Lightness( lin ) - uReservedLab.x ) >= 1.25 * uReservedDE ) return c;
+  vec3 lab = e7Lab( lin );
+  if ( e7De00( lab, uReservedLab ) >= uReservedDE ) return c;
+  float lo = 0.0;
+  float hi = 1.0;
+  for ( int i = 0; i < 12; i ++ ) {
+    float m = 0.5 * ( lo + hi );
+    if ( e7De00( vec3( lab.x, lab.yz * m ), uReservedLab ) >= uReservedDE ) lo = m;
+    else hi = m;
+  }
+  return clamp( e7LabToLinear( vec3( lab.x, lab.yz * lo ) ), 0.0, 1.0 );
+}
+`

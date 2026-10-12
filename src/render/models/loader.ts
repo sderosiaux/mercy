@@ -101,6 +101,10 @@ const reduce = (tex: Texture, maxPx: number | null): { map: Texture; meanLum: nu
   return { map: small, meanLum }
 }
 
+// Clips de chute : la chute d'un Abattu et la mort debout (E7, agonie), dont on lit l'instant où le corps touche
+// le sol.
+const FALLS = new Set(['chute', 'mort.debout'])
+
 const catalogOf = (
   entry: ManifestEntry,
   clips: ReadonlyMap<string, AnimationClip>,
@@ -111,15 +115,30 @@ const catalogOf = (
     const clip = clips.get(r.name)
     if (!clip) continue
     const track = clip.tracks.find((t) => t.name === `${hips}.position`)
-    const settleS = r.name === 'chute' && track ? settleTime(track.times, track.values) : undefined
-    out.set(
-      r.name,
-      settleS === undefined
-        ? { recipe: r, duration: clip.duration }
-        : { recipe: r, duration: clip.duration, settleS },
-    )
+    if (!FALLS.has(r.name) || !track) {
+      out.set(r.name, { recipe: r, duration: clip.duration })
+      continue
+    }
+    out.set(r.name, {
+      recipe: r,
+      duration: clip.duration,
+      settleS: settleTime(track.times, track.values),
+      descentS: descentTime(track.times, track.values),
+    })
   }
   return out
+}
+
+// Instant où le bassin a fait 5 % de sa descente (le corps commence à tomber), d'après la même piste.
+export const descentTime = (times: ArrayLike<number>, values: ArrayLike<number>): number => {
+  const n = times.length
+  if (n === 0) return 0
+  const y0 = values[1] as number
+  const y1 = values[(n - 1) * 3 + 1] as number
+  const tol = Math.abs(y0 - y1) * 0.05
+  for (let k = 0; k < n; k++)
+    if (Math.abs((values[k * 3 + 1] as number) - y0) > tol) return times[k] as number
+  return 0
 }
 
 // Instant où le bassin a fait 95 % de sa descente (fin de la chute au sol), d'après la piste de position du bassin.
@@ -221,6 +240,15 @@ const prepare = (
   geometry.setAttribute('aPart', new BufferAttribute(regions.part, 1))
   geometry.setAttribute('aMark', new BufferAttribute(regions.mark, 1))
   geometry.setAttribute('aSeams', new BufferAttribute(regions.seams, 3))
+  // Positions au repos en mètres, pieds au sol, bassin sur l'axe (E7) : le sang se pose sur le corps par un bruit dans
+  // ce repère (taches collées au corps, déterministes).
+  const rest = new Float32Array(world.length)
+  for (let i = 0; i < posAttr.count; i++) {
+    rest[i * 3] = ((world[i * 3] as number) + anchor.x) * scale
+    rest[i * 3 + 1] = ((world[i * 3 + 1] as number) + anchor.y) * scale
+    rest[i * 3 + 2] = ((world[i * 3 + 2] as number) + anchor.z) * scale
+  }
+  geometry.setAttribute('aRest', new BufferAttribute(rest, 3))
   const boxes = boneBoxes(geometry, dominant, skinned.bindMatrix, skinned.skeleton.boneInverses)
   const sourceTris = (geometry.getIndex()?.count ?? geometry.getAttribute('position').count) / 3
   const lod = lodGeometry(geometry, lodTriangles(sourceTris))

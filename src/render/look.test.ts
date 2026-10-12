@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Creature } from '../sim/index'
+import { type Creature, TUNING } from '../sim/index'
 import { mannequin, scene } from '../sim/testing'
 import { deltaE00, hexToLab, type Lab, srgbToLab } from './color-science'
 import {
@@ -114,15 +114,18 @@ describe('couleur d’un corps selon son état', () => {
     expect(pulse(160, 100)).toBeCloseTo(0, 10)
   })
 
-  it('passe au gris en 0,3 s à partir du tick de la mort (L4), sauf un mort placé, déjà gris', () => {
+  it('passe au gris pendant l’agonie (L4, TUNING.agonie), sauf un mort placé, déjà gris', () => {
     const killed = {
       ...c(2),
       state: { kind: 'mort', at: 200 },
       spawn: { ...(c(2).spawn as NonNullable<Creature['spawn']>) },
     } as Creature
+    const A = TUNING.agonie
+    expect(A).toBe(24) // 0,4 s (réglage du spec), lu dans la simulation
     expect(greyMix(killed, 200)).toBe(0)
-    expect(greyMix(killed, 209)).toBeCloseTo(0.5, 10)
-    expect(greyMix(killed, 218)).toBe(1)
+    expect(greyMix(killed, 200 + A / 2)).toBeCloseTo(0.5, 10)
+    expect(greyMix(killed, 200 + A - 1)).toBeLessThan(1)
+    expect(greyMix(killed, 200 + A)).toBe(1)
     expect(greyMix(killed, 900)).toBe(1)
     expect(greyMix(c(4), 0)).toBe(1)
     expect(greyMix(c(2), 50)).toBe(0)

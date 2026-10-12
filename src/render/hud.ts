@@ -1,5 +1,6 @@
 // HUD du §21, en DOM superposé au canvas : Vie en bas à gauche (cadre ivoire, remplissage rouge brun), Ferveur
-// en bas à droite (or, avec le seuil de chaque Rite), les Rites et les deux pastilles d'Esquive au centre, l'arme
+// en bas à droite (du sang qui monte, §17.1 : la jauge se remplit de sang sombre à surface mouillée, qui ondule et
+// monte en douceur ; seuil de chaque Rite), les Rites et les deux pastilles d'Esquive au centre, l'arme
 // et sa touche X (grisée quand un Hostile est à moins de 15 m). Aucun chiffre de dégâts, aucune barre au-dessus
 // des créatures. Couleurs : variables CSS tirées de la palette, aucune autre.
 import { TUNING, type World } from '../sim/index'
@@ -30,7 +31,18 @@ const CSS = `
   outline: 1px solid var(--hud-cadre); outline-offset: 2px; background: var(--noir); }
 .mercy-hud .fill { position: absolute; inset: 0; transform-origin: left center; }
 .mercy-hud .vie .fill { background: var(--hud-vie); }
-.mercy-hud .ferveur .fill { background: var(--hud-ferveur); transform-origin: right center; }
+.mercy-hud .ferveur .track { height: 11px; background: var(--noir); overflow: hidden; }
+.mercy-hud .ferveur .fill { transform-origin: right center; transition: transform 520ms cubic-bezier(.2,.7,.2,1);
+  background:
+    linear-gradient(to bottom, var(--hud-ferveur-reflet) 0, var(--hud-ferveur) 30%, var(--hud-ferveur) 55%,
+      var(--hud-ferveur-fond) 100%); }
+.mercy-hud .ferveur .fill::before { content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 7px 3px at 20% 30%, var(--hud-ferveur-reflet), transparent 70%),
+    radial-gradient(ellipse 9px 3px at 65% 55%, var(--hud-ferveur-fond), transparent 70%);
+  background-size: 23px 11px, 31px 11px; opacity: 0.55; animation: mercy-sang 3.2s linear infinite; }
+.mercy-hud .ferveur .fill::after { content: ''; position: absolute; top: 0; bottom: 0; left: -3px; width: 6px;
+  background: radial-gradient(ellipse at center, var(--hud-ferveur-reflet), transparent 70%); opacity: 0.8; }
+@keyframes mercy-sang { from { background-position: 0 0, 0 0; } to { background-position: -23px 0, 31px 0; } }
 .mercy-hud .notch { position: absolute; top: -5px; bottom: -5px; width: 1px; background: var(--hud-encre);
   opacity: 0.55; }
 .mercy-hud .center { display: grid; justify-items: center; gap: 10px; }
@@ -38,7 +50,7 @@ const CSS = `
 .mercy-hud .rite { display: grid; justify-items: center; gap: 3px; transition: opacity 160ms ease; }
 .mercy-hud .rite svg { width: 34px; height: 34px; stroke: var(--hud-encre); fill: none; stroke-width: 1.4; }
 .mercy-hud .rite .key { font-size: 11px; opacity: 0.85; }
-.mercy-hud .rite .cost { font-size: 11px; color: var(--hud-ferveur); }
+.mercy-hud .rite .cost { font-size: 11px; color: var(--hud-ferveur-reflet); }
 .mercy-hud .rite.off { opacity: 0.32; }
 .mercy-hud .rite.locked { opacity: 0.14; }
 .mercy-hud .lower { display: flex; gap: 22px; align-items: center; }
@@ -49,7 +61,7 @@ const CSS = `
 .mercy-hud .arme { font-size: 12px; font-style: italic; transition: opacity 160ms ease; }
 .mercy-hud .arme b { font-style: normal; font-weight: normal; margin-left: 6px; opacity: 0.8; }
 .mercy-hud .arme.off { opacity: 0.32; }
-@media (prefers-reduced-motion: reduce) { .mercy-hud * { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .mercy-hud *, .mercy-hud *::before { transition: none !important; animation: none !important; } }
 `
 
 const ICONS = {

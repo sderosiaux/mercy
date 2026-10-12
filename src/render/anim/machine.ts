@@ -6,7 +6,7 @@
 //   (vitesse calée sur le télégraphe de la simulation, impactRate) ;
 // - touchée, une créature debout réagit dans les 2 images (fondu de la recette d'interruption) ; un coup qui ne
 //   l'interrompt pas (grande créature) donne une réaction partielle, l'attaque continue et frappe à son tick ;
-// - morte, elle se fige : la pose est celle du tick de la mort (l'horloge de la pose s'arrête), puis plus rien ;
+// - morte, elle agonise (TUNING.agonie) : elle s'effondre ou a un dernier spasme, puis plus rien (agonyFrame) ;
 // - tout ce qui vit tremble (gain du tremblement procédural, nul à la mort).
 import { type Creature, TICK_HZ, TUNING } from '../../sim/index'
 import { BASE_FADE_TICKS, type BaseKey, cutsWindup, odometerAt, type Segment, type Track } from './memory'
@@ -24,6 +24,7 @@ export interface ClipInfo {
   readonly recipe: ClipRecipe
   readonly duration: number // s
   readonly settleS?: number // chute : instant où le corps touche le sol (bassin à 95 % de sa descente)
+  readonly descentS?: number // chute : instant où le corps commence à tomber (bassin à 5 % de sa descente)
 }
 
 // Chute (L1, L2) : pour la simulation, le corps est à terre dès le coup ; à l'écran, il doit toucher le sol à la fin
@@ -355,35 +356,161 @@ const normalize = (layers: Layer[]): Layer[] => {
   return [...merged.entries()].map(([clip, m]) => ({ clip, time: m.time, weight: m.weight / sum }))
 }
 
-// Un mort tué à terre garde la pose du tick de sa mort ; tué debout (variante B, Union), placé mort par une scène
-// de test, ou tué pendant sa chute (le corps n'a pas encore touché le sol), il repose à la fin de sa chute, dès
-// l'image du coup : la mort ne joue aucun mouvement (L4, B2), et un mort reste au sol (ART_DIRECTION), jamais figé
-// debout ou à mi-chute.
-export const diedLying = (track: Track | undefined, deathTick: number): boolean => {
+// ---------------------------------------------------------------------------------------------------------
+// Agonie (L4, §18, §30.3 ; décision du concepteur du 2026-10-12) : la mort reste instantanée dans la simulation,
+// mais le corps s'effondre pendant TUNING.agonie ticks (seule source, partagée avec l'audio), puis ne bouge plus
+// jamais. Comme le reste, la pose d'une image de l'agonie est une fonction pure de la mémoire et de l'horloge ; sa
+// dernière image est la pose figée du mort (deathFrame), identique pour toujours.
+// - à terre (couché, reptation, prière à terre, chute finie) : un dernier spasme. Le clip couché continue en
+//   ralentissant jusqu'à l'arrêt, le tremblement monte puis s'éteint ;
+// - en train de tomber (chute pas encore au sol) : il finit de tomber, la chute recalée sur l'agonie ;
+// - en train de se relever : il retombe, le relèvement joué à rebours jusqu'à sa pose couchée ;
+// - debout (variante B, partie d'une Union) : il tombe. La descente d'un clip de chute du manifeste (mort debout si
+//   sa vitesse reste sous AGONY_FALL_RATE_MAX, sinon la chute) est recalée sur l'agonie, depuis la pose vivante du
+//   tick du coup (fondu de AGONY_BLEND_TICKS) ;
+// - placé mort (scène de test, sauvegarde) ou sans mémoire : aucune agonie, la pose finale.
+
+export const AGONY_TICKS = TUNING.agonie
+// Vitesse de lecture la plus haute d'une descente recalée sur l'agonie (forme, E7) : au-delà, le corps part plus
+// loin dans la descente plutôt que de la jouer encore plus vite.
+export const AGONY_FALL_RATE_MAX = 2.5
+export const AGONY_BLEND_TICKS = 4
+const SPASM_CLIP_S = 0.45 // secondes de clip couché jouées, en ralentissant, pendant l'agonie
+const SPASM_PEAK = 5 // tremblement au plus fort du spasme, en multiple du tremblement vivant
+
+export type AgonyKind = 'spasme' | 'rechute' | 'effondrement' | 'aucune'
+
+// Ce que l'agonie joue, d'après l'état de base du corps au tick du coup.
+export const agonyKind = (track: Track | undefined, deathTick: number): AgonyKind => {
   const cur = (track?.segments ?? []).filter((s) => s.from <= deathTick).at(-1)
-  return (
-    cur !== undefined &&
-    (cur.key.kind === 'down' || cur.key.kind === 'rise' || (cur.key.kind === 'channel' && cur.key.down))
-  )
+  if (!cur) return 'aucune'
+  switch (cur.key.kind) {
+    case 'down':
+      return 'spasme' // fin de chute ou spasme : tranché par agonyFrame selon l'instant de la chute
+    case 'rise':
+      return 'rechute'
+    case 'channel':
+      return cur.key.down ? 'spasme' : 'effondrement'
+    default:
+      return 'effondrement'
+  }
 }
 
-// Pose figée d'un mort : la pose au tick de sa mort (tremblement compris, évalué à ce tick), puis plus rien.
-export const deathFrame = (inp: MachineInput, deathTick: number): AnimFrame => {
-  if (diedLying(inp.track, deathTick)) {
-    const f = animate({ ...inp, t: deathTick })
-    const chute = f.layers.find((l) => l.clip === 'chute')
-    const info = inp.catalog.get('chute')
-    // Déjà au sol (instant de contact passé) : la pose du tick de la mort ; encore en l'air : la fin de la chute.
-    if (!chute || !info || chute.time >= (info.settleS ?? info.duration)) return f
+// Un mort tué à terre (L1) : couché, en reptation, en prière à terre, en train de tomber ou de se relever.
+export const diedLying = (track: Track | undefined, deathTick: number): boolean => {
+  const k = agonyKind(track, deathTick)
+  return k === 'spasme' || k === 'rechute'
+}
+
+const ease = (u: number): number => 1 - (1 - u) * (1 - u) // départ rapide, arrêt doux
+
+// Avance un clip de `ds` secondes depuis `time` : en boucle s'il boucle, borné à sa fin sinon.
+const advance = (info: ClipInfo | undefined, time: number, ds: number): number => {
+  if (!info) return time
+  const raw = time + ds * info.recipe.rate
+  if (info.recipe.boucle) {
+    const d = info.duration
+    if (d <= 0) return 0
+    const r = raw % d
+    return r < 0 ? r + d : r
   }
-  const fall = pick(inp.catalog, 'chute', 'abattu.torsion')
+  return Math.min(info.duration, Math.max(0, raw))
+}
+
+// Descente d'un clip de chute (du début de la descente au contact au sol) et la vitesse qui la fait tenir dans
+// l'agonie.
+const descent = (info: ClipInfo): { from: number; to: number; rate: number } => {
+  const to = info.settleS ?? info.duration
+  const from = Math.min(to, info.descentS ?? info.recipe.startS)
+  return { from, to, rate: (to - from) / sec(AGONY_TICKS) }
+}
+
+// Clip de l'effondrement debout : la mort debout du manifeste si sa descente tient sous la vitesse la plus haute,
+// sinon celui des clips de chute dont la descente demande la vitesse la plus basse.
+export const collapseClip = (catalog: Catalog): string | null => {
+  const names = ['mort.debout', 'chute'].filter((n) => catalog.has(n))
+  const first = names[0]
+  if (first === undefined) return null
+  const rate = (n: string): number => descent(catalog.get(n) as ClipInfo).rate
+  if (rate(first) <= AGONY_FALL_RATE_MAX) return first
+  return names.reduce((a, b) => (rate(b) < rate(a) ? b : a))
+}
+
+// Pose finale sans passé (placé mort) : la fin de la chute.
+const finalOfNothing = (catalog: Catalog): AnimFrame => {
+  const fall = pick(catalog, 'chute', 'abattu.torsion')
   if (!fall) return { layers: [], tremble: 0, headYaw: 0 }
-  const info = inp.catalog.get(fall) as ClipInfo
+  const info = catalog.get(fall) as ClipInfo
   return {
     layers: [{ clip: fall, time: fall === 'chute' ? info.duration : 0, weight: 1 }],
     tremble: 0,
     headYaw: 0,
   }
 }
+
+// Pose d'un corps mort à l'horloge t (ticks) : l'agonie de deathTick à deathTick + AGONY_TICKS, puis la pose finale.
+export const agonyFrame = (inp: MachineInput, deathTick: number, t: number): AnimFrame => {
+  const kind = agonyKind(inp.track, deathTick)
+  if (kind === 'aucune') return finalOfNothing(inp.catalog)
+  const e = Math.min(AGONY_TICKS, Math.max(0, t - deathTick))
+  const u = AGONY_TICKS > 0 ? e / AGONY_TICKS : 1
+  const alive = animate({ ...inp, t: deathTick }) // la pose du vivant au tick du coup
+  const c = inp.catalog
+  const headYaw = alive.headYaw * (1 - u)
+
+  if (kind === 'spasme') {
+    const chute = alive.layers.find((l) => l.clip === 'chute')
+    const info = c.get('chute')
+    const settle = info ? (info.settleS ?? info.duration) : 0
+    if (chute && info && chute.time < settle) {
+      // Encore en l'air : il finit de tomber, le reste de la chute recalé sur l'agonie.
+      const others = alive.layers.filter((l) => l.clip !== 'chute')
+      const fall = [{ clip: 'chute', time: chute.time + (settle - chute.time) * u, weight: 1 }]
+      return {
+        layers: normalize(blend(others, fall, chute.weight + (1 - chute.weight) * Math.min(1, u * 4))),
+        tremble: alive.tremble * (1 - u),
+        headYaw,
+      }
+    }
+    // Couché : le clip continue en ralentissant jusqu'à l'arrêt ; le spasme monte puis s'éteint.
+    const ds = SPASM_CLIP_S * ease(u)
+    return {
+      layers: alive.layers.map((l) => ({ ...l, time: advance(c.get(l.clip), l.time, ds) })),
+      tremble: alive.tremble * (1 - u) * (1 + SPASM_PEAK * Math.sin(Math.PI * u)),
+      headYaw,
+    }
+  }
+
+  if (kind === 'rechute') {
+    // Il retombe : le relèvement joué à rebours jusqu'à sa première image (couchée), en accélérant.
+    const k = u * u
+    return {
+      layers: alive.layers.map((l) => {
+        if (l.clip !== 'relevement') return l
+        const start = c.get(l.clip)?.recipe.startS ?? 0
+        return { ...l, time: l.time + (start - l.time) * k }
+      }),
+      tremble: alive.tremble * (1 - u) * (1 + SPASM_PEAK * 0.5 * Math.sin(Math.PI * u)),
+      headYaw,
+    }
+  }
+
+  // Debout : il tombe.
+  const name = collapseClip(c)
+  if (!name) return { layers: alive.layers, tremble: 0, headYaw: 0 }
+  const d = descent(c.get(name) as ClipInfo)
+  const rate = Math.min(AGONY_FALL_RATE_MAX, d.rate)
+  const from = d.to - rate * sec(AGONY_TICKS)
+  const fall = [{ clip: name, time: from + rate * sec(e), weight: 1 }]
+  return {
+    layers: normalize(blend([...alive.layers], fall, fadeWeightAt(sec(e), sec(AGONY_BLEND_TICKS)))),
+    tremble: alive.tremble * (1 - u),
+    headYaw,
+  }
+}
+
+// Pose figée d'un mort, la dernière image de son agonie : elle ne change plus jamais (B2.O5, amendement A5).
+export const deathFrame = (inp: MachineInput, deathTick: number): AnimFrame =>
+  agonyFrame(inp, deathTick, deathTick + AGONY_TICKS)
 
 export const isAlive = (c: Creature): boolean => c.state.kind !== 'mort'

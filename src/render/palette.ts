@@ -19,8 +19,9 @@ export const PALETTE = {
     pierreJoint: 0x262422, // joints des dalles
     brume: 0x8a8c8a,
   },
-  // Rouge brun : sang ancien (décalques après 2 s). Télégraphes au sol (§18), plus clairs que le sang.
-  rougeBrun: { sangAncien: 0x4a1e18, telegraphe: 0x8a3424 },
+  // Rouge brun : sang ancien (décalques après 2 s), qui fonce jusqu'au noir en séchant (§17.1). Télégraphes au sol
+  // (§18), plus clairs que le sang.
+  rougeBrun: { sangAncien: 0x4a1e18, sangNoir: 0x180908, telegraphe: 0x8a3424 },
   // Rouge vif : danger imminent (12 derniers ticks d'un télégraphe, sac au stade 3), sang frais pendant 2 s.
   rougeVif: 0xe3261c,
   // Vert maladif : prière du Confesseur. Jamais dans l'interface.
@@ -107,8 +108,17 @@ export const PALETTE = {
   // Sang : chair à vif des éclats, os brisé des éclats contondants.
   gore: { chair: 0x5a1612, os: 0x9a8e78 },
 
-  // Interface (§21) : ivoire sur noir, discrète.
-  hud: { fond: 0x0a0909, encre: 0xe9d9a4, vie: 0x4a1e18, ferveur: 0xb07a0c, cadre: 0xe9d9a4 },
+  // Interface (§21) : ivoire sur noir, discrète. La Ferveur est du sang qui monte (§17.1, E7) : sang sombre au fond,
+  // surface plus claire, reflet mouillé ; jamais le rouge vif (réservé, §30.10).
+  hud: {
+    fond: 0x0a0909,
+    encre: 0xe9d9a4,
+    vie: 0x4a1e18,
+    ferveur: 0x6e1a14,
+    ferveurFond: 0x260807,
+    ferveurReflet: 0x9a3a2c,
+    cadre: 0xe9d9a4,
+  },
 
   // Constantes techniques, pas des couleurs vues : multiplicateur neutre des matières instanciées (la couleur
   // vient de chaque instance), fond de la passe d'identification (id 0, aucun rôle).
@@ -132,6 +142,8 @@ export const cssVariables = (): string =>
     `--hud-encre: ${hexCss(PALETTE.hud.encre)}`,
     `--hud-vie: ${hexCss(PALETTE.hud.vie)}`,
     `--hud-ferveur: ${hexCss(PALETTE.hud.ferveur)}`,
+    `--hud-ferveur-fond: ${hexCss(PALETTE.hud.ferveurFond)}`,
+    `--hud-ferveur-reflet: ${hexCss(PALETTE.hud.ferveurReflet)}`,
     `--hud-cadre: ${hexCss(PALETTE.hud.cadre)}`,
     `--marqueur: ${hexCss(PALETTE.mesure.marqueur)}`,
     `--fixation: ${hexCss(PALETTE.mesure.fixation)}`,

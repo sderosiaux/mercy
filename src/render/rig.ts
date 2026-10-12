@@ -4,7 +4,7 @@
 // mort ne dépend que de sa position, de son orientation, de sa famille et du tick de sa mort.
 import { Matrix4 } from 'three'
 import { actionPhase, type Creature, TUNING, type Vec2 } from '../sim/index'
-import { greyMix, marksOf, rimOf, sacColor, tone } from './look'
+import { agonyProgress, greyMix, marksOf, rimOf, sacColor, tone } from './look'
 import { PALETTE } from './palette'
 import {
   type Angles,
@@ -373,11 +373,12 @@ const sizeMul = (c: Creature): number => TUNING.cicatriceSizeMul ** c.cicatrices
 const scaleDims = (d: Dims, k: number): Dims =>
   Object.fromEntries(Object.entries(d).map(([key, v]) => [key, v * k])) as unknown as Dims
 
-// Pose et segments d'une créature présente (non absorbée). Pour un mort, t est ignoré : la pose est celle du
-// tick de sa mort, et elle ne change plus.
+// Pose et segments d'une créature présente (non absorbée). Un mort agonise (E7, TUNING.agonie) : debout, il tombe ;
+// à terre, un dernier spasme (le battement couché monte puis s'éteint). La pose de la fin de l'agonie ne change plus.
 export const creatureBody = (c: Creature, pos: Vec2, facing: number, ctx: RigContext): Body => {
   const dead = c.state.kind === 'mort'
-  const t = dead && c.state.kind === 'mort' ? c.state.at : ctx.t
+  const agony = agonyProgress(c, ctx.t)
+  const t = dead && c.state.kind === 'mort' ? c.state.at + agony * TUNING.agonie : ctx.t
   const grey = greyMix(c, ctx.t)
   const b = new Builder(grey)
   const rim = rimOf(c, ctx.t, ctx.targeted)
@@ -409,8 +410,9 @@ export const creatureBody = (c: Creature, pos: Vec2, facing: number, ctx: RigCon
     const st = c.state
     const since = st.kind === 'abattu' ? st.since : 0
     const placed = c.spawn?.state === 'abattu' && c.cicatrices === c.spawn.cicatrices
-    const fall = dead || placed ? 1 : smooth(0, 12, t - since)
-    downPose(a, t, c.id, !dead && ctx.speed > 0.1, 1, prof.faceUp)
+    const fall = dead ? (ctx.diedStanding ? smooth(0, 1, agony) : 1) : placed ? 1 : smooth(0, 12, t - since)
+    const twitch = dead ? (1 - agony) * (1 + 5 * Math.sin(Math.PI * agony)) : 1
+    downPose(a, t, c.id, !dead && ctx.speed > 0.1, twitch, prof.faceUp)
     let raise = 0
     if (!dead && st.kind === 'abattu' && st.riseAt !== null) {
       const from = st.riseAt - TUNING.relevementTelegraph

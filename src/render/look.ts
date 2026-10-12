@@ -1,7 +1,7 @@
 // Logique pure de couleur : ce qu'un corps montre selon son état (§7 L1, L3, L4 ; §17 ; §21 ; D13),
 // la couleur d'un télégraphe selon les ticks restants (§18), la lueur du sac du Porteur (§8.10, §17).
 // Toutes les fonctions prennent l'horloge de rendu t en ticks (tick + alpha), jamais l'horloge murale.
-import { type Creature, TICK_HZ } from '../sim/index'
+import { type Creature, TICK_HZ, TUNING } from '../sim/index'
 import { RENDER } from './constants'
 import { mixHex, PALETTE } from './palette'
 
@@ -28,12 +28,14 @@ export const pulse = (t: number, since: number): number =>
   0.5 - 0.5 * Math.cos((2 * Math.PI * RENDER.lisereHz * (t - since)) / TICK_HZ)
 
 // Un mort placé (scène de test D12, chargement de sauvegarde §22) n'a pas eu de coup fatal à l'écran : il est
-// déjà gris. Un mort donné en jeu passe au gris en 0,3 s à partir du tick de sa mort (L4).
-export const greyMix = (c: Creature, t: number): number => {
+// déjà gris. Un mort donné en jeu passe au gris pendant son agonie (L4 : TUNING.agonie, seule source, partagée
+// avec l'audio) : gris cadavérique à la fin de l'agonie.
+export const agonyProgress = (c: Creature, t: number): number => {
   if (c.state.kind !== 'mort') return 0
   if (c.spawn?.state === 'mort') return 1
-  return clamp01((t - c.state.at) / RENDER.grisTicks)
+  return TUNING.agonie > 0 ? clamp01((t - c.state.at) / TUNING.agonie) : 1
 }
+export const greyMix = agonyProgress
 
 export interface Rim {
   readonly color: number

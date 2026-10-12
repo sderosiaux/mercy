@@ -1,7 +1,7 @@
 // Les deux règles de lecture du mouvement (§18, §30.3, B2.O5 et O6), vérifiées sur les poses elles-mêmes.
 import type { Vector3 } from 'three'
 import { describe, expect, it } from 'vitest'
-import type { Creature, FamilyKind, FamilyModule, SpawnDef } from '../sim/index'
+import { type Creature, type FamilyKind, type FamilyModule, type SpawnDef, TUNING } from '../sim/index'
 import { mannequin, poteau, scene } from '../sim/testing'
 import { chroma, hexToLab } from './color-science'
 import { PALETTE } from './palette'
@@ -66,17 +66,20 @@ describe('un mort ne bouge plus du tout (L4, §18, B2.O5)', () => {
     })
   }
 
-  it('un corps tué en jeu se fige sur sa pose du tick de la mort', () => {
+  it('un corps tué en jeu agonise (TUNING.agonie), puis se fige sur la pose de la fin de son agonie', () => {
     const alive = make({ family: 'souriant', state: 'abattu' })
     const dead: Creature = { ...alive, state: { kind: 'mort', at: 140 } }
-    const atDeath = body(dead, 140)
-    for (const t of [141, 158, 400]) {
-      body(dead, t).segments.forEach((s, i) => {
-        expect(Array.from(s.frame.elements)).toEqual(
-          Array.from((atDeath.segments[i] as Body['segments'][0]).frame.elements),
-        )
-      })
-    }
+    const A = TUNING.agonie
+    const end = body(dead, 140 + A)
+    const same = (t: number): boolean =>
+      body(dead, t).segments.every(
+        (s, i) =>
+          JSON.stringify(Array.from(s.frame.elements)) ===
+          JSON.stringify(Array.from((end.segments[i] as Body['segments'][0]).frame.elements)),
+      )
+    // Pendant l'agonie, le corps bouge (dernier spasme) ; ensuite, plus rien.
+    expect(same(140 + A / 2)).toBe(false)
+    for (const t of [140 + A, 141 + A, 400]) expect(same(t)).toBe(true)
   })
 
   it('un mort n’a ni liseré ni couleur vivante une fois gris (B2.O1, O4)', () => {

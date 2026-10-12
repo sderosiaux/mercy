@@ -14,7 +14,7 @@ import {
   ROLE_NAMES,
   srgbToLab,
 } from '../render/index'
-import { actionPhase, type PlayerAction, step, type World } from '../sim/index'
+import { actionPhase, type PlayerAction, step, TUNING, type World } from '../sim/index'
 import { type Candidate, drawProbes, MARKER, markerCenter } from '../viewer/session'
 import { auditFrame } from './audit'
 import { i1Fidelity } from './fidelity'
@@ -422,6 +422,7 @@ const run = async (scene: LabScene): Promise<void> => {
     // I1 fidèle à l'image (E4) : télégraphes et entités, image courante (fidelity.ts).
     fidelity: (minPx = 150) => i1Fidelity(renderer, minPx),
     stats: () => renderer.debug.stats(),
+    blood: () => renderer.debug.bloodLayer(), // couche du sol (E7)
     read: () => readFrame(renderer.debug.readPixels(), renderer.debug.idPass(), world),
     // Mouvement sur une plage de ticks (B2.O5 pixels, O6.2) : pixels changés d'un mort, XOR des masques d'un vivant.
     // Masques creux (indices de pixels triés) : XOR = |A| + |B| - 2 |A ∩ B|.
@@ -654,6 +655,134 @@ const run = async (scene: LabScene): Promise<void> => {
         const i1 = renderer.debug.idPass()
         const i2 = renderer.debug.idPass()
         return { colorDiff: diff(c1, c2), idDiff: diff(i1, i2) }
+      },
+      // Agonie image par image (E7) : `task=agonie&id=<id>[&to=<tick max>][&taille=<px>][&avant=2][&apres=6]`. Trouve
+      // le tick de la mort de l'entité dans une partie simulée à part, rend chaque tick de T − avant à
+      // T + TUNING.agonie + apres (rendu piloté, alpha = 1), recadré autour du corps, et publie la planche (PNG) et, par
+      // image : tick, état, passage au gris, clip principal, hauteur du plus haut segment (m), pixels de liseré,
+      // déplacement écran maximal d'un coin de segment depuis l'image T − 1 (px). Les morts de la même image (Union)
+      // sont listées et suivies de la même façon.
+      agonie: () => {
+        const id = Number(params.get('id') ?? '1')
+        const to = Number(params.get('to') ?? '900')
+        const size = Number(params.get('taille') ?? '200')
+        const before = Number(params.get('avant') ?? '2')
+        const after = Number(params.get('apres') ?? '6')
+        let w = armed(scene.world())
+        const pol = scene.policy()
+        let death: { tick: number; by: string } | null = null
+        let union: number[] = []
+        while (w.tick < to && death === null) {
+          w = step(w, pol(w))
+          const d = w.events.find((e) => e.type === 'death' && e.id === id)
+          if (d && d.type === 'death') {
+            death = { tick: d.tick, by: d.by }
+            union = w.events.flatMap((e) => (e.type === 'death' && e.id !== id ? [e.id] : []))
+          }
+        }
+        if (!death) return { erreur: `aucune mort de ${id} avant le tick ${to}` }
+        const T = death.tick
+        const A = TUNING.agonie
+        const followed = [id, ...union]
+        const ticks: number[] = []
+        for (let t = T - before; t <= T + A + after; t++) ticks.push(t)
+        const cols = 7
+        const rowsN = Math.ceil(ticks.length / cols)
+        const out = document.createElement('canvas')
+        out.width = size * cols
+        out.height = rowsN * (size + 18)
+        const ctx = out.getContext('2d')
+        if (ctx) {
+          ctx.fillStyle = cssVar('--hud-fond')
+          ctx.fillRect(0, 0, out.width, out.height)
+        }
+        const ref = new Map<number, number[]>()
+        const frames: unknown[] = []
+        let center: readonly [number, number] | null = null
+        ticks.forEach((t, k) => {
+          goto(t)
+          const img = renderer.debug.readPixels()
+          const ids = renderer.debug.idPass()
+          const poses = renderer.debug.poses()
+          const c = world.creatures.find((x) => x.id === id)
+          // Cadrage sur la position au sol du corps à chaque image : la caméra peut bouger (poussée de la Sentence,
+          // retrait du joueur), le corps reste au centre de sa vignette.
+          if (c) center = renderer.debug.project(c.pos.x, 0.5, c.pos.z) as [number, number]
+          const [cx, cy] = center ?? [img.width / 2, img.height / 2]
+          const S = Math.min(size, img.width, img.height)
+          const x0 = Math.round(Math.min(Math.max(0, cx - S / 2), img.width - S))
+          const y0 = Math.round(Math.min(Math.max(0, cy - S / 2), img.height - S))
+          const tile = new ImageData(S, S)
+          for (let y = 0; y < S; y++)
+            tile.data.set(
+              img.data.subarray(((y0 + y) * img.width + x0) * 4, ((y0 + y) * img.width + x0 + S) * 4),
+              y * S * 4,
+            )
+          const col = k % cols
+          const row = Math.floor(k / cols)
+          ctx?.putImageData(tile, col * size, row * (size + 18) + 18)
+          const per: Record<number, unknown> = {}
+          for (const fid of followed) {
+            const e = world.creatures.find((x) => x.id === fid)
+            const p = poses.find((x) => x.id === fid)
+            const flat = p ? p.segments.flatMap((s) => s.corners.flatMap((q) => [q[0], q[1]])) : []
+            if (t === T - 1) ref.set(fid, flat)
+            const r0 = ref.get(fid)
+            let disp = 0
+            if (r0 && r0.length === flat.length)
+              for (let i = 0; i < flat.length; i += 2)
+                disp = Math.max(
+                  disp,
+                  Math.hypot((flat[i] ?? 0) - (r0[i] ?? 0), (flat[i + 1] ?? 0) - (r0[i + 1] ?? 0)),
+                )
+            let rim = 0
+            let body = 0
+            for (let i = 0; i < ids.data.length; i += 4) {
+              const dd = decodeId(ids.data[i] ?? 0, ids.data[i + 1] ?? 0, ids.data[i + 2] ?? 0)
+              if (dd.id !== fid) continue
+              if (dd.role === ROLE.lisere) rim++
+              else body++
+            }
+            const top = p ? Math.max(...p.segments.map((s) => s.matrix[13] ?? 0)) : null
+            const f = renderer.debug.anim(fid)
+            const main = f?.layers.slice().sort((a2, b2) => b2.weight - a2.weight)[0]
+            per[fid] = {
+              etat: e?.state.kind ?? null,
+              gris:
+                e?.state.kind === 'mort'
+                  ? Math.min(1, Math.max(0, (t - e.state.at) / A))
+                  : e?.state.kind === undefined
+                    ? null
+                    : 0,
+              clip: main ? `${main.clip}@${main.time.toFixed(3)}` : null,
+              hautM: top === null ? null : Math.round(top * 1000) / 1000,
+              lisere: rim,
+              pixels: body,
+              deplPx: Math.round(disp * 100) / 100,
+            }
+          }
+          frames.push({ t, k: t - T, per })
+          if (ctx) {
+            ctx.fillStyle = cssVar('--hud-encre')
+            ctx.font = '12px serif'
+            const e = per[id] as { etat: string; gris: number | null } | undefined
+            ctx.fillText(
+              `t=${t} (T${t - T >= 0 ? '+' : ''}${t - T}) ${e?.etat ?? ''}${e?.gris !== null && e?.gris !== undefined && e.etat === 'mort' ? ` gris ${e.gris.toFixed(2)}` : ''}`,
+              col * size + 4,
+              row * (size + 18) + 13,
+            )
+          }
+        })
+        return {
+          scene: scene.id,
+          id,
+          death: T,
+          by: death.by,
+          union,
+          agonie: A,
+          frames,
+          png: out.toDataURL('image/png'),
+        }
       },
       // Diagnostic : dernière pose calculée d'un corps (clips, instants, poids).
       anim: () => renderer.debug.anim(Number(params.get('id') ?? '1')),

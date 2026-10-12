@@ -1,5 +1,5 @@
 // Machine d'états d'animation, sur de vrais mondes de la simulation (familles du jeu) : l'impact du clip tombe au
-// tick actif, la réaction coupe en 2 images, la mort fige la pose au tick du coup, le Rituel est synchrone, la
+// tick actif, la réaction coupe en 2 images, la mort joue son agonie puis se fige, le Rituel est synchrone, la
 // locomotion suit le chemin parcouru, la chute touche le sol à la fin du halètement.
 import { describe, expect, it } from 'vitest'
 import {
@@ -14,9 +14,13 @@ import {
 } from '../../sim/index'
 import { cmd, scene, withCreature, withPlayer } from '../../sim/testing'
 import {
+  AGONY_FALL_RATE_MAX,
+  agonyFrame,
+  agonyKind,
   animate,
   type Catalog,
   type ClipInfo,
+  collapseClip,
   deathFrame,
   diedLying,
   fallRecipe,
@@ -179,8 +183,11 @@ describe('réaction interrompante', () => {
   })
 })
 
-describe('mort', () => {
-  it('la pose est celle du tick de la mort, et ne change plus', () => {
+describe('mort et agonie (L4, TUNING.agonie)', () => {
+  const A = TUNING.agonie
+  const chuteOf = (l: readonly Layer[]): Layer | undefined => layer(l, 'chute')
+
+  it('à terre : au coup, la pose du vivant ; pendant l’agonie, un dernier spasme ; ensuite, plus rien', () => {
     // Souriant à terre (placé), achevé par le joueur.
     let w = scene([{ family: 'souriant', pos: { x: 1.2, z: 0 }, facing: 0, state: 'abattu' }], {
       families: FAMILIES,
@@ -196,20 +203,29 @@ describe('mort', () => {
     expect(c.state.kind).toBe('mort')
     const at = c.state.kind === 'mort' ? c.state.at : -1
     expect(diedLying(mem.track(id), at)).toBe(true)
-    const frozen = deathFrame(input(w, mem, c, at, SOURIANT), at)
-    // La pose figée est celle que le vivant avait au tick de la mort.
+    expect(agonyKind(mem.track(id), at)).toBe('spasme')
+    // Image du coup : la pose est celle que le vivant avait au tick de la mort.
     const living = animate(input(w, mem, c, at, SOURIANT))
-    expect(frozen.layers).toEqual(living.layers)
-    // Rien ne la fait plus bouger : la mémoire continue d'observer, la pose reste.
+    const first = agonyFrame(input(w, mem, c, at, SOURIANT), at, at)
+    expect(first.layers).toEqual(living.layers)
+    expect(first.tremble).toBe(living.tremble)
+    // Pendant l'agonie, le corps bouge (le clip couché avance, le spasme monte).
+    const mid = agonyFrame(input(w, mem, c, at, SOURIANT), at, at + A / 2)
+    expect(mid.layers).not.toEqual(first.layers)
+    expect(mid.tremble).toBeGreaterThan(living.tremble)
+    // La fin de l'agonie est la pose figée : sans tremblement, et identique ensuite, quoi que la mémoire observe.
+    const frozen = deathFrame(input(w, mem, c, at, SOURIANT), at)
+    expect(frozen).toEqual(agonyFrame(input(w, mem, c, at, SOURIANT), at, at + A))
+    expect(frozen.tremble).toBe(0)
+    expect(agonyFrame(input(w, mem, c, at, SOURIANT), at, at + A + 500)).toEqual(frozen)
     for (let k = 0; k < 60; k++) {
       w = step(w, cmd())
       mem.observe(w)
     }
-    expect(deathFrame(input(w, mem, w.creatures[0] as Creature, at, SOURIANT), at).layers).toEqual(
-      frozen.layers,
-    )
+    expect(deathFrame(input(w, mem, w.creatures[0] as Creature, at, SOURIANT), at)).toEqual(frozen)
   })
-  it('tué pendant sa chute (pas encore au sol) : repose à la fin de sa chute, dès l’image du coup', () => {
+
+  it('tué pendant sa chute : il finit de tomber pendant l’agonie, sans sauter à sa pose finale', () => {
     let w = scene([{ family: 'souriant', pos: { x: 1.2, z: 0 }, facing: Math.PI, state: 'hostile' }], {
       families: FAMILIES,
     })
@@ -224,20 +240,57 @@ describe('mort', () => {
     const at = c.state.kind === 'mort' ? c.state.at : -1
     const since = mem.track(1)?.segments.find((s) => s.key.kind === 'down')?.from ?? -1
     expect(at - since).toBeLessThan(TUNING.criDelai) // achevé avant de toucher le sol
-    expect(deathFrame(input(w, mem, c, at, SOURIANT), at).layers).toEqual([
-      { clip: 'chute', time: 3.5, weight: 1 },
-    ])
+    const settle = (SOURIANT.get('chute') as ClipInfo).settleS as number
+    const t0 = chuteOf(agonyFrame(input(w, mem, c, at, SOURIANT), at, at).layers)?.time ?? 0
+    const t1 = chuteOf(agonyFrame(input(w, mem, c, at, SOURIANT), at, at + A / 2).layers)?.time ?? 0
+    expect(t0).toBeLessThan(settle) // encore en l'air dans l'image du coup
+    expect(t1).toBeGreaterThan(t0)
+    expect(t1).toBeLessThan(settle)
+    const end = deathFrame(input(w, mem, c, at, SOURIANT), at)
+    expect(chuteOf(end.layers)?.time).toBeCloseTo(settle, 9) // au sol à la fin de l'agonie
+    expect(chuteOf(end.layers)?.weight).toBe(1)
   })
-  it('un mort sans passé couché (placé mort, tué debout) repose à la fin de sa chute', () => {
+
+  it('tué debout (variante B) : il tombe pendant l’agonie, de sa pose vivante jusqu’au sol', () => {
+    let w = scene([{ family: 'souriant', pos: { x: 1.3, z: 0 }, facing: Math.PI, state: 'hostile' }], {
+      families: FAMILIES,
+      variant: 'B',
+    })
+    w = withCreature(w, 1, { chair: 1 })
+    const mem = new AnimMemory()
+    mem.observe(w)
+    while (w.creatures[0]?.state.kind !== 'mort' && w.tick < 200) {
+      w = step(w, cmd({ strike: w.player.action === null, aim: (w.creatures[0] as Creature).pos }))
+      mem.observe(w)
+    }
+    const c = w.creatures[0] as Creature
+    expect(c.state.kind).toBe('mort')
+    const at = c.state.kind === 'mort' ? c.state.at : -1
+    expect(agonyKind(mem.track(1), at)).toBe('effondrement')
+    expect(collapseClip(SOURIANT)).toBe('chute') // le catalogue de test n'a pas de mort debout
+    const first = agonyFrame(input(w, mem, c, at, SOURIANT), at, at)
+    expect(chuteOf(first.layers)).toBeUndefined() // image du coup : la pose vivante, pas encore de chute
+    const end = deathFrame(input(w, mem, c, at, SOURIANT), at)
+    const settle = (SOURIANT.get('chute') as ClipInfo).settleS as number
+    expect(end.layers).toEqual([{ clip: 'chute', time: settle, weight: 1 }])
+    expect(end.tremble).toBe(0)
+    // La descente tient dans l'agonie, à AGONY_FALL_RATE_MAX au plus.
+    const mid = chuteOf(agonyFrame(input(w, mem, c, at, SOURIANT), at, at + A / 2).layers)
+    expect(mid?.time).toBeCloseTo(settle - (AGONY_FALL_RATE_MAX * A) / 2 / TICK_HZ, 9)
+  })
+
+  it('un mort sans passé (placé mort) repose à la fin de sa chute, sans agonie', () => {
     const w = scene([{ family: 'souriant', pos: { x: 3, z: 0 }, facing: 0, state: 'mort' }], {
       families: FAMILIES,
     })
     const mem = new AnimMemory()
     mem.observe(w)
     const c = w.creatures[0] as Creature
+    expect(agonyKind(mem.track(c.id), 0)).toBe('aucune')
     const f = deathFrame(input(w, mem, c, 0, SOURIANT), 0)
     expect(f.layers).toEqual([{ clip: 'chute', time: 3.5, weight: 1 }])
     expect(f.tremble).toBe(0)
+    expect(agonyFrame(input(w, mem, c, 0, SOURIANT), 0, 0)).toEqual(f)
   })
 })
 

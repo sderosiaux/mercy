@@ -27,9 +27,10 @@ import {
 } from 'three'
 import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
+import { hexToLab } from './color-science'
 import { PALETTE } from './palette'
 import { type QualitySpec, urlParam } from './quality'
-import { FOG_GLSL, GRADE_GLSL, MAX_FOG_LIGHTS, NOISE_GLSL, TONEMAP_GLSL } from './shaders'
+import { FOG_GLSL, GRADE_GLSL, GUARD_GLSL, MAX_FOG_LIGHTS, NOISE_GLSL, TONEMAP_GLSL } from './shaders'
 
 // Réglages de l'image (forme, E1). Partagés avec la matière des morts par `gradeUniforms`.
 export const LOOK = {
@@ -88,6 +89,19 @@ export const gradeUniforms = {
   uResolution: { value: new Vector2(1, 1) },
 }
 
+// Alpha de la scène (cible HDR) : il porte le masque des personnages vivants (E3) et, depuis E7, la garde du rouge
+// vif. Décor : 1 (étalonnage froid, pas de garde). Personnage : 0 (sa couleur, gardée hors du rouge vif) ou 0,25 (sa
+// couleur, sans garde : sang frais des 2 dernières secondes, sac au stade 3, les seuls à avoir droit au rouge vif).
+export const SCENE_TAG = { decor: 1, modele: 0, modeleRougeVif: 0.25 } as const
+
+// Écart CIEDE2000 minimal au rouge vif d'un pixel gardé (E7). L'audit de la clause 10 lit « rouge vif » à 10 ou
+// moins ; la marge couvre la quantification à 8 bits de la sortie.
+export const RESERVED_DE = 11.5
+const reservedLab = (): Vector3 => {
+  const l = hexToLab(PALETTE.rougeVif)
+  return new Vector3(l.L, l.a, l.b)
+}
+
 export const fogUniforms = {
   uFogDensity: { value: LOOK.fogDensity as number },
   uFogFalloff: { value: LOOK.fogFalloff as number },
@@ -124,11 +138,13 @@ ${TONEMAP_GLSL}
 ${GRADE_GLSL}
 ${FOG_GLSL}
 ${NOISE_GLSL}
+${GUARD_GLSL}
 void main() {
   vec4 scene = texture2D( tScene, vUv );
   vec3 c = scene.rgb;
-  // Masque des personnages vivants (alpha de la scène) : 1 partout, 0 sur leurs pixels (matière des corps).
-  float model = 1.0 - clamp( scene.a, 0.0, 1.0 );
+  // Masque des personnages vivants (alpha de la scène, SCENE_TAG) : 1 sur le décor, 0 ou 0,25 sur leurs pixels.
+  float model = clamp( ( 1.0 - scene.a ) / 0.75, 0.0, 1.0 );
+  bool guard = scene.a < 0.125;
   float depth = texture2D( tDepth, vUv ).x;
   vec4 ndc = vec4( vUv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0 );
   vec4 view = uProjInv * ndc;
@@ -154,6 +170,7 @@ void main() {
   float n = fract( sin( dot( gp, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) - 0.5;
   float l = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) );
   c += n * uGrain * ( 0.35 + 0.65 * smoothstep( 0.0, 0.25, l ) * ( 1.0 - smoothstep( 0.5, 1.0, l ) ) );
+  if ( guard ) c = e7Guard( c );
   gl_FragColor = vec4( e1LinearToSrgb( clamp( c, 0.0, 1.0 ) ), 1.0 );
 }
 `
@@ -227,6 +244,8 @@ export class PostPipeline {
         uFogLightPos: { value: this.fogPos },
         uFogLightColor: { value: this.fogCol },
         uFogLightCount: { value: 0 },
+        uReservedLab: { value: reservedLab() },
+        uReservedDE: { value: urlParam('garde') === '0' ? -1 : RESERVED_DE }, // instrument : `garde=0`
         ...gradeUniforms,
         ...fogUniforms,
       },

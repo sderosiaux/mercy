@@ -39,6 +39,7 @@ import { ROLE, uniformIdMaterial } from '../idpass'
 import { RELIQUAIRE_HEIGHT_M } from '../lights'
 import { fixedLightUniforms, pbr, type SetMaps } from '../materials'
 import { PALETTE } from '../palette'
+import { SCENE_TAG } from '../post'
 import { urlParam } from '../quality'
 import { NOISE_GLSL } from '../shaders'
 
@@ -322,7 +323,16 @@ const STEEL_ROUGHNESS = 0.5
 const EDGE_ROUGHNESS = 0.38
 const STEEL_METALNESS = 0.6
 const DRIED_BLOOD = 0.5
-const IRON_PATCH = (w: WeaponId) => (s: WebGLProgramParametersWithUniforms) => {
+// Sang du Bourreau sur son arme (E7, §17.1) : par-dessus le sang séché, le sang qu'il fait couler (niveaux de
+// GoreMemory, ceux du Bourreau, plus forts sur l'arme), rouge vif et mouillé les 2 premières secondes, puis rouge
+// brun foncé ; il ne s'en va plus.
+export interface WeaponStain {
+  readonly uStainOld: { value: number }
+  readonly uStainAll: { value: number }
+}
+const WEAPON_STAIN_GAIN = 1.5
+const IRON_PATCH = (w: WeaponId, stain: WeaponStain) => (s: WebGLProgramParametersWithUniforms) => {
+  Object.assign(s.uniforms, stain)
   s.vertexShader = s.vertexShader
     .replace('#include <common>', '#include <common>\nvarying vec3 vE6Local;')
     .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vE6Local = position;')
@@ -341,6 +351,9 @@ float e6Blood( vec3 p ) {
   float n = e1Fbm( vec2( p.z * 11.0 + p.x * 7.0, p.y * 7.0 ) ) * 0.7 + e1Fbm( vec2( p.x * 23.0 - p.z * 5.0, p.y * 31.0 + 4.1 ) ) * 0.3;
   return smoothstep( 0.42, 0.5, n * ( 0.55 + 0.6 * ( ${bloodZone} ) ) );
 }
+uniform float uStainOld;
+uniform float uStainAll;
+float e7Zone( vec3 p ) { return clamp( ${bloodZone}, 0.0, 1.0 ); }
 float e6Rust( vec3 p ) {
   float n = e1Fbm( vec2( p.y * 9.0 + p.x * 13.0 + 7.3, p.z * 9.0 - p.x * 5.0 ) );
   return smoothstep( 0.5, 0.62, n );
@@ -356,19 +369,31 @@ float e6Rust( vec3 p ) {
   vec3 e6Steel = ${glsl(PALETTE.bourreau.acier)} * clamp( e6Lum / ${FER_MEAN_LUM.toFixed(4)}, 0.5, 1.5 );
   vec3 e6RustC = mix( vec3( e6Lum ), diffuseColor.rgb, ${RUST_SATURATION.toFixed(2)} ) * ${glsl(PALETTE.matiere.fer)};
   diffuseColor.rgb = mix( e6Steel, e6RustC, e6R );
-  diffuseColor.rgb = mix( diffuseColor.rgb, ${glsl(PALETTE.rougeBrun.sangAncien)} * ${DRIED_BLOOD.toFixed(2)}, e6B * 0.9 );`,
+  diffuseColor.rgb = mix( diffuseColor.rgb, ${glsl(PALETTE.rougeBrun.sangAncien)} * ${DRIED_BLOOD.toFixed(2)}, e6B * 0.9 );
+  float e7W = e7Zone( vE6Local ) * 0.75 + 0.25;
+  float e7N = smoothstep( 0.2, 0.75, e1Fbm( vec2( vE6Local.y * 14.0 + vE6Local.x * 9.0, vE6Local.z * 17.0 + 1.3 ) ) );
+  float e7All = smoothstep( e7N - 0.04, e7N + 0.04, min( 1.0, uStainAll * ${WEAPON_STAIN_GAIN.toFixed(2)} ) * e7W );
+  float e7Old = smoothstep( e7N - 0.04, e7N + 0.04, min( 1.0, uStainOld * ${WEAPON_STAIN_GAIN.toFixed(2)} ) * e7W );
+  float e7Fresh = e7All - e7Old > 0.5 ? 1.0 : 0.0;
+  diffuseColor.rgb = mix( diffuseColor.rgb, e7Fresh > 0.5 ? ${glsl(PALETTE.rougeVif)} : mix( ${glsl(PALETTE.rougeBrun.sangAncien)}, ${glsl(PALETTE.rougeBrun.sangNoir)}, 0.5 ), e7All );`,
     )
     .replace(
       '#include <roughnessmap_fragment>',
       `#include <roughnessmap_fragment>
-  roughnessFactor = mix( mix( mix( ${STEEL_ROUGHNESS.toFixed(2)}, ${EDGE_ROUGHNESS.toFixed(2)}, e6E ), roughnessFactor, e6R ), 0.5, e6B );`,
+  roughnessFactor = mix( mix( mix( ${STEEL_ROUGHNESS.toFixed(2)}, ${EDGE_ROUGHNESS.toFixed(2)}, e6E ), roughnessFactor, e6R ), 0.5, e6B );
+  roughnessFactor = mix( roughnessFactor, e7Fresh > 0.5 ? 0.16 : 0.7, e7All );`,
     )
     .replace(
       '#include <metalnessmap_fragment>',
       `#include <metalnessmap_fragment>
-  metalnessFactor = mix( ${STEEL_METALNESS.toFixed(2)}, 0.0, max( e6R, e6B ) );`,
+  metalnessFactor = mix( ${STEEL_METALNESS.toFixed(2)}, 0.0, max( max( e6R, e6B ), e7All ) );`,
     )
-    .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n  gl_FragColor.a = 0.0;')
+    // Masque des personnages et garde du rouge vif (post.ts, SCENE_TAG) : 0 ; 0,25 sur le sang frais.
+    .replace(
+      '#include <opaque_fragment>',
+      `#include <opaque_fragment>
+  gl_FragColor.a = e7All * e7Fresh > 0.5 ? ${SCENE_TAG.modeleRougeVif.toFixed(2)} : ${SCENE_TAG.modele.toFixed(2)};`,
+    )
 }
 
 const CHARACTER_MASK = (s: WebGLProgramParametersWithUniforms) => {
@@ -418,7 +443,11 @@ export interface WeaponMaps {
   readonly cuir: SetMaps
 }
 
-export const weaponMaterials = (maps: WeaponMaps, w: WeaponId): Record<WeaponPart, MeshStandardMaterial> => {
+export const weaponMaterials = (
+  maps: WeaponMaps,
+  w: WeaponId,
+  stain: WeaponStain = { uStainOld: { value: 0 }, uStainAll: { value: 0 } },
+): Record<WeaponPart, MeshStandardMaterial> => {
   // Fer noirci et rouillé : couleurs, métal et rugosité posés dans le shader (IRON_PATCH) ; la matière lit la carte fer
   // (rust_coarse_01) sans teinte, pour son détail, sa rouille, sa normale et sa rugosité.
   const fer = pbr(maps.fer, {
@@ -426,7 +455,7 @@ export const weaponMaterials = (maps: WeaponMaps, w: WeaponId): Record<WeaponPar
     normalScale: 1,
     envIntensity: 0.5,
   })
-  const iron = IRON_PATCH(w)
+  const iron = IRON_PATCH(w, stain)
   fer.onBeforeCompile = (s) => {
     iron(s)
     NEAR_LIGHT(s)
@@ -500,13 +529,14 @@ export class HeldWeapons {
   private current: WeaponId | null = null
   private readonly idMaterial: ShaderMaterial
   readonly materials: MeshStandardMaterial[] = [] // fer, bois, cuir des deux armes (reflets : layer.ts)
+  readonly stain: WeaponStain = { uStainOld: { value: 0 }, uStainAll: { value: 0 } } // sang du Bourreau (E7)
   private readonly geometries: BufferGeometry[] = []
 
   constructor(maps: WeaponMaps, playerId: number, shadows: boolean) {
     this.idMaterial = uniformIdMaterial(playerId, ROLE.autre)
     const build = (w: WeaponId): WeaponModel => {
       const geo = weaponGeometry(w)
-      const mats = weaponMaterials(maps, w)
+      const mats = weaponMaterials(maps, w, this.stain)
       const group = new Group()
       const meshes: Mesh[] = []
       for (const part of WEAPON_PARTS) {

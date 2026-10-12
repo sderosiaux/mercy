@@ -167,7 +167,9 @@ describe('matières', () => {
       const fer = compile(mats.fer as never)
       expect(fer.fragmentShader).toContain('e6Blood')
       expect(fer.fragmentShader).toContain('e6Rust')
-      expect(fer.fragmentShader).toContain('gl_FragColor.a = 0.0;')
+      // Masque des personnages (alpha 0), sauf le sang frais (0,25, sans garde du rouge vif, E7).
+      expect(fer.fragmentShader).toContain('gl_FragColor.a = e7All * e7Fresh > 0.5 ? 0.25 : 0.00;')
+      expect(fer.fragmentShader).toContain('uStainAll')
       // La retouche de la chandelle remplace la loi d'atténuation des sources ponctuelles de three.
       expect(fer.fragmentShader).toContain('e6D')
       expect(fer.fragmentShader).not.toContain('#include <lights_pars_begin>')

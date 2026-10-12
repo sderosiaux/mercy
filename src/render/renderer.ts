@@ -26,13 +26,13 @@ import {
   WebGLRenderer,
   WebGLRenderTarget,
 } from 'three'
-import { type Creature, PORTEUR_STAGE_KEY, sentenceTarget, type Vec2, type World } from '../sim/index'
-import type { AnimFrame } from './anim/machine'
+import { type Creature, PORTEUR_STAGE_KEY, sentenceTarget, TUNING, type Vec2, type World } from '../sim/index'
+import { type AnimFrame, agonyKind } from './anim/machine'
 import { BodyLayer } from './bodies'
 import { CAMERAS, type CameraPreset, cameraPose, isCameraPreset, shakeOffset } from './camera'
 import { RENDER } from './constants'
 import { buildDecor, WALL_HALF } from './decor'
-import { GoreMemory, SPARK_TICKS } from './gore'
+import { GoreMemory, PLAYER_STAIN, SPARK_TICKS } from './gore'
 import { GoreLayer } from './goreview'
 import { idMaterialFor } from './idpass'
 import { DEAD_PROXY_LAYER, LightRig } from './lightrig'
@@ -87,7 +87,9 @@ export interface RenderStats {
   readonly calls: number
   readonly triangles: number
   readonly instances: number
-  readonly decals: number
+  readonly decals: number // décalques à part (sang frais, flaques qui s'étendent)
+  readonly absorbed: number // décalques passés dans la couche du sol (E7)
+  readonly droplets: number // gouttelettes en vol
   readonly bodies: number
   readonly cpuMs: number
   readonly lights: number // lumières actives (créneaux allumés)
@@ -120,6 +122,7 @@ export interface RenderDebug {
   lights(): readonly LightInfo[] // sources actives de la dernière image
   syncFrameMs(): number // rend la dernière image et attend la fin du travail du GPU (temps de frame complet)
   models(): ModelsInfo // modèles de la Forge : chargement, temps, personnages absents (rendus en segments)
+  bloodLayer(): ReturnType<GoreLayer['layer']['inspect']> // couche du sol (E7)
   anim(id: number): AnimFrame | null // dernière pose d'un corps modélisé : clips, instants, poids (séquences)
   // Arme du Bourreau en main (E6) : prise, bout, tranchant en coordonnées monde, et orientation affichée.
   weapon(): {
@@ -234,7 +237,7 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     matterMaterials,
     shadows,
   )
-  const goreLayer = new GoreLayer(dynamic)
+  const goreLayer = new GoreLayer(dynamic, q.level === 'basse')
   const models = new ModelLayer(
     { scene: dynamic, dead: overlays[1], signals: overlays[3] },
     options.assetBase ?? assetBaseDefault(),
@@ -320,6 +323,8 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
       targeted: target === c.id,
       limbStage: c.familyData[PORTEUR_STAGE_KEY] ?? 0,
       prayerColor: praying ? PALETTE.vertMaladif : null,
+      diedStanding:
+        c.state.kind === 'mort' && agonyKind(models.memory.track(c.id), c.state.at) === 'effondrement',
     }
   }
 
@@ -403,6 +408,7 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
         targeted: target === c.id,
         sink: sinkK * 0.6,
         visible: shown,
+        stain: gore.stain(c.id, t),
       }
       if (models.creature(c, pos, facing, modelCtx)) {
         if (shown) bodies.ground(c, pos, facing, t, world, target)
@@ -410,8 +416,8 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
       }
       if (!shown) continue
       let body: Body
-      if (c.state.kind === 'mort' && (c.spawn?.state === 'mort' || t - c.state.at >= RENDER.grisTicks)) {
-        // Un mort entièrement gris ne change plus : sa pose est mise en cache.
+      if (c.state.kind === 'mort' && (c.spawn?.state === 'mort' || t - c.state.at >= TUNING.agonie)) {
+        // Un mort dont l'agonie est finie ne change plus : sa pose est mise en cache.
         const key = `${c.state.at}|${pos.x}|${pos.z}|${facing}|${c.cicatrices}|${c.family}`
         const hit = deadCache.get(c.id)
         if (hit && hit.key === key) body = hit.body
@@ -431,7 +437,7 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
       // coup ; à défaut de mondes observés, celle de la simulation interpolée.
       const pfacing = models.memory.playerFacing.at(t) ?? lerpAngle(ppPrev.facing, pp.facing, alpha)
       lastPlayerFacing = pfacing
-      if (!models.player(ppos, pfacing, t, PLAYER_ID, pp.weapon)) {
+      if (!models.player(ppos, pfacing, t, PLAYER_ID, pp.weapon, gore.stain(PLAYER_STAIN, t))) {
         const speed = (Math.hypot(pp.pos.x - ppPrev.pos.x, pp.pos.z - ppPrev.pos.z) * 60) / dt
         const pb = playerBody(pp, ppos, pfacing, t, speed)
         list.push(pb)
@@ -445,7 +451,7 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
       bodies.spark(s.x, s.z, s.born, age, camera.quaternion)
     }
     bodies.end()
-    goreLayer.update(gore, t)
+    goreLayer.update(gore, t, camera.quaternion)
     lastBodies = list
 
     // Lumières : sources fixes du décor et sources des entités visibles (une entité masquée emporte sa lumière).
@@ -484,6 +490,7 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     fixedLightUniforms.uCamPosW.value.copy(camera.position)
 
     const p = post as PostPipeline
+    goreLayer.stamp(gl, gore, t) // couche du sol : le sang absorbé depuis l'image précédente
     p.renderScene(gl, scene, camera)
     p.compose(gl, camera, t, frame.fog, true)
     drawOverlays()
@@ -657,6 +664,8 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
         triangles: gl.info.render.triangles,
         instances: bodies.instances,
         decals: gore.decals.length,
+        absorbed: gore.absorbed.length,
+        droplets: gore.droplets.length,
         bodies: lastBodies.length + models.count,
         cpuMs: lastCpu,
         lights: lastLights.filter((l) => l.weight > 0).length,
@@ -690,6 +699,7 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
       },
       lights: () => lastLights,
       models: () => models.info(),
+      bloodLayer: () => goreLayer.layer.inspect(gl),
       anim: (id) => models.frame(id),
       weapon: () => {
         const w = models.weaponPose()

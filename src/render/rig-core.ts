@@ -36,6 +36,7 @@ export interface RigContext {
   readonly targeted: boolean // cible de Sentence sous le curseur (§21)
   readonly limbStage: number // stade du sac (Porteur)
   readonly prayerColor: number | null // halo en prière (Confesseur)
+  readonly diedStanding?: boolean // mort debout (variante B, Union) : il tombe pendant son agonie (E7)
 }
 
 // ---------------------------------------------------------------------------------------------------------

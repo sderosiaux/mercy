@@ -4,7 +4,9 @@
 // d'animation (évènements observés) et de l'horloge de rendu en ticks.
 //
 // - vivant : maillage à squelette éclairé (scène), liseré et marques dans la couche des signaux ;
-// - mort : pose du tick de la mort, cuite une fois dans le lot des morts de son personnage (gris, lumière fixe) ;
+// - mort : pendant l'agonie (TUNING.agonie), le corps allégé sur son squelette s'effondre et grisit dans la couche
+//   des morts ; puis la dernière pose de l'agonie, cuite une fois dans le lot des morts de son personnage (gris,
+//   lumière fixe), et plus rien ne bouge ;
 // - Membre errant : le bras du propriétaire, découpé du modèle, qui vit à part (le bras disparaît du corps) ;
 // - Bourreau : le modèle `bourreau` du manifeste, sinon ses segments ; son arme courante en main (weapons.ts).
 import {
@@ -17,10 +19,11 @@ import {
   type MeshStandardMaterial,
   type Object3D,
   type ShaderMaterial,
-  type SkinnedMesh,
+  SkinnedMesh,
   Sphere,
   type Texture,
   Vector3,
+  type Vector4,
 } from 'three'
 import {
   type Creature,
@@ -30,11 +33,20 @@ import {
   type WeaponId,
   type World,
 } from '../../sim/index'
-import { type AnimFrame, animate, deathFrame, type MachineInput, phase01 } from '../anim/machine'
+import {
+  AGONY_TICKS,
+  type AnimFrame,
+  agonyFrame,
+  animate,
+  deathFrame,
+  type MachineInput,
+  phase01,
+} from '../anim/machine'
 import { AnimMemory, PLAYER_TRACK } from '../anim/memory'
+import type { StainState } from '../gore'
 import { encodeId, ROLE } from '../idpass'
 import { DEAD_PROXY_LAYER } from '../lightrig'
-import { greyMix, rimOf, sacColor, sacLuminanceOnly } from '../look'
+import { agonyProgress, greyMix, rimOf, sacColor, sacLuminanceOnly } from '../look'
 import { PALETTE } from '../palette'
 import { urlParam } from '../quality'
 import { type ClassShift, parseShiftOverride, shiftFor, withOverrides } from './classes'
@@ -71,7 +83,16 @@ export interface ModelDrawContext {
   readonly targeted: boolean
   readonly sink: number // m
   readonly visible: boolean
+  readonly stain: StainState // sang sur le corps (E7, GoreMemory.stain)
 }
+
+// Poids des taches par région (ailleurs, bras, tablier) et part de noir du sang séché : une créature est tachée
+// partout, d'un sang séché rouge brun ; le Bourreau se tache surtout aux bras et au tablier, et son sang noircit
+// (§17.1).
+// Instrument (E7, mesure) : `taches=0` ne pose aucune tache de sang sur les corps.
+const NO_STAIN = urlParam('taches') === '0'
+const STAIN_CREATURE = [0.85, 0.85, 0.85, 0] as const
+const STAIN_BOURREAU = [0.45, 1, 1, 0.45] as const
 
 export interface ModelsInfo {
   readonly manifestError: string | null
@@ -92,6 +113,7 @@ export interface ModelsInfo {
   }[]
   readonly living: number
   readonly corpses: number
+  readonly dying: number // corps en agonie (E7)
   readonly weapons: HeldWeaponsInfo | null // armes du Bourreau en main
 }
 
@@ -138,6 +160,34 @@ interface Living {
   readonly marks: SkinnedMesh
   readonly shadow: SkinnedMesh | null // doublure d'ombre (caméras d'ombre seulement)
   readonly materials: Material[]
+  agony: AgonyMesh | null // corps allégé dans la matière des morts, sur le même squelette (créé à la 1re agonie)
+}
+
+// Corps qui agonise (E7) : la version allégée sur le squelette de l'instance, dans la matière des morts (peau).
+interface AgonyMesh {
+  readonly mesh: SkinnedMesh
+  readonly inst: { value: Vector4 } // (id >> 8, id & 255, -, passage au gris)
+  readonly materials: Material[]
+}
+
+// Pose finale d'un mort, cuite (dernière image de l'agonie) : ce qui entre dans le lot des morts.
+interface Baked {
+  readonly data: BakedCorpse
+  readonly segments: ModelSegment[]
+  readonly settle: number // m : la pose finale repose à 1 cm au-dessus de la boue
+}
+
+interface Dying {
+  readonly l: Living
+  readonly asset: ModelAsset
+  readonly deathTick: number
+  readonly final: Baked
+}
+
+interface MembreDying {
+  readonly mesh: Mesh
+  readonly inst: { value: Vector4 }
+  readonly materials: Material[]
 }
 
 interface ArmPiece {
@@ -174,6 +224,9 @@ export class ModelLayer {
   private readonly pool = new Map<string, Living[]>()
   private readonly membres = new Map<number, Membre>()
   private readonly corpses = new Map<number, Corpse>()
+  private readonly dying = new Map<number, Dying>() // corps en agonie (E7)
+  private readonly seenDying = new Set<number>()
+  private readonly membresDying = new Map<number, MembreDying>()
   private readonly batches = new Map<string, DeadBatch>()
   private readonly arms = new Map<string, ArmPiece>()
   private readonly used = new Set<number>()
@@ -275,6 +328,8 @@ export class ModelLayer {
   private clearCorpses(): void {
     for (const b of this.batches.values()) b.clear()
     this.corpses.clear()
+    for (const id of [...this.dying.keys()]) this.endAgony(id)
+    for (const id of [...this.membresDying.keys()]) this.dropMembreDying(id)
   }
 
   begin(): void {
@@ -282,6 +337,7 @@ export class ModelLayer {
     this.used.clear()
     this.usedMembres.clear()
     this.seenCorpses.clear()
+    this.seenDying.clear()
     this.segs.clear()
   }
 
@@ -315,6 +371,7 @@ export class ModelLayer {
       marks,
       shadow,
       materials: [body, depth, bodyId, markM, markId, ...rim.materials],
+      agony: null,
     }
   }
 
@@ -427,6 +484,7 @@ export class ModelLayer {
     u.uHaloTint.value.setHex(praying ? PALETTE.vertMaladif : PALETTE.habit.haloConfesseur)
     u.uHaloGlow.value = praying ? HALO_GLOW : 0
     u.uSeams.value = c.cicatrices
+    this.setStain(u, ctx.stain, STAIN_CREATURE, asset)
     // Liseré (Abattu) et marques dorées (Résistant).
     const rim = rimOf(c, ctx.t, ctx.targeted)
     if (rim) {
@@ -443,8 +501,29 @@ export class ModelLayer {
     return true
   }
 
-  // Le Bourreau, son arme courante en main (null : aucune).
-  player(pos: Vec2, facing: number, t: number, id: number, weapon: WeaponId | null): boolean {
+  // w : poids (ailleurs, bras, tablier) et part de noir du sang séché.
+  private setStain(
+    u: ModelUniforms,
+    s: StainState,
+    w: readonly [number, number, number, number],
+    asset: ModelAsset,
+  ): void {
+    u.uStainOld.value = NO_STAIN ? 0 : s.old
+    u.uStainAll.value = NO_STAIN ? 0 : s.all
+    u.uStainWeights.value.set(w[0], w[1], w[2])
+    u.uStainDark.value = w[3]
+    u.uStainHeight.value = asset.entry.hauteurM ?? 2
+  }
+
+  // Le Bourreau, son arme courante en main (null : aucune), taché du sang qu'il fait couler.
+  player(
+    pos: Vec2,
+    facing: number,
+    t: number,
+    id: number,
+    weapon: WeaponId | null,
+    stain: StainState = { old: 0, all: 0 },
+  ): boolean {
     const asset = this.asset('bourreau')
     if (!asset) return false
     const l = this.acquire(id, asset)
@@ -462,6 +541,11 @@ export class ModelLayer {
     l.inst.place(pos.x, pos.z, facing, 1)
     this.boundShadow(l, pos, asset.entry.hauteurM ?? 2, 1)
     this.holdWeapon(l.inst, asset, weapon)
+    this.setStain(l.u, stain, STAIN_BOURREAU, asset)
+    if (this.weapons) {
+      this.weapons.stain.uStainOld.value = stain.old
+      this.weapons.stain.uStainAll.value = stain.all
+    }
     this.frames.set(id, frame)
     l.inst.pose(frame, t, id)
     this.showRim(l.rim, false)
@@ -535,7 +619,7 @@ export class ModelLayer {
       b = new DeadBatch(
         this.layers.dead,
         this.layers.scene,
-        deadMaterial(asset.map, asset.meanLum),
+        deadMaterial(asset.map, asset.meanLum, 'batch', this.shift(asset.id)),
         deadIdMaterial(),
         verts,
         index,
@@ -548,28 +632,19 @@ export class ModelLayer {
     return b
   }
 
-  private corpse(c: Creature, asset: ModelAsset, pos: Vec2, facing: number, ctx: ModelDrawContext): boolean {
-    let corpse = this.corpses.get(c.id)
-    if (!corpse) {
-      const deathTick = c.state.kind === 'mort' ? c.state.at : ctx.t
-      // La pose du tick de la mort, sur une instance de passage (celle du vivant si elle existe).
-      const l = this.living.get(c.id) ?? this.pool.get(asset.id)?.pop() ?? this.createLiving(asset)
-      if (this.living.get(c.id) === l) this.living.delete(c.id)
-      const inp = this.machineInput(c, asset, pos, facing, { ...ctx, t: deathTick })
-      l.inst.place(pos.x, pos.z, facing, TUNING.cicatriceSizeMul ** c.cicatrices)
-      const df = deathFrame(inp, this.memory.track(c.id)?.deathTick ?? deathTick)
-      this.frames.set(c.id, df)
-      l.inst.pose(df, deathTick, c.id)
-      const baked = l.inst.bake(asset.lod)
-      const shadow = l.inst.bake(asset.lodShadow)
-      // Un mort repose sur le sol : la pose figée est posée à 1 cm au-dessus de la boue (une pose couchée de la Forge
-      // passe parfois sous le sol, qui la trouerait ; un corps figé en l'air retombe au contact).
-      const settle = CORPSE_CLEARANCE_M - minY(baked.positions)
-      liftY(baked.positions, settle)
-      liftY(shadow.positions, settle)
-      const lod = asset.lod
-      const sIndex = asset.lodShadow.getIndex() as BufferAttribute
-      const corpseData: BakedCorpse = {
+  // Pose finale d'un mort sur l'instance (déjà posée, racine à y = 0), cuite sur le CPU : version allégée et doublure
+  // d'ombre, posées à 1 cm au-dessus de la boue (une pose couchée de la Forge passe parfois sous le sol, qui la
+  // trouerait ; un corps figé en l'air retombe au contact).
+  private bakeFinal(c: Creature, asset: ModelAsset, l: Living): Baked {
+    const baked = l.inst.bake(asset.lod)
+    const shadow = l.inst.bake(asset.lodShadow)
+    const settle = CORPSE_CLEARANCE_M - minY(baked.positions)
+    liftY(baked.positions, settle)
+    liftY(shadow.positions, settle)
+    const lod = asset.lod
+    const sIndex = asset.lodShadow.getIndex() as BufferAttribute
+    return {
+      data: {
         positions: baked.positions,
         normals: baked.normals,
         uv: Float32Array.from(lod.getAttribute('uv').array),
@@ -579,27 +654,76 @@ export class ModelLayer {
         index: Uint32Array.from((lod.getIndex() as BufferAttribute).array),
         shadowPositions: shadow.positions,
         shadowIndex: Uint32Array.from(sIndex.array),
+      },
+      segments: this.boneSegments(l.inst, l.inst.boneMatrices(), settle),
+      settle,
+    }
+  }
+
+  // Corps allégé d'une instance, dans la matière des morts (peau), créé à la première agonie de l'instance.
+  private agonyMesh(l: Living, asset: ModelAsset, resistant: boolean): AgonyMesh {
+    if (!l.agony) {
+      const g = asset.lod.clone()
+      // Les marques d'un Résistant : posées à chaque agonie (attribut aMark de la version allégée, ou zéro).
+      g.setAttribute(
+        'aMark',
+        new BufferAttribute(new Float32Array(asset.lod.getAttribute('position').count), 1),
+      )
+      const material = deadMaterial(asset.map, asset.meanLum, 'skin', this.shift(asset.id))
+      const inst = material.uniforms.uInst as { value: Vector4 }
+      const id = deadIdMaterial('skin', inst)
+      const mesh = new SkinnedMesh(g, material)
+      mesh.bind(l.inst.mesh.skeleton, l.inst.mesh.bindMatrix)
+      mesh.frustumCulled = false
+      mesh.matrixAutoUpdate = false
+      mesh.userData.idMaterial = id
+      l.agony = { mesh, inst, materials: [material, id] }
+    }
+    const a = l.agony
+    const mark = a.mesh.geometry.getAttribute('aMark') as BufferAttribute
+    const src = asset.lod.getAttribute('aMark')
+    for (let i = 0; i < mark.count; i++) mark.setX(i, resistant && src ? src.getX(i) : 0)
+    mark.needsUpdate = true
+    return a
+  }
+
+  // Un mort. Pendant son agonie, son corps s'effondre et grisit (E7) ; ensuite, sa pose finale est cuite dans le lot.
+  private corpse(c: Creature, asset: ModelAsset, pos: Vec2, facing: number, ctx: ModelDrawContext): boolean {
+    const deathTick = c.state.kind === 'mort' ? c.state.at : ctx.t
+    const placed = c.spawn?.state === 'mort'
+    if (!placed && !this.corpses.has(c.id) && ctx.t < deathTick + AGONY_TICKS)
+      return this.agonize(c, asset, pos, facing, ctx, deathTick)
+    let corpse = this.corpses.get(c.id)
+    if (!corpse) {
+      const d = this.dying.get(c.id)
+      let final: Baked
+      if (d) {
+        final = d.final
+        this.endAgony(c.id)
+      } else {
+        // Vu pour la première fois après son agonie (ou placé mort) : la pose finale, sur une instance de passage.
+        const l = this.living.get(c.id) ?? this.pool.get(asset.id)?.pop() ?? this.createLiving(asset)
+        if (this.living.get(c.id) === l) this.living.delete(c.id)
+        l.inst.place(pos.x, pos.z, facing, TUNING.cicatriceSizeMul ** c.cicatrices)
+        const df = deathFrame(this.machineInput(c, asset, pos, facing, { ...ctx, t: deathTick }), deathTick)
+        l.inst.pose(df, deathTick + AGONY_TICKS, c.id)
+        final = this.bakeFinal(c, asset, l)
+        this.toPool(l)
       }
+      const lod = asset.lod
       const b = this.batch(
         asset.id,
         asset,
         lod.getAttribute('position').count,
         (lod.getIndex() as BufferAttribute).count,
         asset.lodShadow.getAttribute('position').count,
-        sIndex.count,
+        (asset.lodShadow.getIndex() as BufferAttribute).count,
       )
-      b.add(c.id, corpseData)
-      corpse = { batch: b, segments: this.boneSegments(l.inst, l.inst.boneMatrices(), settle) }
+      b.add(c.id, final.data)
+      corpse = { batch: b, segments: final.segments }
       this.corpses.set(c.id, corpse)
-      // L'instance retourne au réservoir.
-      this.layers.scene.remove(l.inst.root)
-      if (l.shadow) this.layers.scene.remove(l.shadow)
-      this.showRim(l.rim, false)
-      this.layers.signals.remove(l.marks)
-      const list = this.pool.get(asset.id) ?? []
-      list.push(l)
-      this.pool.set(asset.id, list)
     }
+    this.frames.delete(c.id)
     this.seenCorpses.add(c.id)
     corpse.batch.setState(c.id, greyMix(c, ctx.t), -ctx.sink, ctx.visible)
     if (ctx.visible)
@@ -616,6 +740,73 @@ export class ModelLayer {
         }),
       )
     return true
+  }
+
+  // L'agonie d'un corps (L4, E7) : l'instance du vivant (ou une instance de passage) garde son squelette ; son corps
+  // éclairé quitte la scène, le corps allégé dans la matière des morts le remplace, posé par agonyFrame et grisé par
+  // agonyProgress. La pose finale est cuite dès le début : pendant l'agonie, le corps descend (ou remonte) vers
+  // la hauteur où elle repose, et la dernière image est exactement ce que le lot montrera ensuite.
+  private agonize(
+    c: Creature,
+    asset: ModelAsset,
+    pos: Vec2,
+    facing: number,
+    ctx: ModelDrawContext,
+    deathTick: number,
+  ): boolean {
+    const k = TUNING.cicatriceSizeMul ** c.cicatrices
+    const inp = (t: number): MachineInput => this.machineInput(c, asset, pos, facing, { ...ctx, t })
+    let d = this.dying.get(c.id)
+    if (!d) {
+      const l = this.living.get(c.id) ?? this.pool.get(asset.id)?.pop() ?? this.createLiving(asset)
+      if (this.living.get(c.id) === l) this.living.delete(c.id)
+      this.layers.scene.remove(l.inst.root)
+      this.showRim(l.rim, false)
+      this.layers.signals.remove(l.marks)
+      l.inst.place(pos.x, pos.z, facing, k)
+      l.inst.pose(deathFrame(inp(deathTick), deathTick), deathTick + AGONY_TICKS, c.id)
+      d = { l, asset, deathTick, final: this.bakeFinal(c, asset, l) }
+      this.dying.set(c.id, d)
+      const a = this.agonyMesh(l, asset, c.resistant)
+      this.layers.dead.add(a.mesh)
+      if (l.shadow) this.layers.scene.add(l.shadow)
+    }
+    this.seenDying.add(c.id)
+    const { l } = d
+    const u = agonyProgress(c, ctx.t)
+    const lift = d.final.settle * u * u * (3 - 2 * u)
+    l.inst.place(pos.x, pos.z, facing, k, lift - ctx.sink)
+    const frame = agonyFrame(inp(ctx.t), deathTick, ctx.t)
+    this.frames.set(c.id, frame)
+    l.inst.pose(frame, ctx.t, c.id)
+    this.boundShadow(l, pos, asset.entry.hauteurM ?? 2, k)
+    const a = l.agony as AgonyMesh
+    const [r, g] = encodeId(c.id, 0)
+    a.inst.value.set(r / 255, g / 255, 0, greyMix(c, ctx.t))
+    a.mesh.visible = ctx.visible
+    if (l.shadow) l.shadow.visible = ctx.visible
+    if (ctx.visible) this.segs.set(c.id, this.boneSegments(l.inst))
+    return true
+  }
+
+  // Fin de l'agonie (ou corps sorti du monde) : l'instance retourne au réservoir.
+  private endAgony(id: number): void {
+    const d = this.dying.get(id)
+    if (!d) return
+    this.dying.delete(id)
+    if (d.l.agony) this.layers.dead.remove(d.l.agony.mesh)
+    if (d.l.shadow) d.l.shadow.visible = true
+    this.toPool(d.l)
+  }
+
+  private toPool(l: Living): void {
+    this.layers.scene.remove(l.inst.root)
+    if (l.shadow) this.layers.scene.remove(l.shadow)
+    this.showRim(l.rim, false)
+    this.layers.signals.remove(l.marks)
+    const list = this.pool.get(l.inst.asset.id) ?? []
+    list.push(l)
+    this.pool.set(l.inst.asset.id, list)
   }
 
   // ---------------------------------------------------------------------------------------------------------
@@ -678,6 +869,7 @@ export class ModelLayer {
     copy('normal', 3)
     copy('uv', 2)
     copy('aOutline', 3)
+    copy('aRest', 3)
     geo.setAttribute('aPart', new BufferAttribute(new Float32Array(verts.length), 1))
     geo.setAttribute('aMark', new BufferAttribute(new Float32Array(verts.length), 1))
     geo.setAttribute('aSeams', new BufferAttribute(new Float32Array(verts.length * 3), 3))
@@ -705,16 +897,45 @@ export class ModelLayer {
     if (!piece) return false
     const key = `${asset.id}:${side}`
     const dead = c.state.kind === 'mort'
-    // Pose : le bras rampe (L1, §8.4) ; mort, il se fige au tick de sa mort.
-    const t = dead && c.state.kind === 'mort' ? c.state.at : ctx.t
+    // Pose : le bras rampe (L1, §8.4) ; mort, il a un dernier spasme pendant l'agonie (E7 : le battement monte puis
+    // s'éteint), puis il se fige, à plat.
+    const placedDead = c.spawn?.state === 'mort'
+    const u = dead ? (placedDead ? 1 : agonyProgress(c, ctx.t)) : 0
+    const t = c.state.kind === 'mort' ? c.state.at + u * AGONY_TICKS : ctx.t
+    const amp = dead ? (1 - u) * (1 + 2 * Math.sin(Math.PI * u)) : 1
     const s = t / 60
-    const wig = 0.25 * Math.sin(Math.PI * 2 * 1.7 * s + phase01(c.id, 21) * 6.28)
-    const roll = 0.12 * Math.sin(Math.PI * 2 * 3.3 * s + phase01(c.id, 22) * 6.28)
+    const wig = amp * 0.25 * Math.sin(Math.PI * 2 * 1.7 * s + phase01(c.id, 21) * 6.28)
+    const roll = amp * 0.12 * Math.sin(Math.PI * 2 * 3.3 * s + phase01(c.id, 22) * 6.28)
     const m = new Matrix4()
       .makeTranslation(pos.x, -ctx.sink, pos.z)
       .multiply(new Matrix4().makeRotationY(Math.PI / 2 - facing + wig))
       .multiply(new Matrix4().makeRotationX(roll))
+    if (dead && !placedDead && !this.corpses.has(c.id) && u < 1) {
+      // Agonie : la pièce de bras dans la matière des morts (maillage), qui grisit.
+      let md = this.membresDying.get(c.id)
+      if (!md) {
+        const material = deadMaterial(asset.map, asset.meanLum, 'mesh', this.shift(asset.id))
+        const inst = material.uniforms.uInst as { value: Vector4 }
+        const id = deadIdMaterial('mesh', inst)
+        const mesh = new Mesh(piece.geometry, material)
+        mesh.matrixAutoUpdate = false
+        mesh.frustumCulled = false
+        mesh.userData.idMaterial = id
+        this.layers.dead.add(mesh)
+        md = { mesh, inst, materials: [material, id] }
+        this.membresDying.set(c.id, md)
+      }
+      this.seenDying.add(c.id)
+      md.mesh.matrix.copy(m)
+      md.mesh.matrixWorldNeedsUpdate = true
+      const [r, g] = encodeId(c.id, 0)
+      md.inst.value.set(r / 255, g / 255, 0, greyMix(c, ctx.t))
+      md.mesh.visible = ctx.visible
+      if (ctx.visible) this.segs.set(c.id, [this.pieceSegment(piece, m)])
+      return true
+    }
     if (dead) {
+      this.dropMembreDying(c.id)
       if (!this.corpses.has(c.id)) {
         const p = piece.geometry.getAttribute('position')
         const nrm = piece.geometry.getAttribute('normal')
@@ -781,6 +1002,7 @@ export class ModelLayer {
       mb.u.uExtrude.value = rim.strong ? RIM_STRONG_M : RIM_M
     }
     this.showRim(mb.rim, rim !== null)
+    this.setStain(mb.u, ctx.stain, STAIN_CREATURE, asset)
     idVec(mb.u.uIdBody, c.id, ROLE.corps)
     idVec(mb.u.uIdRim, c.id, ROLE.lisere)
     this.segs.set(c.id, [this.pieceSegment(piece, m)])
@@ -802,6 +1024,14 @@ export class ModelLayer {
     return { part: 'membre', matrix, corners }
   }
 
+  private dropMembreDying(id: number): void {
+    const md = this.membresDying.get(id)
+    if (!md) return
+    this.layers.dead.remove(md.mesh)
+    for (const m of md.materials) m.dispose()
+    this.membresDying.delete(id)
+  }
+
   private dropMembre(id: number, mb: Membre): void {
     this.layers.scene.remove(mb.mesh)
     this.showRim(mb.rim, false)
@@ -812,6 +1042,9 @@ export class ModelLayer {
   end(): void {
     for (const [id, l] of [...this.living]) if (!this.used.has(id)) this.release(id, l)
     for (const [id, mb] of [...this.membres]) if (!this.usedMembres.has(id)) this.dropMembre(id, mb)
+    // Un corps en agonie qui n'est plus dans le monde (rembobinage) rend son instance.
+    for (const id of [...this.dying.keys()]) if (!this.seenDying.has(id)) this.endAgony(id)
+    for (const id of [...this.membresDying.keys()]) if (!this.seenDying.has(id)) this.dropMembreDying(id)
     // Un mort qui n'est plus dans le monde (enfoncé au-delà de 250, rembobinage) quitte son lot.
     for (const [id, corpse] of [...this.corpses]) {
       if (this.seenCorpses.has(id)) continue
@@ -843,7 +1076,7 @@ export class ModelLayer {
   }
 
   get count(): number {
-    return this.used.size + this.usedMembres.size + this.seenCorpses.size
+    return this.used.size + this.usedMembres.size + this.seenCorpses.size + this.seenDying.size
   }
 
   info(): ModelsInfo {
@@ -869,15 +1102,19 @@ export class ModelLayer {
       })),
       living: this.used.size,
       corpses: this.corpses.size,
+      dying: this.dying.size + this.membresDying.size,
       weapons: this.weapons?.info() ?? null,
     }
   }
 
   dispose(): void {
     for (const [id, l] of [...this.living]) this.release(id, l)
+    for (const id of [...this.dying.keys()]) this.endAgony(id)
+    for (const id of [...this.membresDying.keys()]) this.dropMembreDying(id)
     for (const list of this.pool.values())
       for (const l of list) {
         for (const m of l.materials) m.dispose()
+        for (const m of l.agony?.materials ?? []) m.dispose()
         l.inst.dispose()
       }
     for (const [id, mb] of [...this.membres]) this.dropMembre(id, mb)
