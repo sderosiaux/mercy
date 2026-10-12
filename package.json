@@ -12,6 +12,8 @@
     "lint": "biome check src scripts",
     "deps": "depcruise src scripts --config .dependency-cruiser.cjs",
     "determinism": "tsx scripts/check-determinism.ts",
+    "sim": "tsx scripts/sim.ts",
+    "bots": "tsx scripts/bots.ts",
     "test": "vitest run",
     "gates": "pnpm typecheck && pnpm lint && pnpm deps && pnpm determinism && pnpm test"
   },
