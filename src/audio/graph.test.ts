@@ -5,11 +5,15 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
-  CUT_RAMP_S,
+  AGONIE_END_S,
+  AGONIE_TICKS,
+  AGONY_ATTACK_S,
+  AGONY_DECAY_FROM_S,
   dbToGain,
   MASTER_DB,
-  QUANTUM_S,
   SOFT_FADE_S,
+  STRANGLE_RATE,
+  STRANGLE_S,
   VOICE_DUCK_ATTACK_S,
   VOICE_DUCK_DB,
   VOICE_DUCK_RELEASE_S,
@@ -72,6 +76,25 @@ const phase = (slot: number, id: number, file: string, muffled = false): Cmd => 
   muffled,
   file,
 })
+// Mort : la couche vivante tenue dans `slot` (null : aucune) s'éteint ; le râle `file` joue sur la piste `lane` (null :
+// mort sans râle).
+const agony = (
+  slot: number | null,
+  lane: number | null,
+  id: number,
+  file: string | null,
+  muffled = false,
+): Cmd => ({
+  t: 'voice-agony',
+  slot,
+  lane,
+  id,
+  rank: 1,
+  file,
+  rate: 1,
+  muffled,
+  pos,
+})
 
 // Gains des lectures de fichier (une par source) : les GainNode directement alimentés par une source.
 const partsOf = (): { src: FakeSourceNode; gain: FakeParam }[] =>
@@ -122,7 +145,7 @@ describe('drapeau 1 B5 : changements de fichier rapprochés sur une même voix',
     expect(() => at(43, 1.502, [phase(0, 1, 'cri-05', true)])).not.toThrow()
   })
 
-  it('fins, coupures, absorption, nappe et atténuation pendant un fondu enchaîné : aucune exception', () => {
+  it('fins, agonies, absorption, nappe et atténuation pendant un fondu enchaîné : aucune exception', () => {
     at(1, 0.1, [start(0, 1, 'cri-01'), start(1, 2, 'cri-02'), start(2, 3, 'cri-03')])
     at(2, 0.12, [
       phase(0, 1, 'cri-etouffe-01', true),
@@ -130,10 +153,10 @@ describe('drapeau 1 B5 : changements de fichier rapprochés sur une même voix',
       phase(2, 3, 'cri-etouffe-03', true),
     ])
     const seq: [number, number, Cmd[]][] = [
-      // mort pendant le fondu enchaîné (coupure), fin douce pendant le fondu (vol), puis mort pendant la fin douce
-      [3, 0.13, [{ t: 'voice-end', slot: 0, id: 1, mode: 'cut', cause: 'mort' }]],
+      // mort pendant le fondu enchaîné (agonie), fin douce pendant le fondu (vol), puis mort pendant la fin douce
+      [3, 0.13, [{ t: 'death', id: 1 }, agony(0, 0, 1, 'rale-etouffe-01', true)]],
       [3, 0.13, [{ t: 'voice-end', slot: 1, id: 2, mode: 'fade', cause: 'vol' }]],
-      [4, 0.15, [{ t: 'voice-end', slot: 1, id: 2, mode: 'cut', cause: 'mort' }]],
+      [4, 0.15, [{ t: 'death', id: 2 }, agony(null, 1, 2, 'rale-02')]],
       // expulsion juste après une absorption, puis relèvement
       [4, 0.15, [phase(2, 3, 'cri-03')]],
       [5, 0.16, [{ t: 'voice-end', slot: 2, id: 3, mode: 'fade', cause: 'relevement' }]],
@@ -144,7 +167,7 @@ describe('drapeau 1 B5 : changements de fichier rapprochés sur une même voix',
         0.17,
         [{ t: 'src-end', key: '9:chant:5', id: 9, mode: 'fade', cause: 'fin-action', strangle: true }],
       ],
-      [7, 0.18, [{ t: 'src-end', key: '9:chant:5', id: 9, mode: 'cut', cause: 'mort', strangle: false }]],
+      [7, 0.18, [{ t: 'death', id: 9 }]],
       // nappe : N = 1 → 0 (extinction de 2 s), puis N remonte pendant l'extinction, puis retombe
       [0, 0.0, [{ t: 'nappe', n: 1, prev: -1 }]],
       [8, 0.2, [{ t: 'nappe', n: 0, prev: 1 }]],
@@ -158,27 +181,133 @@ describe('drapeau 1 B5 : changements de fichier rapprochés sur une même voix',
       [13, 1.002, [{ t: 'duck-extend', releaseAt: 1.402 }]],
     ]
     for (const [tick, now, cmds] of seq) expect(() => at(tick, now, cmds)).not.toThrow()
-    // La coupure arrête toutes les lectures de la voix morte, fondu enchaîné compris, au bout de la rampe.
+    // L'agonie étrangle toutes les lectures de la voix morte, fondu enchaîné compris, et le râle se tait à la fin
+    // programmée : rien du mort ne sonne après.
     const dead = [...sourcesOf('cri-01'), ...sourcesOf('cri-etouffe-01')]
     expect(dead).toHaveLength(2)
-    for (const s of dead) expect(s.stopAt).toBeLessThanOrEqual(0.13 + CUT_RAMP_S + 1e-12)
+    for (const s of dead) expect(s.stopAt).toBeLessThanOrEqual(0.13 + XFADE_S + 1e-12)
+    expect(sourcesOf('rale-etouffe-01')[0]?.stopAt).toBeCloseTo(0.13 + AGONIE_END_S, 9)
+    // Mort pendant la fin douce d'une voix volée : le fondu (déjà plus court que l'agonie) suit son cours, le râle part
+    // seul sur sa piste et se tait à la fin de l'agonie.
+    expect(sourcesOf('cri-02')[0]?.stopAt).toBeLessThanOrEqual(0.15 + AGONIE_END_S)
+    expect(sourcesOf('rale-02')[0]?.startAt).toBe(0.15)
+    expect(sourcesOf('rale-02')[0]?.stopAt).toBeCloseTo(0.15 + AGONIE_END_S, 9)
+    // Mort pendant l'étranglement d'une prière (1 s) : il se tait à la fin de l'agonie.
+    expect(sourcesOf('etranglement')[0]?.stopAt).toBeCloseTo(0.18 + AGONIE_END_S, 9)
+    expect(graph.log.sources.find((x) => x.kind === 'chant')?.diedDuringFade).toEqual({ tick: 7, time: 0.18 })
   })
 })
 
-describe('emplacement coupé et réattribué au même tick (B5.O1, O8 b)', () => {
-  it('la voix suivante démarre deux quanta après la coupure : la rampe, puis un quantum muet sur l’emplacement', () => {
+describe('passage au râle : couche vivante dans son emplacement, râle sur sa piste (L4, §19, B5 A4, A19, O1, O8 b)', () => {
+  // Les gains qui alimentent un nœud.
+  const feeders = (n: unknown) => ctx.nodes.filter((x) => x.outputs.has(n as never))
+
+  it('la couche vivante s’éteint dans son emplacement, le râle part sur sa piste ; la chute du même tick prend l’emplacement à la fin de l’extinction', () => {
     at(100, 2.0, [start(5, 1, 'cri-01')])
-    at(200, 3.0, [
-      { t: 'voice-end', slot: 5, id: 1, mode: 'cut', cause: 'mort' },
-      start(5, 2, 'cri-02', 'halètement'),
-    ])
-    const old = sourcesOf('cri-01')[0]
+    at(200, 3.0, [agony(5, 0, 1, 'rale-01'), start(5, 2, 'cri-02', 'halètement')])
+    // La voix neuve est attribuée au tick de la chute (journal) et sonne quand la couche vivante du mort s'est tue.
     const neu = sourcesOf('cri-02')[0]
-    expect(old?.stopAt).toBeCloseTo(3.0 + CUT_RAMP_S, 9)
-    expect(neu?.startAt).toBeCloseTo(3.0 + CUT_RAMP_S + QUANTUM_S, 9)
+    expect(neu?.startAt).toBeCloseTo(3.0 + STRANGLE_S, 12)
     const log = graph.log.sources.find((s) => s.id === 2)
     expect(log?.startTick).toBe(200)
-    expect(log?.startTime).toBeCloseTo(3.0 + CUT_RAMP_S + QUANTUM_S, 9)
+    expect(log?.startTime).toBeCloseTo(3.0 + STRANGLE_S, 12)
+    expect(sourcesOf('cri-01')[0]?.stopAt).toBeCloseTo(3.0 + STRANGLE_S, 12)
+    // L'emplacement reçoit la couche vivante du mort puis la voix neuve ; la piste 0 reçoit le râle seul.
+    expect(feeders(graph.taps.slots[5])).toHaveLength(2)
+    const laneFeeders = feeders(graph.taps.agony[0])
+    expect(laneFeeders).toHaveLength(1)
+    // Le râle ne passe pas par l'étage des voix : il n'est pas baissé par la mise à mort qu'il signale.
+    const ralePan = [...(laneFeeders[0]?.outputs ?? [])].find((x) => x instanceof FakePannerNode)
+    expect(ralePan && [...ralePan.outputs]).toEqual([graph.taps.creatures])
+    const dead = graph.log.sources.find((s) => s.id === 1 && s.kind === 'voix')
+    expect(dead?.endTick).toBe(200)
+    expect(dead?.endMode).toBe('agonie')
+    expect(dead?.endDurationS).toBeCloseTo(STRANGLE_S, 12)
+    expect(dead?.phases.at(-1)).toEqual({
+      tick: 200,
+      time: 3.0,
+      phase: 'cri',
+      file: 'cri-01',
+      muffled: false,
+      rate: 1,
+      rateTo: STRANGLE_RATE,
+      rampS: STRANGLE_S,
+    })
+    const rale = graph.log.sources.find((s) => s.id === 1 && s.kind === 'râle')
+    expect(rale?.slot).toBeNull()
+    expect(rale?.lane).toBe(0)
+    expect(rale?.rank).toBe(1)
+    expect(rale?.startTick).toBe(200)
+    expect(rale?.startTime).toBe(3.0)
+    expect(rale?.endMode).toBe('agonie')
+    expect(rale?.endDurationS).toBeCloseTo(AGONIE_END_S, 12)
+    expect(rale?.agonyEnd?.tick).toBe(200 + AGONIE_TICKS)
+    expect(rale?.agonyEnd?.time).toBeCloseTo(3.0 + AGONIE_END_S, 12)
+    expect(rale?.phases).toEqual([
+      { tick: 200, time: 3.0, phase: 'râle', file: 'rale-01', muffled: false, rate: 1, offsetS: 0 },
+    ])
+  })
+
+  it('mort sans râle (Sentence avant le cri, rang > 24) : la couche vivante s’éteint sans baisse de hauteur, aucune piste', () => {
+    at(100, 2.0, [start(5, 1, 'halete-01', 'halètement')])
+    at(130, 2.5, [agony(5, null, 1, null)])
+    const h = partOf('halete-01')
+    expect(h?.src.playbackRate.valueAt(2.5 + STRANGLE_S)).toBe(1)
+    expect(h?.gain.valueAt(2.5 + STRANGLE_S)).toBeCloseTo(0, 9)
+    expect(graph.log.sources.filter((s) => s.kind === 'râle')).toEqual([])
+    for (const t of graph.taps.agony) expect(feeders(t)).toHaveLength(0)
+    expect(graph.log.sources.find((s) => s.id === 1)?.endMode).toBe('agonie')
+  })
+
+  it('le cri s’étrangle (vitesse qui tombe, fondu sortant), le râle monte à l’image du coup, tient, s’éteint et se tait à la fin de l’agonie', () => {
+    at(100, 2.0, [start(5, 1, 'cri-01')])
+    at(200, 3.0, [agony(5, 0, 1, 'rale-01')])
+    const cri = partOf('cri-01')
+    expect(cri?.src.playbackRate.valueAt(3.0)).toBe(1)
+    expect(cri?.src.playbackRate.valueAt(3.0 + STRANGLE_S)).toBeCloseTo(STRANGLE_RATE, 9)
+    expect(cri?.gain.valueAt(3.0)).toBeCloseTo(levelOf('cri-01'), 6)
+    expect(cri?.gain.valueAt(3.0 + STRANGLE_S)).toBeCloseTo(0, 9)
+    expect(cri?.src.stopAt).toBeCloseTo(3.0 + STRANGLE_S, 9)
+    const rale = partOf('rale-01')
+    const lvl = levelOf('rale-01')
+    expect(rale?.src.startAt).toBe(3.0)
+    expect(rale?.gain.valueAt(3.0)).toBe(0)
+    expect(rale?.gain.valueAt(3.0 + AGONY_ATTACK_S)).toBeCloseTo(lvl, 6)
+    expect(rale?.gain.valueAt(3.0 + AGONY_DECAY_FROM_S)).toBeCloseTo(lvl, 6)
+    expect(rale?.gain.valueAt(3.0 + AGONIE_END_S - 1e-6)).toBeLessThan(lvl * 0.0011)
+    expect(rale?.gain.valueAt(3.0 + AGONIE_END_S)).toBe(0)
+    expect(rale?.src.stopAt).toBeCloseTo(3.0 + AGONIE_END_S, 9)
+  })
+
+  it('un mort sans voix tenue (debout) : le râle part seul sur sa piste, sans toucher aux emplacements', () => {
+    at(200, 3.0, [agony(null, 3, 7, 'rale-04')])
+    const s = graph.log.sources.find((x) => x.id === 7)
+    expect(s?.kind).toBe('râle')
+    expect(s?.slot).toBeNull()
+    expect(s?.lane).toBe(3)
+    expect(s?.startTick).toBe(200)
+    expect(s?.endTick).toBe(200)
+    expect(feeders(graph.taps.agony[3])).toHaveLength(1)
+    for (const t of graph.taps.slots) expect(feeders(t)).toHaveLength(0)
+    expect(sourcesOf('rale-04')[0]?.startAt).toBe(3.0)
+  })
+
+  it('les sources d’un mort s’éteignent pendant l’agonie et se taisent à sa fin', () => {
+    at(5, 1.0, [
+      { t: 'src-start', key: '9:gargouillis:5', id: 9, kind: 'gargouillis', rate: 1, offsetS: 0, pos },
+    ])
+    at(50, 2.0, [
+      { t: 'death', id: 9 },
+      { t: 'src-end', key: '9:gargouillis:5', id: 9, mode: 'agonie', cause: 'mort', strangle: false },
+    ])
+    const s = graph.log.sources.find((x) => x.kind === 'gargouillis')
+    expect(s?.endMode).toBe('agonie')
+    expect(s?.endDurationS).toBeCloseTo(AGONIE_END_S, 12)
+    expect(sourcesOf('gargouillis')[0]?.stopAt).toBeCloseTo(2.0 + AGONIE_END_S, 9)
+    const death = [...(feeders(graph.taps.others) as FakeGainNode[])][0]?.gain
+    expect(death?.valueAt(2.0)).toBe(1)
+    expect(death?.valueAt(2.0 + AGONIE_END_S / 2)).toBeLessThan(0.1)
+    expect(death?.valueAt(2.0 + AGONIE_END_S)).toBe(0)
   })
 
   it('un emplacement libre démarre la voix à l’instant même', () => {
@@ -223,14 +352,13 @@ describe('journal I1 : durée de fin programmée', () => {
     expect(s?.endDurationS).toBeCloseTo(len, 9)
   })
 
-  it('fin douce sans étranglement : SOFT_FADE_S (112 quanta) ; coupure : un quantum', () => {
+  it('fin douce sans étranglement : SOFT_FADE_S (112 quanta) ; agonie : jusqu’à sa fin programmée', () => {
     at(5, 1.0, [start(0, 1, 'cri-01'), start(1, 2, 'cri-02')])
-    at(6, 1.1, [
-      { t: 'voice-end', slot: 0, id: 1, mode: 'fade', cause: 'vol' },
-      { t: 'voice-end', slot: 1, id: 2, mode: 'cut', cause: 'mort' },
-    ])
+    at(6, 1.1, [{ t: 'voice-end', slot: 0, id: 1, mode: 'fade', cause: 'vol' }, agony(1, 0, 2, 'rale-02')])
     expect(graph.log.sources.find((x) => x.id === 1)?.endDurationS).toBeCloseTo(SOFT_FADE_S, 9)
-    expect(graph.log.sources.find((x) => x.id === 2)?.endDurationS).toBeCloseTo(CUT_RAMP_S, 9)
+    const two = graph.log.sources.filter((x) => x.id === 2)
+    expect(two.find((x) => x.kind === 'voix')?.endDurationS).toBeCloseTo(STRANGLE_S, 9)
+    expect(two.find((x) => x.kind === 'râle')?.endDurationS).toBeCloseTo(AGONIE_END_S, 9)
   })
 })
 
@@ -265,7 +393,7 @@ describe('revue de code M5 : journal I1 borné en jeu, complet au banc', () => {
       // une voix par seconde, coupée une demi-seconde plus tard ; un impact par seconde
       if (t % 60 === 0)
         cmds.push(start(0, t, 'cri-01'), { t: 'oneshot', kind: 'impact-tranchant', id: t, pos })
-      if (t % 60 === 30) cmds.push({ t: 'voice-end', slot: 0, id: t - 30, mode: 'cut', cause: 'mort' })
+      if (t % 60 === 30) cmds.push(agony(0, 0, t - 30, 'rale-01'))
       g.apply(cmds, t, now, () => 'souriant')
       g.frame(t, now, { x: 0, z: 0 })
     }
@@ -278,7 +406,7 @@ describe('revue de code M5 : journal I1 borné en jeu, complet au banc', () => {
     expect(g.log.frames.length).toBeLessThanOrEqual(1200)
     expect(g.log.frames.length).toBeGreaterThanOrEqual(600)
     expect(g.log.frames[g.log.frames.length - 1]?.tick).toBe(6009)
-    expect(g.log.sources.length).toBeLessThanOrEqual(21)
+    expect(g.log.sources.length).toBeLessThanOrEqual(42) // voix et râles
     expect(g.log.oneshots.length).toBeLessThanOrEqual(21)
     expect(g.log.sources.some((s) => s.startTick === 6000 && s.endTick === null)).toBe(true) // voix en cours
   })
@@ -287,7 +415,7 @@ describe('revue de code M5 : journal I1 borné en jeu, complet au banc', () => {
     const g = createGraph(ctx as unknown as BaseAudioContext, bank())
     run(g, 6010)
     expect(g.log.frames).toHaveLength(6010)
-    expect(g.log.sources).toHaveLength(101)
+    expect(g.log.sources).toHaveLength(201) // 101 voix, 100 râles
   })
 })
 
@@ -307,7 +435,8 @@ describe('ducking des autres voix après une mort (D-fix3, tour 2 de B5.O10)', (
       { t: 'src-start', key: '9:chant:10', id: 9, kind: 'chant', rate: 1, offsetS: 0, pos },
     ])
     const vp = pannerOf('cri-01')
-    expect(vp && [...vp.outputs]).toEqual([voices()])
+    expect(vp && [...vp.outputs]).toEqual([graph.taps.voicesPre])
+    expect([...(graph.taps.voicesPre as unknown as FakeGainNode).outputs]).toEqual([voices()])
     expect([...voices().outputs]).toEqual([graph.taps.creatures])
     const cp = pannerOf('chant')
     expect(cp && [...cp.outputs]).toEqual([graph.taps.creatures])
@@ -318,12 +447,9 @@ describe('ducking des autres voix après une mort (D-fix3, tour 2 de B5.O10)', (
     expect([...(feeders[0]?.outputs ?? [])]).toContain(vp)
   })
 
-  it('une mort : la voix qui meurt est coupée net, les autres descendent de VOICE_DUCK_DB en VOICE_DUCK_ATTACK_S, tiennent jusqu’à la remontée puis reviennent', () => {
+  it('une mort : la voix qui meurt passe en agonie hors de l’étage, les autres descendent de VOICE_DUCK_DB en VOICE_DUCK_ATTACK_S, tiennent jusqu’à la remontée puis reviennent', () => {
     at(10, 1.0, [start(0, 1, 'cri-01'), start(1, 2, 'cri-02')])
-    at(70, 2.0, [
-      { t: 'voice-end', slot: 0, id: 1, mode: 'cut', cause: 'mort' },
-      { t: 'voice-duck-down', at: 2.0, releaseAt: 2.4 },
-    ])
+    at(70, 2.0, [agony(0, 0, 1, 'rale-01'), { t: 'voice-duck-down', at: 2.0, releaseAt: 2.4 }])
     const g = voices().gain
     expect(g.valueAt(2.0)).toBeCloseTo(1, 9)
     expect(g.valueAt(2.0 + VOICE_DUCK_ATTACK_S / 2)).toBeLessThan(1)
@@ -331,10 +457,11 @@ describe('ducking des autres voix après une mort (D-fix3, tour 2 de B5.O10)', (
     expect(g.valueAt(2.0 + VOICE_DUCK_ATTACK_S)).toBeCloseTo(G, 6)
     expect(g.valueAt(2.4)).toBeCloseTo(G, 6)
     expect(g.valueAt(2.4 + VOICE_DUCK_RELEASE_S)).toBeCloseTo(1, 6)
-    // La voix morte : coupure nette sur sa propre chaîne ; la voix baissée n'a ni fin ni vol au journal.
+    // La voix morte : agonie ; son râle joue hors de l'étage ; la voix baissée n'a ni fin ni vol au journal.
     const dead = graph.log.sources.find((x) => x.id === 1)
     const alive = graph.log.sources.find((x) => x.id === 2)
-    expect(dead?.endMode).toBe('cut')
+    expect(dead?.endMode).toBe('agonie')
+    expect(pannerOf('rale-01') && [...(pannerOf('rale-01')?.outputs ?? [])]).toEqual([graph.taps.creatures])
     expect(alive?.endTick).toBeNull()
     expect(alive?.endCause).toBeNull()
     expect(sourcesOf('cri-02')[0]?.stopAt).toBeNull()
@@ -363,6 +490,20 @@ describe('ducking des autres voix après une mort (D-fix3, tour 2 de B5.O10)', (
     at(95, t2, [{ t: 'voice-duck-down', at: t2, releaseAt: t2 + 0.4 }])
     expect(g.valueAt(t2)).toBeCloseTo(v2, 9)
     expect(g.valueAt(t2 + VOICE_DUCK_ATTACK_S)).toBeCloseTo(G, 6)
+  })
+
+  // Constaté au banc (S-nappe) : après une mort sans autre voix, l'étage des voix n'a rien à traiter et Chrome n'avance
+  // pas son automatisation ; la voix suivante sortait à −7,4 dB jusqu'à la mort suivante. Le gain courant est reposé à
+  // chaque voix qui arrive, sans saut, rampe en cours comprise.
+  it('une voix qui arrive repose le gain courant de l’étage, sans changer la courbe', () => {
+    at(70, 2.0, [{ t: 'voice-duck-down', at: 2.0, releaseAt: 2.4 }])
+    const g = voices().gain
+    const before = [2.2, 2.42, 2.45, 3.0].map((t) => g.valueAt(t))
+    at(145, 2.42, [start(3, 9, 'cri-03')])
+    expect(g.calls.at(-1)).toBe(`set ${g.valueAt(2.42)} @2.42`)
+    expect([2.2, 2.42, 2.45, 3.0].map((t) => g.valueAt(t))).toEqual(before.map((v) => expect.closeTo(v, 9)))
+    at(300, 5.0, [start(4, 10, 'cri-04')])
+    expect(g.calls.at(-1)).toBe('set 1 @5')
   })
 })
 

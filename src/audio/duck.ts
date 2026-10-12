@@ -1,5 +1,5 @@
-// Atténuation de l'ambiance (§8.2, §19, D9) : −6 dB dès une mort, sans empilement, jusqu'à 0,4 s après la
-// dernière mort d'une grappe. Machine d'état pure, en temps audio (secondes).
+// Atténuation de la nappe et de l'ambiance (§8.2, §19, D9, B5 A22) : DUCK_DB dès une mort, sans empilement, jusqu'à la
+// fin de la tenue après la dernière mort d'une grappe (fin du râle + 0,4 s). Machine d'état pure, en temps audio.
 import { DUCK_HOLD_S, QUANTUM_S } from './constants'
 
 export type DuckState =
@@ -7,8 +7,8 @@ export type DuckState =
   | { readonly kind: 'held'; readonly since: number; readonly releaseAt: number }
 
 export type DuckCmd =
-  | { readonly t: 'duck-down'; readonly at: number; readonly releaseAt: number } // descente vers −6 dB, remontée prévue
-  | { readonly t: 'duck-extend'; readonly releaseAt: number } // déjà à −6 dB : la remontée recule
+  | { readonly t: 'duck-down'; readonly at: number; readonly releaseAt: number } // descente vers DUCK_DB, remontée prévue
+  | { readonly t: 'duck-extend'; readonly releaseAt: number } // déjà à DUCK_DB : la remontée recule
 
 export const DUCK_IDLE: DuckState = { kind: 'idle' }
 

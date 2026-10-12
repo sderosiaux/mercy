@@ -38,7 +38,7 @@ const compactLog = (r: BenchResult) =>
     endMode: s.endMode,
     endCause: s.endCause,
     endDurationS: s.endDurationS,
-    cutDuringFade: s.cutDuringFade,
+    diedDuringFade: s.diedDuringFade,
   }))
 
 const summarize = (r: BenchResult) => {

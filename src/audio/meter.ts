@@ -1,10 +1,25 @@
 // Mesure par quantum (B5 I3, I4) dans un AudioWorklet : énergie moyenne et crête de chaque prise, horodatées par
 // le numéro de quantum du rendu. Aucun tampon multicanal n'est gardé en mémoire : seules deux
 // valeurs par prise et par quantum remontent au fil principal.
+import { AGONY_LANES } from './constants'
 import type { Taps } from './graph'
 
-export const METER_INPUTS = [
-  ...Array.from({ length: 24 }, (_, i) => `slot${i}`),
+// Prises dans l'ordre des entrées du mesureur. Les voix vivantes avant et après l'étage des voix (B5 A18) et les pistes
+// d'agonie (A19) sont ajoutées à la fin : les indices des prises d'avant l'agonie (0 à 30) ne changent pas.
+export type MeterInput =
+  | `slot${number}`
+  | 'autres'
+  | 'creatures'
+  | 'nappe'
+  | 'ambiance-avant'
+  | 'ambiance-apres'
+  | 'master-g'
+  | 'master-d'
+  | 'voix-avant'
+  | 'voix-apres'
+  | `agonie${number}`
+export const METER_INPUTS: readonly MeterInput[] = [
+  ...Array.from({ length: 24 }, (_, i): MeterInput => `slot${i}`),
   'autres',
   'creatures',
   'nappe',
@@ -12,8 +27,10 @@ export const METER_INPUTS = [
   'ambiance-apres',
   'master-g',
   'master-d',
-] as const
-export type MeterInput = (typeof METER_INPUTS)[number]
+  'voix-avant',
+  'voix-apres',
+  ...Array.from({ length: AGONY_LANES }, (_, i): MeterInput => `agonie${i}`),
+]
 
 // Source du processeur : chaîne de JavaScript, chargée par URL de blob (fonctionne en dev, en build et hors Vite).
 // Exportée pour les tests.
@@ -144,6 +161,11 @@ export const attachMeter = (ctx: BaseAudioContext, taps: Taps, quanta: number, b
   taps.master.connect(split)
   split.connect(node, 0, 29)
   split.connect(node, 1, 30)
+  taps.voicesPre.connect(node, 0, 31)
+  taps.voices.connect(node, 0, 32)
+  taps.agony.forEach((g, i) => {
+    g.connect(node, 0, 33 + i)
+  })
   node.connect(ctx.destination) // sortie muette : garde le processeur tiré par le rendu
 
   let cap = quanta > 0 ? quanta : 1 << 14

@@ -1,8 +1,8 @@
 // B5.O11 : mesures du contenu de chaque fichier tel que joué (tampon décodé, offset et points de boucle du
 // manifeste). Fonctions pures sur des Float32Array : le navigateur (I9, analyseBank) et le script de
 // génération les appellent sur les mêmes définitions.
-import { QUANTUM, SILENCE_DB } from './constants'
-import { IMPACT_ROLES, type ManifestEntry, type Role, SPATIAL_ROLES } from './manifest'
+import { AGONIE_END_S, AGONIE_S, AGONY_RATE_SPREAD, agonyEnvelopeDb, QUANTUM, SILENCE_DB } from './constants'
+import { AGONY_ROLES, IMPACT_ROLES, type ManifestEntry, type Role, SPATIAL_ROLES } from './manifest'
 
 // 'c-fixe' n'est pas un critère du contrat : même seuil que (c) (30 dB, 20 ms) mais rapporté au M_f du fichier
 // au lieu de la médiane glissante. Une décroissance lente vers le silence passe (c) (la médiane suit) ; elle ne
@@ -20,6 +20,12 @@ export type Criterion =
   | 'empreinte'
   | 'decodage'
   | 'nappe-extinction'
+  | 'h'
+  // Hors contrat, rapportés à part : forme du râle tel qu'on l'entend (enveloppe du lecteur aux vitesses 0,94, 1 et
+  // 1,06), d'après B5.O3 (b) à (d), que le générateur sert de contrôle d'acceptation ; et niveau de sa fenêtre de 20 ms
+  // la plus forte.
+  | 'agonie-forme'
+  | 'agonie-niveau'
 
 export interface O11Row {
   readonly file: string
@@ -118,6 +124,28 @@ export const fixedGaps = (levels: ArrayLike<number>, ref: number): { gaps: numbe
   return { gaps, worstRunQ: worst }
 }
 
+// Même mesure, à partir du quantum `from`, avec la médiane de l'historique disponible (au plus 200 ms) : sur une partie
+// jouée plus courte que 200 ms d'historique (début d'un râle), rien n'échappe à la mesure.
+export const continuityGapsFrom = (
+  levels: ArrayLike<number>,
+  from: number,
+): { gaps: number; worstRunQ: number } => {
+  const win = Math.round(0.2 / (QUANTUM / 48_000))
+  let gaps = 0
+  let run = 0
+  let worst = 0
+  for (let q = Math.max(1, from); q < levels.length; q++) {
+    const prev: number[] = []
+    for (let k = Math.max(0, q - win); k < q; k++) prev.push(levels[k] as number)
+    if ((levels[q] as number) <= median(prev) - 30) {
+      run++
+      worst = Math.max(worst, run)
+      if (run === 8) gaps++
+    } else run = 0
+  }
+  return { gaps, worstRunQ: worst }
+}
+
 export const continuityGaps = (levels: ArrayLike<number>): { gaps: number; worstRunQ: number } => {
   const win = Math.round(0.2 / (QUANTUM / 48_000)) // 75 quanta
   const minRun = 8
@@ -178,6 +206,86 @@ const rmsDb = (channels: readonly Float32Array[], from: number, to: number): num
 
 const MS_PER_Q = (QUANTUM / 48_000) * 1000
 
+// Niveaux par quantum du râle tel qu'on l'entend : niveaux du fichier depuis l'offset, plus l'enveloppe du lecteur au
+// milieu de chaque quantum, jusqu'à la fin programmée de l'agonie.
+export const agonyHeard = (once: ArrayLike<number>, sampleRate: number): Float32Array => {
+  const qs = Math.min(once.length, Math.ceil((AGONIE_END_S * sampleRate) / QUANTUM))
+  const out = new Float32Array(qs)
+  for (let q = 0; q < qs; q++)
+    out[q] = (once[q] as number) + agonyEnvelopeDb(((q + 0.5) * QUANTUM) / sampleRate)
+  return out
+}
+
+// Forme du râle tel qu'on l'entend à la vitesse `rate` (B5.O3 b, c, d, sur la seule piste d'agonie) : niveaux du fichier
+// relus à cette vitesse, plus l'enveloppe du lecteur ; fenêtres W1 à W4 sur [T_d + 2 q ; T_a], T_a = T_d + A_g.
+export interface AgonyWindows {
+  readonly heard: readonly number[] // niveaux par quantum à partir de T_d
+  readonly l: readonly [number, number, number, number] // L_1 à L_4
+  readonly w: number // largeur d'une fenêtre, en quanta
+}
+
+export const agonyWindows = (once: ArrayLike<number>, rate: number, sampleRate: number): AgonyWindows => {
+  const taQ = Math.round((AGONIE_S * sampleRate) / QUANTUM)
+  const at = (u: number): number => {
+    const i = Math.floor(u)
+    const a = (once[i] as number | undefined) ?? Number.NEGATIVE_INFINITY
+    const b = (once[i + 1] as number | undefined) ?? Number.NEGATIVE_INFINITY
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return Math.min(a, b)
+    return a + (b - a) * (u - i)
+  }
+  const heard = Array.from(
+    { length: taQ + 8 },
+    (_, q) => at((q + 0.5) * rate - 0.5) + agonyEnvelopeDb(((q + 0.5) * QUANTUM) / sampleRate),
+  )
+  const w = (taQ - 2) / 4
+  const mean = (a: number, b: number): number => {
+    let e = 0
+    let n = 0
+    for (let q = Math.round(a); q < Math.round(b); q++) {
+      const l = heard[q] as number
+      e += Number.isFinite(l) ? 10 ** (l / 10) : 0
+      n++
+    }
+    return db(e / Math.max(1, n))
+  }
+  const l = [0, 1, 2, 3].map((k) => mean(2 + k * w, 2 + (k + 1) * w)) as [number, number, number, number]
+  return { heard, l, w }
+}
+
+export const agonyForm = (
+  once: ArrayLike<number>,
+  rate: number,
+  sampleRate: number,
+): { pass: boolean; detail: string } => {
+  const { heard, l, w } = agonyWindows(once, rate, sampleRate)
+  const [l1, l2, l3, l4] = l
+  const first10 = heard.findIndex((l) => l >= l1 - 10)
+  let last30 = -1
+  let lastNz = -1
+  heard.forEach((l, q) => {
+    if (l >= l1 - 30) last30 = q
+    if (l > SILENCE_DB) lastNz = q
+  })
+  const b = first10 >= 0 && first10 < 6
+  const c = l2 <= l1 + 1 && l3 <= l2 + 1 && l4 <= l3 + 1 && l4 <= l1 - 10
+  const d = last30 >= 2 + 2 * w && (lastNz < 0 || (heard[lastNz] as number) <= l1 - 30)
+  return {
+    pass: b && c && d,
+    detail: `×${rate} L1 ${l1.toFixed(1)} ΔL2 ${(l2 - l1).toFixed(1)} ΔL3 ${(l3 - l2).toFixed(1)} L4−L1 ${(l4 - l1).toFixed(1)} 1er à L1−10 : q${first10} dernier à L1−30 : q${last30}${b ? '' : ' (b)'}${c ? '' : ' (c)'}${d ? '' : ' (d)'}`,
+  }
+}
+
+// Fenêtre de 20 ms (8 quanta) la plus forte, en énergie moyenne.
+export const agonyPeakWindowDb = (heard: ArrayLike<number>): number => {
+  let best = Number.NEGATIVE_INFINITY
+  for (let q = 0; q + 8 <= heard.length; q++) {
+    let e = 0
+    for (let k = q; k < q + 8; k++) e += 10 ** ((heard[k] as number) / 10)
+    best = Math.max(best, db(e / 8))
+  }
+  return best
+}
+
 export interface FileAnalysis {
   readonly rows: readonly O11Row[]
   readonly mf: number // M_f : médiane des quanta non silencieux du fichier tel que joué
@@ -208,7 +316,13 @@ export const analyseFile = (
   const mf = nonSilentMedian(played)
   const role = shape.role
 
-  if (role === 'halètement' || role === 'cri' || role === 'inspiration' || role === 'cri-etouffe') {
+  if (
+    role === 'halètement' ||
+    role === 'cri' ||
+    role === 'inspiration' ||
+    role === 'cri-etouffe' ||
+    AGONY_ROLES.has(role)
+  ) {
     const q = played.findIndex((l) => l >= mf - 20)
     const ms = q < 0 ? Number.POSITIVE_INFINITY : q * MS_PER_Q
     add({
@@ -295,6 +409,51 @@ export const analyseFile = (
       pass: diff <= 3,
     })
   }
+  if (AGONY_ROLES.has(role)) {
+    // B5.O11 (b) et (c) amendés (A15, P10), sur la partie jouée pendant l'agonie à la vitesse la plus haute.
+    const need = AGONIE_S * (1 + AGONY_RATE_SPREAD)
+    const needQ = Math.ceil((need * sampleRate) / QUANTUM)
+    let cont = 0
+    while (cont < once.length && (once[cont] as number) >= mf - 30) cont++
+    add({
+      criterion: 'b',
+      measure: `contenu audible continu (M_f − 30 dB ou plus) depuis le départ, en temps de fichier`,
+      value: cont * MS_PER_Q,
+      unit: 'ms',
+      threshold: `≥ ${(need * 1000).toFixed(1)}`,
+      pass: cont >= needQ,
+    })
+    const part = once.subarray(0, Math.min(once.length, needQ))
+    const { gaps, worstRunQ } = continuityGapsFrom(part, 1)
+    add({
+      criterion: 'c',
+      measure: `passages ≥ 20 ms à M₂₀₀ − 30 dB sur les ${(need * 1000).toFixed(0)} ms jouées (historique disponible dès le 2e quantum, plus long trou ${worstRunQ} q)`,
+      value: gaps,
+      unit: 'passages',
+      threshold: '= 0',
+      pass: gaps === 0,
+    })
+    const forms = [1 - AGONY_RATE_SPREAD, 1, 1 + AGONY_RATE_SPREAD].map((r) => agonyForm(once, r, sampleRate))
+    const bad = forms.filter((f) => !f.pass)
+    add({
+      criterion: 'agonie-forme',
+      measure: `hors contrat : forme du râle tel qu'entendu (B5.O3 b, c, d) aux vitesses 0,94, 1 et 1,06 : ${forms.map((f) => f.detail).join(' ; ')}`,
+      value: bad.length,
+      unit: 'vitesses en échec',
+      threshold: '= 0',
+      pass: bad.length === 0,
+    })
+    const heard = agonyHeard(once, sampleRate)
+    const pk = agonyPeakWindowDb(heard)
+    add({
+      criterion: 'agonie-niveau',
+      measure: 'hors contrat : fenêtre de 20 ms la plus forte du râle tel qu’entendu',
+      value: pk,
+      unit: 'dBFS',
+      threshold: 'rapporté',
+      pass: true,
+    })
+  }
   if (SPATIAL_ROLES.has(role)) {
     if (channels.length === 1) {
       add({
@@ -339,6 +498,26 @@ export const analyseFile = (
   }
   return { rows, mf }
 }
+
+// B5.O11 (h) (amendement A15) : écart du M_f de chaque râle à la médiane des M_f des râles de même traitement.
+export const raleLevelRows = (mfs: readonly { id: string; role: Role; mf: number }[]): O11Row[] =>
+  (['rale', 'rale-etouffe'] as const).flatMap((role) => {
+    const group = mfs.filter((x) => x.role === role)
+    const m = median(group.map((x) => x.mf))
+    return group.map(({ id, mf }) => {
+      const d = mf - m
+      return {
+        file: id,
+        role,
+        criterion: 'h' as const,
+        measure: `M_f ${mf.toFixed(2)} dBFS − médiane des ${role} ${m.toFixed(2)} dBFS`,
+        value: d,
+        unit: 'dB',
+        threshold: '±3',
+        pass: Math.abs(d) <= 3,
+      }
+    })
+  })
 
 // B5.O11 (g) : écart du M_f de chaque cri à la médiane des M_f des cris.
 export const cryLevelRows = (mfs: readonly { id: string; mf: number }[]): O11Row[] => {

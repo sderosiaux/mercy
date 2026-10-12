@@ -14,20 +14,34 @@ import {
   type World,
 } from '../sim/index'
 import { allocate, emptySlots, rankBodies, type Slot } from './alloc'
-import { SOFT_FADE_S, VOICE_DUCK_HOLD_S, VOICE_DUCK_RELEASE_S } from './constants'
+import {
+  AGONIE_TICKS,
+  AGONY_LANES,
+  AGONY_RATE_SPREAD,
+  DUCK_HOLD_AFTER_DEATH_S,
+  FADE_TICKS,
+  VOICE_DUCK_HOLD_S,
+  VOICE_DUCK_RELEASE_S,
+  VOICE_SLOTS,
+} from './constants'
 import { DUCK_IDLE, type DuckCmd, type DuckState, duckStep } from './duck'
 import {
   deathIdsOf,
   type EndCause,
   type EndMode,
   endModeFor,
+  hasVoice,
   sourceEndCause,
   vocalising,
   voiceEndCause,
 } from './ends'
-import { pick } from './manifest'
+import { mix, pick } from './manifest'
+
+export { FADE_TICKS } from './constants'
 
 export type Phase = 'halètement' | 'cri' | 'inspiration'
+// Phase d'agonie d'une voix, de l'image du coup fatal à la fin de l'agonie (L4, §19).
+export type AgonyPhase = 'râle'
 export type SourceKind = 'gargouillis' | 'chant' | 'scie' | 'coutures'
 export type OneShotKind = 'impact-tranchant' | 'impact-contondant' | 'clang' | 'mat'
 
@@ -37,6 +51,8 @@ export interface Pools {
   readonly halete: readonly string[]
   readonly inspire: readonly string[]
   readonly etouffe: readonly string[]
+  // Fichier de voix → fichier d'agonie qui le prolonge (champ `follows` du manifeste) : râle du même timbre.
+  readonly agony: ReadonlyMap<string, string>
 }
 
 export type Cmd =
@@ -64,6 +80,27 @@ export type Cmd =
       readonly mode: EndMode
       readonly cause: EndCause
     }
+  // Mort (L4, §19, B5 A19) : `slot`, l'emplacement de la voix que le mort tenait (couche vivante), qui s'éteint en
+  // STRANGLE_S dans son emplacement ; null s'il n'en tenait pas (debout, en attente, voix en fondu). `lane` et `file` :
+  // le râle d'une mort qui râle, sur sa piste d'agonie, hors des 24 emplacements ; null pour une mort sans râle (rang
+  // > 24, exécution silencieuse après une Sentence précoce) : la couche vivante s'éteint alors sans baisse de hauteur.
+  | {
+      readonly t: 'voice-agony'
+      readonly slot: number | null
+      readonly lane: number | null
+      readonly id: EntityId
+      readonly rank: number
+      readonly file: string | null
+      readonly rate: number
+      readonly muffled: boolean
+      readonly pos: Vec2
+    }
+  // Mort d'une créature : tout ce qui finit encore d'elle (fondu, étranglement) se tait au plus tard à la fin de
+  // l'agonie.
+  | { readonly t: 'death'; readonly id: EntityId }
+  // Mort d'une créature d'une famille qui a une voix, sans râle : inaudible (rang > 24 sans voix tenue), exécution
+  // silencieuse (Sentence avant le cri), ou, en principe jamais, aucune piste d'agonie libre.
+  | { readonly t: 'agony-denied'; readonly id: EntityId; readonly reason: 'rang' | 'muet' | 'piste' }
   | {
       readonly t: 'src-start'
       readonly key: string
@@ -119,6 +156,8 @@ export interface DirectorState {
   readonly duck: DuckState
   readonly voiceDuck: DuckState
   readonly nappeN: number
+  readonly absorbed: ReadonlySet<EntityId> // corps qui vocalisent dans un sac (voix étouffée), au tick précédent
+  readonly lanes: readonly Tick[] // pistes d'agonie : tick où chacune se libère (libre si ≤ tick courant)
 }
 
 export const initialDirector = (): DirectorState => ({
@@ -131,10 +170,9 @@ export const initialDirector = (): DirectorState => ({
   duck: DUCK_IDLE,
   voiceDuck: DUCK_IDLE,
   nappeN: -1,
+  absorbed: new Set(),
+  lanes: Array.from({ length: AGONY_LANES }, () => 0),
 })
-
-// Ticks pendant lesquels un emplacement en fondu reste occupé : le fondu, arrondi au tick supérieur.
-export const FADE_TICKS = Math.ceil(SOFT_FADE_S * TICK_HZ)
 
 const dist = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.z - b.z)
 
@@ -174,6 +212,19 @@ const wantedSources = (c: Creature): { kind: SourceKind; rate: number }[] => {
     out.push({ kind: 'coutures', rate: 1 })
   return out
 }
+
+// Râle d'un mort : celui qui suit le cri que sa graine lui donne (même timbre), ou son cri étouffé s'il était dans un
+// sac. Le même corps a donc toujours le même râle, quelle que soit sa phase à la mort.
+export const agonyFile = (pools: Pools, seed: number, muffled: boolean): string => {
+  const voice = muffled ? pick(pools.etouffe, seed, 4) : pick(pools.cri, seed, 2)
+  const f = pools.agony.get(voice)
+  if (f === undefined) throw new Error(`aucun fichier d'agonie ne suit ${voice} au manifeste`)
+  return f
+}
+
+// Vitesse de lecture du râle, tirée de la graine du corps (B5 I3), arrondie au dix-millième.
+export const agonyRate = (seed: number): number =>
+  Math.round((1 + AGONY_RATE_SPREAD * ((2 * mix(seed, 5)) / 2 ** 32 - 1)) * 10_000) / 10_000
 
 const weaponImpact = (w: World): OneShotKind =>
   TUNING.weapons[w.player.weapon].type === 'tranchant' ? 'impact-tranchant' : 'impact-contondant'
@@ -241,7 +292,14 @@ export const direct = (s: DirectorState, w: World, listener: Vec2, now: number, 
     phases.set(c.id, p)
   }
 
-  // Fins de voix.
+  // Morts du tick : tout ce qui finit encore d'elles (fondu d'une voix volée, étranglement d'une prière) se tait au plus
+  // tard à la fin de l'agonie (graph.ts). Rien de la créature ne sonne après.
+  for (const id of deaths) cmds.push({ t: 'death', id })
+
+  // Fins de voix. La couche vivante d'un mort s'éteint en STRANGLE_S dans son emplacement, qui est attribuable dès ce
+  // tick (une chute du même tick y prend sa voix, que le graphe démarre à la fin de l'extinction) ; le râle est
+  // attribué plus bas, sur une piste d'agonie.
+  const heldDying = new Map<EntityId, VoiceRec>()
   for (const [id, v] of s.voices) {
     const c = byId.get(id)
     const cause = voiceEndCause(id, c, events, byId)
@@ -255,35 +313,19 @@ export const direct = (s: DirectorState, w: World, listener: Vec2, now: number, 
       }
       continue
     }
-    const mode = endModeFor(cause)
-    cmds.push({ t: 'voice-end', slot: v.slot, id, mode, cause })
     voices.delete(id)
-    // Un emplacement coupé est libre dès ce tick (B5.O1, O8 b) : une chute du même tick (Balayage qui tue et abat)
-    // y prend sa voix tout de suite. Le graphe la démarre après la rampe de coupure (graph.ts, slotCutEnd).
-    slots[v.slot] = { kind: 'ending', id, freeAt: mode === 'cut' ? t : t + FADE_TICKS }
-  }
-  // Une mort coupe aussi une voix déjà en fondu (volée, relevée…) : rien ne survit à la mort.
-  slots.forEach((sl, i) => {
-    if (
-      sl.kind === 'ending' &&
-      t < sl.freeAt &&
-      deaths.has(sl.id) &&
-      !cmds.some((c) => c.t === 'voice-end' && c.slot === i)
-    ) {
-      cmds.push({ t: 'voice-end', slot: i, id: sl.id, mode: 'cut', cause: 'mort' })
-      slots[i] = { kind: 'ending', id: sl.id, freeAt: t }
+    if (endModeFor(cause) === 'agonie') {
+      heldDying.set(id, v)
+      slots[v.slot] = { kind: 'ending', id, freeAt: t }
+      continue
     }
-  })
+    cmds.push({ t: 'voice-end', slot: v.slot, id, mode: 'fade', cause })
+    slots[v.slot] = { kind: 'ending', id, freeAt: t + FADE_TICKS }
+  }
 
   // Sources hors voix.
   const sources = new Map(s.sources)
   const fading = new Map([...s.fadingSources].filter(([, f]) => t < f.until))
-  for (const [key, f] of fading) {
-    if (deaths.has(f.id)) {
-      cmds.push({ t: 'src-end', key, id: f.id, mode: 'cut', cause: 'mort', strangle: false })
-      fading.delete(key)
-    }
-  }
   const wanted = new Map<string, { c: Creature; kind: SourceKind; rate: number }>()
   if (!reset) {
     for (const c of w.creatures) {
@@ -334,6 +376,59 @@ export const direct = (s: DirectorState, w: World, listener: Vec2, now: number, 
     .filter((c) => vocalising(c, byId))
     .map((c) => ({ id: c.id, dist: dist(c.pos, listener) }))
   const ranked = rankBodies(bodies)
+
+  // Râles (L4, §19 ; option 2 de l'orchestrateur) : toute mort audible d'une créature d'une famille qui a une voix reçoit
+  // un râle, debout ou à terre, sur une piste d'agonie à elle, pendant l'agonie. Audible : le mort tenait une voix, ou
+  // il est au rang 24 au plus par distance parmi les corps qui vocalisent et les morts de ce tick. Au-delà, seule la
+  // nappe baisse. Les pistes ne prennent rien aux 24 emplacements : une chute du même tick a toujours sa voix.
+  // Exception (orchestrateur, 2026-10-12 ; L7 et précision de phase B) : un Abattu achevé par une Sentence avant son
+  // cri reste muet, il ne râle pas ; la voix qu'il tenait (halètement) s'éteint pendant l'agonie, sur sa piste.
+  const sentenced = new Set(events.flatMap((e) => (e.type === 'death' && e.by === 'sentence' ? [e.id] : [])))
+  const lanes = [...s.lanes]
+  const dyingIds = new Set([...deaths, ...heldDying.keys()])
+  const dying = [...dyingIds]
+    .map((id) => byId.get(id))
+    .filter((c): c is Creature => c !== undefined && hasVoice(c.family))
+  if (dying.length > 0) {
+    // Rang de mort : parmi les corps qui vocalisent et les morts du tick, par distance puis id (B5, A19).
+    const all = rankBodies([
+      ...bodies,
+      ...dying.map((c) => ({ id: c.id, dist: dist(c.pos, listener) })),
+    ]).filter((b) => dyingIds.has(b.id))
+    for (const b of all) {
+      const held = heldDying.get(b.id)
+      const mute = sentenced.has(b.id) && s.phases.get(b.id) === 'halètement'
+      let lane: number | null = null
+      if (b.rank > VOICE_SLOTS) cmds.push({ t: 'agony-denied', id: b.id, reason: 'rang' })
+      else if (mute) cmds.push({ t: 'agony-denied', id: b.id, reason: 'muet' })
+      else {
+        // Piste libre depuis le plus longtemps : une piste n'est pas réouverte au tick même où elle se tait.
+        let best = -1
+        lanes.forEach((f, i) => {
+          if (f <= t && (best < 0 || f < (lanes[best] as number))) best = i
+        })
+        if (best < 0) cmds.push({ t: 'agony-denied', id: b.id, reason: 'piste' })
+        else lane = best
+      }
+      if (lane === null && held === undefined) continue
+      if (lane !== null) lanes[lane] = t + AGONIE_TICKS
+      const c = byId.get(b.id) as Creature
+      const seed = voiceSeed(w, b.id)
+      const muffled = held?.muffled ?? s.absorbed.has(b.id)
+      cmds.push({
+        t: 'voice-agony',
+        slot: held?.slot ?? null,
+        lane,
+        id: b.id,
+        rank: b.rank,
+        file: lane === null ? null : agonyFile(pools, seed, muffled),
+        rate: agonyRate(seed),
+        muffled,
+        pos: c.pos,
+      })
+    }
+  }
+
   if (!reset) {
     const alloc = allocate(ranked, slots, t)
     for (const st of alloc.steal) {
@@ -367,7 +462,8 @@ export const direct = (s: DirectorState, w: World, listener: Vec2, now: number, 
 
   cmds.push(...oneShots(w, byId, events))
 
-  const d = duckStep(s.duck, deaths.size > 0, now)
+  // Ducking d'une mise à mort : de la mort jusqu'à 0,4 s après la fin du râle (§8.2).
+  const d = duckStep(s.duck, deaths.size > 0, now, DUCK_HOLD_AFTER_DEATH_S)
   if (d.cmd) cmds.push(d.cmd)
   const vd = duckStep(s.voiceDuck, deaths.size > 0, now, VOICE_DUCK_HOLD_S, VOICE_DUCK_RELEASE_S)
   if (vd.cmd)
@@ -392,6 +488,10 @@ export const direct = (s: DirectorState, w: World, listener: Vec2, now: number, 
       duck: d.state,
       voiceDuck: vd.state,
       nappeN: n,
+      absorbed: new Set(
+        w.creatures.filter((c) => c.state.kind === 'absorbe' && vocalising(c, byId)).map((c) => c.id),
+      ),
+      lanes,
     },
     cmds,
     ranked,

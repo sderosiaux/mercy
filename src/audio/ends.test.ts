@@ -18,9 +18,9 @@ const ALL: readonly EndCause[] = [
 const fakePorteur: FamilyModule = { ...poteau, kind: 'porteur' }
 const fakeRecousu: FamilyModule = { ...poteau, kind: 'recousu', isSupport: false }
 
-describe('coupure nette contre fondu (§19, L4, principe 3)', () => {
-  it('seule la mort coupe net ; toute autre cause finit en fondu', () => {
-    expect(ALL.filter((c) => endModeFor(c) === 'cut')).toEqual(['mort'])
+describe('agonie contre fondu (§19, L4, principe 3)', () => {
+  it('seule la mort ouvre une agonie (râle) ; toute autre cause finit en fondu', () => {
+    expect(ALL.filter((c) => endModeFor(c) === 'agonie')).toEqual(['mort'])
     expect(ALL.filter((c) => endModeFor(c) === 'fade')).toHaveLength(ALL.length - 1)
   })
 

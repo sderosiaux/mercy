@@ -6,6 +6,8 @@ export type Role =
   | 'cri'
   | 'inspiration'
   | 'cri-etouffe' // D8 : voix d'un corps absorbé dans le sac d'un Porteur
+  | 'rale' // agonie (L4, §19) : le cri qui s'étrangle en râle et s'éteint, un par timbre de cri
+  | 'rale-etouffe' // agonie d'un corps absorbé (Union, L5), un par timbre de cri étouffé
   | 'gargouillis'
   | 'chant'
   | 'etranglement' // §8.10 : prière interrompue
@@ -19,12 +21,16 @@ export type Role =
   | 'mat' // §21 : F sans cible
 
 export const VOICE_ROLES: ReadonlySet<Role> = new Set(['halètement', 'cri', 'inspiration', 'cri-etouffe'])
+// Fichiers d'agonie : joués dans l'emplacement de voix du mort, de l'image du coup à la fin de l'agonie.
+export const AGONY_ROLES: ReadonlySet<Role> = new Set(['rale', 'rale-etouffe'])
 // B5.O11 (e) : sources spatialisées (voix, gargouillis, chant, scie, coutures, et l'étranglement d'un Confesseur).
 export const SPATIAL_ROLES: ReadonlySet<Role> = new Set([
   'halètement',
   'cri',
   'inspiration',
   'cri-etouffe',
+  'rale',
+  'rale-etouffe',
   'gargouillis',
   'chant',
   'etranglement',
@@ -52,6 +58,9 @@ export interface ManifestEntry {
   // Gain de lecture en dB, appliqué par le lecteur et par I9 (0 si absent). Corrige le niveau d'un fichier sans
   // retoucher le WAV : cri-07 (B5.O11 g), consigné dans `retouches`.
   readonly gainDb?: number
+  // Fichiers d'agonie : id du fichier de voix dont ce râle est la fin (même timbre). Le lecteur choisit le râle d'un
+  // mort par ce lien, depuis le cri que sa graine lui donne (ou son cri étouffé s'il était dans un sac).
+  readonly follows?: string
   readonly channels: number
   readonly sampleRate: number
   readonly format: 'wav-pcm16'
@@ -76,8 +85,10 @@ export const byRole = (m: Manifest, role: Role): readonly ManifestEntry[] =>
 
 // Choix reproductible d'un fichier dans un rôle à partir de voiceSeed(world, id) (B5 I3) : jamais Math.random.
 // `salt` sépare les tirages (cri, halètement, inspiration) pour qu'ils ne soient pas corrélés.
+export const mix = (seed: number, salt: number): number =>
+  (Math.imul(seed ^ Math.imul(salt + 1, 0x85ebca6b), 0xc2b2ae35) ^ (seed >>> 13)) >>> 0
+
 export const pick = <T>(pool: readonly T[], seed: number, salt: number): T => {
   if (pool.length === 0) throw new Error('banque vide pour ce rôle')
-  const mixed = (Math.imul(seed ^ Math.imul(salt + 1, 0x85ebca6b), 0xc2b2ae35) ^ (seed >>> 13)) >>> 0
-  return pool[mixed % pool.length] as T
+  return pool[mix(seed, salt) % pool.length] as T
 }

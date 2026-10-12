@@ -19,8 +19,15 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { BENCH_RATE, QUANTUM } from '../src/audio/constants'
-import type { Manifest, ManifestEntry, Role } from '../src/audio/manifest'
-import { analyseFile, nonSilentMedian, playedLooped, playedOnce, shapeOf } from '../src/audio/o11'
+import { AGONY_ROLES, type Manifest, type ManifestEntry, type Role } from '../src/audio/manifest'
+import {
+  agonyWindows,
+  analyseFile,
+  nonSilentMedian,
+  playedLooped,
+  playedOnce,
+  shapeOf,
+} from '../src/audio/o11'
 import { encodeWav, fromPcm16, quantize16 } from '../src/audio/wav'
 import { TICK_HZ, TUNING } from '../src/sim/index'
 
@@ -32,10 +39,24 @@ const rawDir = path.join(os.tmpdir(), 'mercy-audio-raw')
 const API = 'https://api.elevenlabs.io/v1'
 const MODEL = 'eleven_text_to_sound_v2'
 const MAX_ATTEMPTS = 3
+// Râles : partie gardée après le départ. Le lecteur en joue au plus A_g × 1,06 (424 ms) ; 450 ms laissent une marge.
+const AGONY_KEEP_S = 0.45
 
 // Niveau visé du fichier : M_f (médiane des quanta non silencieux) ou crête pour les sons brefs.
 // Ce ne sont pas des valeurs du spec (B5 §7, O10) : ce sont des choix de mixage, consignés ici et dans le manifeste.
-export type Level = { readonly mf: number } | { readonly peak: number }
+// Râles : L_1 (premier quart du râle tel qu'entendu, B5.O3) visé, M_f tenu dans une fenêtre de 3 dB commune à tous les
+// râles d'un traitement, ce qui tient B5.O11 (h) quel que soit l'ensemble des fichiers.
+export type Level =
+  | { readonly mf: number }
+  | { readonly peak: number }
+  | { readonly agonyL1: number; readonly mfMin: number; readonly mfMax: number }
+
+const levelLabel = (l: Level): string =>
+  'mf' in l
+    ? `M_f visé ${l.mf} dBFS`
+    : 'peak' in l
+      ? `crête visée ${l.peak} dBFS`
+      : `L_1 du râle tel qu'entendu visé à ${l.agonyL1} dBFS, M_f tenu dans [${l.mfMin} ; ${l.mfMax}] dBFS`
 
 export interface Asset {
   readonly id: string
@@ -46,6 +67,7 @@ export interface Asset {
   readonly loop: boolean // le lecteur boucle ce fichier
   readonly influence: number
   readonly level: Level
+  readonly follows?: string // fichiers d'agonie : id du fichier de voix qu'ils prolongent (même timbre)
 }
 
 const DRY = 'completely dry close-up recording, no reverb, no echo, no music'
@@ -65,6 +87,7 @@ const CRY_VOICES = [
   'a sexless, strangely flat voice, an unnaturally steady inhuman shriek',
 ]
 const BREATHERS = ['a wounded man', 'a wounded woman', 'a wounded old man', 'a wounded young woman']
+const MUFFLED = ['a man', 'a woman', 'an old man']
 
 const n2 = (i: number) => String(i + 1).padStart(2, '0')
 const channelS = (ticks: number) => ticks / TICK_HZ
@@ -106,7 +129,7 @@ export const ASSETS: readonly Asset[] = [
       level: { mf: -27 },
     }),
   ),
-  ...['a man', 'a woman', 'an old man'].map(
+  ...MUFFLED.map(
     (v, i): Asset => ({
       id: `cri-etouffe-${n2(i)}`,
       role: 'cri-etouffe',
@@ -116,6 +139,39 @@ export const ASSETS: readonly Asset[] = [
       loop: true,
       influence: 0.5,
       level: { mf: -32 },
+    }),
+  ),
+  // Agonie (L4, §19, décision du concepteur du 2026-10-12) : un râle par timbre de cri, qui prend la suite de la voix
+  // dans l'image du coup fatal. Le lecteur n'en joue que les 0,4 premières secondes (fin programmée de l'agonie) ;
+  // le son généré porte le râle, le lecteur sa décroissance et son extinction (B5, lecture 8). Niveau : le premier
+  // quart du râle tel qu'entendu (L_1) 3 dB sous le M_f du cri joué (−18 dBFS) : le cri s'étrangle, il ne remonte
+  // pas. Râle étouffé : L_1 au niveau du cri étouffé joué (−26 dBFS), car un corps avalé peu avant sa mort a encore
+  // dans ses 100 dernières ms le cri libre (−18 dBFS), et B5.O3 (b) veut L_1 ≥ M_v − 10 dB (mesuré au banc : V5 et
+  // V6, râle à −29 dBFS contre une voix à −17,8). M_f tenu dans une fenêtre de 3 dB pour B5.O11 (h).
+  ...CRY_VOICES.map(
+    (v, i): Asset => ({
+      id: `rale-${n2(i)}`,
+      role: 'rale',
+      follows: `cri-${n2(i)}`,
+      prompt: `the death rattle of ${v}: a strangled, gargling, choking groan deep in the throat, wet and rattling, weakening and dying away into silence, loud from the very first instant, one single short event, ${DRY}`,
+      seconds: 0.6,
+      apiLoop: false,
+      loop: false,
+      influence: 0.6,
+      level: { agonyL1: -21, mfMin: -26.5, mfMax: -23.5 },
+    }),
+  ),
+  ...MUFFLED.map(
+    (v, i): Asset => ({
+      id: `rale-etouffe-${n2(i)}`,
+      role: 'rale-etouffe',
+      follows: `cri-etouffe-${n2(i)}`,
+      prompt: `${v} dying inside a thick wet leather sack: a smothered death rattle, a choked gargling groan heavily muffled and dull with no high frequencies, weakening and dying away into silence, from the very first instant, one single short event, ${DRY}`,
+      seconds: 0.6,
+      apiLoop: false,
+      loop: false,
+      influence: 0.6,
+      level: { agonyL1: -26, mfMin: -38, mfMax: -35 },
     }),
   ),
   {
@@ -519,6 +575,41 @@ const process1 = (a: Asset, mono: Float32Array, retouches: string[]): Processed 
     }
   }
 
+  // Râles (B5.O11 a, b, c amendés, et forme de O3 b à d sous l'enveloppe du lecteur) : offset de départ choisi au plus
+  // tôt à partir de l'attaque, dans les 80 ms qui suivent, là où le râle tel qu'entendu passe ces contrôles ; puis le
+  // fichier est rogné à la partie que le lecteur peut jouer (agonie lue à la vitesse la plus haute, plus une marge),
+  // pour que son M_f soit celui de ce qu'on entend.
+  if (AGONY_ROLES.has(a.role)) {
+    const keep = Math.round(AGONY_KEEP_S * BENCH_RATE)
+    const ok = (off: number): boolean => {
+      const y = x.subarray(0, Math.min(x.length, off + keep))
+      const shape = { role: a.role, loop: false, loopStart: 0, loopEnd: y.length, startOffset: off }
+      return analyseFile(a.id, shape, [y], BENCH_RATE)
+        .rows.filter((r) => ['a', 'b', 'c', 'agonie-forme'].includes(r.criterion))
+        .every((r) => r.pass)
+    }
+    const first = startOffset
+    for (let q = 0; q <= 30; q++) {
+      const off = first + q * QUANTUM
+      if (off + keep > x.length) break
+      if (ok(off)) {
+        startOffset = off
+        break
+      }
+    }
+    if (startOffset !== first)
+      retouches.push(
+        `offset de départ ${first} → ${startOffset} éch. : premier départ où le râle tel qu'entendu passe ses contrôles`,
+      )
+    if (x.length > startOffset + keep) {
+      x = x.slice(0, startOffset + keep)
+      retouches.push(
+        `rogné à ${AGONY_KEEP_S * 1000} ms après le départ (partie que le lecteur peut jouer pendant l'agonie)`,
+      )
+    }
+    loopEnd = x.length
+  }
+
   if (a.loop) {
     const once = playedOnce([x], 0)
     const lastAudible = once.reduce((acc, l, i) => (l >= mf - 30 ? i : acc), onsetQ)
@@ -582,7 +673,7 @@ const process1 = (a: Asset, mono: Float32Array, retouches: string[]): Processed 
   // Offset de départ, repris sur le fichier tel que joué (requête D-fix2) : premier quantum à M_f − 20 dB, M_f étant
   // celui de la lecture réelle (offset, boucle sur trois tours, comme l'I9) et non celui du tampon entier. Un tampon
   // dont la fin non jouée est faible plaçait l'offset trop tôt (inspire-04 : 5888 éch., attaque jouée de 53 ms).
-  for (let pass = 0; pass < 2; pass++) {
+  for (let pass = 0; pass < 2 && !AGONY_ROLES.has(a.role); pass++) {
     const shape = { loopStart, loopEnd, startOffset }
     const head = a.loop ? loopEnd : x.length
     const lvp = a.loop ? playedLooped([x], shape, 3) : playedOnce([x], startOffset)
@@ -601,12 +692,20 @@ const process1 = (a: Asset, mono: Float32Array, retouches: string[]): Processed 
   const lv = a.loop ? playedLooped([x], { loopStart, loopEnd, startOffset }, 3) : playedOnce([x], startOffset)
   const curMf = nonSilentMedian(lv)
   const pk = peakDb(x)
-  const want = 'mf' in a.level ? a.level.mf - curMf : a.level.peak - pk
+  const want =
+    'mf' in a.level
+      ? a.level.mf - curMf
+      : 'peak' in a.level
+        ? a.level.peak - pk
+        : Math.min(
+            Math.max(a.level.agonyL1 - agonyWindows(lv, 1, BENCH_RATE).l[0], a.level.mfMin - curMf),
+            a.level.mfMax - curMf,
+          )
   const gainDb = Math.min(want, -1 - pk)
   const g = 10 ** (gainDb / 20)
   x = x.map((v) => v * g)
   retouches.push(
-    `niveau ${gainDb >= 0 ? '+' : ''}${gainDb.toFixed(2)} dB (${'mf' in a.level ? `M_f visé ${a.level.mf} dBFS` : `crête visée ${a.level.peak} dBFS`}${gainDb < want - 0.01 ? ', limité par la crête à −1 dBFS' : ''})`,
+    `niveau ${gainDb >= 0 ? '+' : ''}${gainDb.toFixed(2)} dB (${levelLabel(a.level)}${gainDb < want - 0.01 ? ', limité par la crête à −1 dBFS' : ''})`,
   )
   return { samples: quantize16(x), loopStart, loopEnd, startOffset, retouches }
 }
@@ -637,9 +736,9 @@ type PlayShape = Pick<ManifestEntry, 'loop' | 'loopStart' | 'loopEnd' | 'startOf
 // Niveau d'un fichier tel que joué, sans gain de lecture : M_f (offset, boucle sur trois tours, comme l'I9) ou
 // crête de la partie jouée, selon le niveau que l'asset vise.
 const playedLevelDb = (level: Level, x: Float32Array, s: PlayShape): number =>
-  'mf' in level
-    ? nonSilentMedian(s.loop ? playedLooped([x], s, 3) : playedOnce([x], s.startOffset))
-    : peakDb(x.subarray(s.startOffset, s.loop ? s.loopEnd : x.length))
+  'peak' in level
+    ? peakDb(x.subarray(s.startOffset, s.loop ? s.loopEnd : x.length))
+    : nonSilentMedian(s.loop ? playedLooped([x], s, 3) : playedOnce([x], s.startOffset))
 
 // Gain de lecture d'une entrée régénérée (requête D-fix2). Un gainDb au manifeste est une décision de lecture
 // (correction de niveau comme cri-07, ou choix de mixage) : la régénération garde le niveau auquel le fichier est
@@ -703,6 +802,7 @@ export const buildEntry = (
     loopEnd: p.loopEnd,
     startOffset: p.startOffset,
     ...(gainDb === undefined ? {} : { gainDb }),
+    ...(a.follows === undefined ? {} : { follows: a.follows }),
     channels: 1,
     sampleRate: BENCH_RATE,
     format: 'wav-pcm16',

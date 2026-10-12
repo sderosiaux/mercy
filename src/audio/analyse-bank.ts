@@ -2,7 +2,8 @@
 // 48 000 Hz, puis mesuré avec l'offset et les points de boucle du manifeste (src/audio/o11.ts).
 import { fetchFileBytes, fetchManifest } from './bank'
 import { BENCH_RATE, N_MAX, NAPPE_OFF_S, nappeOffShape, SILENCE_DB } from './constants'
-import { analyseFile, cryLevelRows, type O11Row, playedLooped, shapeOf } from './o11'
+import { AGONY_ROLES, type Role } from './manifest'
+import { analyseFile, cryLevelRows, type O11Row, playedLooped, raleLevelRows, shapeOf } from './o11'
 
 export interface BankAnalysis {
   readonly bankSha256: string
@@ -27,6 +28,7 @@ export const analyseBank = async (baseUrl = '/audio/'): Promise<BankAnalysis> =>
   const rows: O11Row[] = []
   const extra: O11Row[] = []
   const cries: { id: string; mf: number }[] = []
+  const rales: { id: string; role: Role; mf: number }[] = []
   for (const e of m.files) {
     const bytes = await fetchFileBytes(baseUrl, e.file)
     const digest = hex(await crypto.subtle.digest('SHA-256', bytes))
@@ -54,10 +56,12 @@ export const analyseBank = async (baseUrl = '/audio/'): Promise<BankAnalysis> =>
     const channels = Array.from({ length: buf.numberOfChannels }, (_, c) => buf.getChannelData(c))
     const a = analyseFile(e.id, shapeOf(e), channels, buf.sampleRate)
     for (const r of a.rows) {
-      if (r.criterion === 'c-fixe') extra.push(r)
+      if (r.criterion === 'c-fixe' || r.criterion === 'agonie-niveau' || r.criterion === 'agonie-forme')
+        extra.push(r)
       else rows.push(r)
     }
     if (e.role === 'cri') cries.push({ id: e.id, mf: a.mf })
+    if (AGONY_ROLES.has(e.role)) rales.push({ id: e.id, role: e.role, mf: a.mf })
     if (e.role === 'nappe') {
       // Hors contrat, mais conditionne B5.O7 (d) : à N = 1, le quantum le plus faible du fichier, atténué par la
       // courbe d'extinction à 1,9 s, doit rester au-dessus du silence (−80 dBFS).
@@ -77,7 +81,7 @@ export const analyseBank = async (baseUrl = '/audio/'): Promise<BankAnalysis> =>
       })
     }
   }
-  rows.push(...cryLevelRows(cries))
+  rows.push(...cryLevelRows(cries), ...raleLevelRows(rales))
   const failed = rows.filter((r) => !r.pass)
   return {
     bankSha256: m.bankSha256,

@@ -77,6 +77,19 @@ describe('generate-audio : les corrections du manifeste survivent à une régén
     expect(a?.value).toBeLessThanOrEqual(17)
   })
 
+  it('un râle garde son lien au cri dont il est la fin, est rogné à la partie jouable et réglé sur son M_f joué', () => {
+    const a = assetOf('rale-03')
+    expect(a.follows).toBe('cri-03')
+    const { entry, wav } = buildEntry(a, decodedOf(wavOf('rale-03')), 1, [], 'test', null)
+    expect(entry.follows).toBe('cri-03')
+    expect(entry.role).toBe('rale')
+    expect(entry.frames - entry.startOffset).toBeLessThanOrEqual(Math.round(0.45 * 48_000))
+    // M_f tenu dans [−26,5 ; −23,5] dBFS (B5.O11 h), L_1 visé à −21 dBFS dans cette limite.
+    const mf = nonSilentMedian(playedOnce([samplesOf(wav)], entry.startOffset))
+    expect(mf).toBeGreaterThanOrEqual(-26.5 - 0.05)
+    expect(mf).toBeLessThanOrEqual(-23.5 + 0.05)
+  })
+
   it("sans gain au manifeste, l'entrée régénérée n'en porte pas", () => {
     const prev = { entry: withGain('cri-02', undefined), samples: wavOf('cri-02') }
     const { entry } = buildEntry(assetOf('cri-02'), decodedOf(wavOf('cri-02')), 1, [], 'test', prev)

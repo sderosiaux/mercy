@@ -1,15 +1,22 @@
 // Graphe Web Audio et journal I1. Chaque commande du directeur est appliquée ici, et le journal est écrit par
 // ces mêmes fonctions, au moment où elles programment le graphe (B5 I1) : il n'existe pas de modèle parallèle.
 //
-//   voix k : fichiers → fondu (fins douces) → coupure (mort) → panoramique → étage des voix → bus des créatures
-//                                             └→ prise de l'emplacement k (avant spatialisation)   → master
-//   (étage des voix : ducking des autres voix après une mort, D-fix3 ; commun à toutes les voix, après les prises)
-//   source : fichiers → fondu → coupure → panoramique → bus des créatures ; coupure → prise « autres sources »
+//   voix k : fichiers → fondu (fins douces) → mort → panoramique → voix avant → étage des voix → bus des créatures
+//                                           └→ prise de l'emplacement k (avant spatialisation)               → master
+//   (étage des voix : ducking des autres voix après une mort, D-fix3 ; prises avant et après l'étage, B5 A18)
+//   râle j : fichier d'agonie → fondu → mort → panoramique → bus des créatures (hors étage des voix : le râle n'est pas
+//            baissé par la mise à mort qu'il signale) ; mort → prise de la piste d'agonie j (B5 A19)
+//   source : fichiers → fondu → mort → panoramique → bus des créatures ; mort → prise « autres sources »
 //   nappe → bus de nappe ─┐
 //   vent ─────────────────┴→ ambiance avant atténuation → étage d'atténuation → master
 //   impacts, clang, son mat → bus des impacts → master (hors bus des créatures, B5 I3)
 import type { EntityId, FamilyKind, Tick, Vec2 } from '../sim/index'
 import {
+  AGONIE_END_S,
+  AGONIE_TICKS,
+  AGONY_ATTACK_S,
+  AGONY_DECAY_FROM_S,
+  AGONY_LANES,
   CUT_RAMP_S,
   DUCK_DB,
   dbToGain,
@@ -17,17 +24,18 @@ import {
   N_MAX,
   NAPPE_OFF_S,
   nappeOffShape,
-  QUANTUM_S,
   SOFT_END_MIN_S,
   SOFT_FADE_FLOOR_DB,
   SOFT_FADE_S,
+  STRANGLE_RATE,
+  STRANGLE_S,
   VOICE_DUCK_ATTACK_S,
   VOICE_DUCK_DB,
   VOICE_DUCK_RELEASE_S,
   VOICE_SLOTS,
   XFADE_S,
 } from './constants'
-import type { Cmd, Phase, SourceKind } from './director'
+import type { AgonyPhase, Cmd, Phase, SourceKind } from './director'
 import { DUCK_RAMP_S } from './duck'
 import type { EndCause, EndMode } from './ends'
 import type { Manifest, ManifestEntry } from './manifest'
@@ -40,11 +48,14 @@ export interface Bank {
 export interface LogPhase {
   readonly tick: Tick
   readonly time: number
-  readonly phase: Phase | null
+  readonly phase: Phase | AgonyPhase | null
   readonly file: string
   readonly muffled: boolean
-  // Sources hors voix : vitesse de lecture et offset de départ (s), pour retrouver le point de lecture du fichier
-  // (B5 amendement A1, enveloppe de gain). Une entrée par changement de vitesse.
+  // Rampe de vitesse programmée à partir de `time` (passage au râle : la couche vivante baisse de hauteur).
+  readonly rateTo?: number
+  readonly rampS?: number
+  // Sources hors voix et râle : vitesse de lecture et offset de départ (s), pour retrouver le point de lecture du
+  // fichier (B5 amendement A1, enveloppe de gain). Une entrée par changement de vitesse.
   readonly rate?: number
   readonly offsetS?: number
 }
@@ -53,7 +64,7 @@ export interface LogSource {
   readonly uid: number
   readonly id: EntityId
   readonly family: FamilyKind | null
-  readonly kind: 'voix' | SourceKind
+  readonly kind: 'voix' | 'râle' | SourceKind
   readonly slot: number | null
   readonly startTick: Tick
   readonly startTime: number
@@ -62,10 +73,15 @@ export interface LogSource {
   endTime: number | null
   endMode: EndMode | null
   endCause: EndCause | null
-  endDurationS: number | null // durée de fin programmée : rampe de coupure ou fondu
+  endDurationS: number | null // durée de fin programmée, depuis endTime : agonie ou fondu
+  // Râle (B5 I1, A19) : piste d'agonie, rang de mort, et fin de l'agonie (tick t_d + A_g, instant de la fin programmée).
+  lane: number | null
+  rank: number | null
+  agonyEnd: { tick: Tick; time: number } | null
   strangle: boolean
-  // Une mort qui survient pendant une fin douce coupe la fin en cours.
-  cutDuringFade: { tick: Tick; time: number } | null
+  // Une mort qui survient pendant une fin douce plus longue que l'agonie (étranglement d'une prière) la fait taire à
+  // la fin de l'agonie ; endDurationS est alors compté jusqu'à cette nouvelle fin.
+  diedDuringFade: { tick: Tick; time: number } | null
 }
 
 export interface LogFrame {
@@ -97,6 +113,8 @@ export interface AudioLog {
     releaseAt: number
   }[]
   readonly nappe: { tick: Tick; time: number; n: number; prev: number; gain: number; rampS: number }[]
+  // Morts d'une famille qui a une voix, sans râle : inaudibles (rang > 24 sans voix tenue) ou sans piste d'agonie libre.
+  readonly agonyDenied?: { tick: Tick; time: number; id: EntityId; reason: 'rang' | 'muet' | 'piste' }[]
   readonly warnings: string[]
 }
 
@@ -104,12 +122,14 @@ export interface Taps {
   readonly slots: readonly GainNode[]
   readonly others: GainNode
   readonly creatures: GainNode
+  readonly voicesPre: GainNode // voix vivantes avant l'étage des voix (B5 A18)
   readonly voices: GainNode // étage des voix (ducking des autres voix), entre les panoramiques et le bus des créatures
   readonly nappe: GainNode
   readonly ambPre: GainNode
   readonly ambPost: GainNode
   readonly master: GainNode
   readonly impacts: GainNode
+  readonly agony: readonly GainNode[] // prises des pistes d'agonie (avant spatialisation)
 }
 
 // Lecture d'un fichier. Son gain propre ne porte que les fondus enchaînés (changement de fichier d'une voix) ; on
@@ -118,6 +138,7 @@ interface Part {
   readonly src: AudioBufferSourceNode
   readonly gain: GainNode
   readonly level: number // gain de lecture du fichier (manifeste, gainDb), linéaire
+  readonly rate: number // vitesse de lecture au départ
   base: number // gain avant `curve`
   curve: { readonly t0: number; readonly dur: number; readonly values: Float32Array } | null
   stopAt: number | null
@@ -126,7 +147,7 @@ interface Part {
 interface Chain {
   readonly log: LogSource
   readonly fade: GainNode
-  readonly cut: GainNode
+  readonly death: GainNode // extinction d'une source à la mort, et fin d'un fondu que la mort raccourcit
   readonly pan: PannerNode
   parts: Part[] // toutes les lectures de la chaîne, fondus enchaînés en cours compris
   live: Part | null // lecture du fichier courant
@@ -162,6 +183,7 @@ const curve = (n: number, f: (x: number) => number): Float32Array =>
   Float32Array.from({ length: n }, (_, i) => f(i / (n - 1)))
 const FADE_IN = curve(64, (x) => Math.sin((x * Math.PI) / 2))
 const FADE_OUT = curve(64, (x) => Math.cos((x * Math.PI) / 2))
+const FLOOR = dbToGain(SOFT_FADE_FLOOR_DB)
 const DUCK_GAIN = dbToGain(DUCK_DB)
 const VOICE_DUCK_GAIN = dbToGain(VOICE_DUCK_DB)
 const NAPPE_OFF_CURVE = curve(512, nappeOffShape)
@@ -227,6 +249,8 @@ export const createGraph = (
   creatures.connect(master)
   const voicesBus = gain()
   voicesBus.connect(creatures)
+  const voicesPre = gain()
+  voicesPre.connect(voicesBus)
   const impacts = gain()
   impacts.connect(master)
   const ambPre = gain()
@@ -236,6 +260,7 @@ export const createGraph = (
   const nappe = gain(0)
   nappe.connect(ambPre)
   const slotTaps = Array.from({ length: VOICE_SLOTS }, () => gain())
+  const agonyTaps = Array.from({ length: AGONY_LANES }, () => gain())
   const others = gain()
 
   // Lecture d'un fichier tel que le manifeste le décrit : offset de départ, points de boucle.
@@ -266,7 +291,15 @@ export const createGraph = (
       offset = e.loopStart / e.sampleRate + ((offset - e.loopEnd / e.sampleRate) % period)
     }
     src.start(at, offset)
-    return { src, gain: g, level, base: (opts.gain ?? 1) * level, curve: null, stopAt: null }
+    return {
+      src,
+      gain: g,
+      level,
+      rate: opts.rate ?? 1,
+      base: (opts.gain ?? 1) * level,
+      curve: null,
+      stopAt: null,
+    }
   }
 
   // Ambiance permanente.
@@ -274,19 +307,26 @@ export const createGraph = (
   // Sons ponctuels (impacts…) : gardés jusqu'à leur fin, pour que dispose() les arrête aussi.
   let oneshotParts: { readonly part: Part; readonly endAt: number }[] = []
 
-  const log: AudioLog = { sources: [], frames: [], oneshots: [], ducks: [], nappe: [], warnings: [] }
+  // Morts sans râle : champ facultatif du type (les tranches de télémétrie de src/dev ne le recopient pas encore),
+  // toujours rempli ici.
+  const agonyDenied: NonNullable<AudioLog['agonyDenied']>[number][] = []
+  const log: AudioLog = {
+    sources: [],
+    frames: [],
+    oneshots: [],
+    ducks: [],
+    nappe: [],
+    agonyDenied,
+    warnings: [],
+  }
   let uid = 0
   const voiceChains = new Map<number, Chain>() // emplacement → voix tenue
   const srcChains = new Map<string, Chain>() // clé de source → chaîne
-  const endingChains: Chain[] = [] // fins en cours (fondu) : une mort les coupe encore
+  const endingChains: Chain[] = [] // fins en cours (fondu) : une mort les borne à la fin de l'agonie
   const retired: Chain[] = []
-  // Fin de la rampe de la dernière coupure de chaque emplacement de voix. Un emplacement coupé est réattribuable au
-  // même tick (B5.O1, O8 b) ; la voix suivante y démarre un quantum après cette fin, pour que l'emplacement montre la
-  // coupure (rampe, puis un quantum muet) avant la nouvelle voix (B5.O3, mesuré par emplacement).
-  const slotCutEnd = new Map<number, number>()
-  // Fin du fondu de la dernière voix volée ou relevée de chaque emplacement : la voix suivante n'y démarre pas avant
-  // (B5.O8 a). Au banc, le fondu tient toujours dans ses 18 ticks (SOFT_FADE_S) ; en direct, l'horloge des images
-  // peut rapprocher deux ticks de quelques millisecondes.
+  // Fin de la dernière fin (fondu d'une voix volée ou relevée, agonie) de chaque emplacement : la voix suivante n'y
+  // démarre pas avant (B5.O8 a). Au banc, un fondu tient toujours dans ses 18 ticks (SOFT_FADE_S) et une agonie dans
+  // ses 24 ; en direct, l'horloge des images peut rapprocher deux ticks de quelques millisecondes.
   const slotFadeEnd = new Map<number, number>()
   let nappeRamp: Ramp = { v0: 0, t0: 0, v1: 0, t1: 0 }
   let duckRamps: Ramp[] = []
@@ -294,7 +334,7 @@ export const createGraph = (
   let voiceDuckRamps: Ramp[] = []
 
   const newChain = (
-    kind: 'voix' | SourceKind,
+    kind: 'voix' | 'râle' | SourceKind,
     id: EntityId,
     slot: number | null,
     tick: Tick,
@@ -302,14 +342,15 @@ export const createGraph = (
     pos: Vec2,
     family: FamilyKind | null,
     tap: AudioNode,
+    bus: AudioNode = kind === 'voix' ? voicesPre : creatures,
   ): Chain => {
     const fade = gain()
-    const cut = gain()
+    const death = gain()
     const pan = new PannerNode(ctx, { positionX: pos.x, positionY: 0, positionZ: pos.z })
-    fade.connect(cut)
-    cut.connect(pan)
-    pan.connect(kind === 'voix' ? voicesBus : creatures)
-    cut.connect(tap)
+    fade.connect(death)
+    death.connect(pan)
+    pan.connect(bus)
+    death.connect(tap)
     const entryLog: LogSource = {
       uid: uid++,
       id,
@@ -324,35 +365,123 @@ export const createGraph = (
       endMode: null,
       endCause: null,
       endDurationS: null,
+      lane: null,
+      rank: null,
+      agonyEnd: null,
       strangle: false,
-      cutDuringFade: null,
+      diedDuringFade: null,
     }
     log.sources.push(entryLog)
-    return { log: entryLog, fade, cut, pan, parts: [], live: null, stopAt: null, pos }
+    return { log: entryLog, fade, death, pan, parts: [], live: null, stopAt: null, pos }
   }
 
-  const cutChain = (ch: Chain, now: number): void => {
-    ch.cut.gain.setValueAtTime(1, now)
-    ch.cut.gain.linearRampToValueAtTime(0, now + CUT_RAMP_S)
-    for (const p of ch.parts) stopPart(p, now + CUT_RAMP_S)
-    ch.stopAt = now + CUT_RAMP_S
-    if (ch.log.kind === 'voix' && ch.log.slot !== null) {
-      slotCutEnd.set(ch.log.slot, now + CUT_RAMP_S)
-      slotFadeEnd.delete(ch.log.slot)
-    }
+  // Extinction sur l'étage de mort, de `now` à `end` : rampe exponentielle jusqu'à −60 dB, puis zéro et arrêt. Sert aux
+  // sources d'un mort (gargouillis, chant, scie, coutures) et aux fins douces qu'une mort raccourcit.
+  const dieOut = (ch: Chain, now: number, end: number): void => {
+    ch.death.gain.setValueAtTime(1, now)
+    ch.death.gain.exponentialRampToValueAtTime(FLOOR, end)
+    ch.death.gain.setValueAtTime(0, end)
+    for (const p of ch.parts) stopPart(p, end)
+    ch.stopAt = end
   }
 
   // Fondu enchaîné, côté sortant : la lecture descend de son gain réel à `now` (elle peut être encore en train de
-  // monter) jusqu'à 0 en XFADE_S, puis s'arrête. Toute automatisation encore programmée sur ce gain est annulée
+  // monter) jusqu'à 0 en `dur`, puis s'arrête. Toute automatisation encore programmée sur ce gain est annulée
   // d'abord : aucun chevauchement de courbes, quel que soit l'écart entre deux changements, même nul.
-  const fadeOutPart = (p: Part, now: number): void => {
+  const fadeOutPart = (p: Part, now: number, dur: number = XFADE_S): void => {
     const from = partGainAt(p, now)
     const values = FADE_OUT.map((k) => k * from)
     p.gain.gain.cancelScheduledValues(now)
-    p.gain.gain.setValueCurveAtTime(values, now, XFADE_S)
+    p.gain.gain.setValueCurveAtTime(values, now, dur)
     p.base = from
-    p.curve = { t0: now, dur: XFADE_S, values }
-    stopPart(p, now + XFADE_S)
+    p.curve = { t0: now, dur, values }
+    stopPart(p, now + dur)
+  }
+
+  // Passage au râle, côté couche vivante (L4, §19, B5.O3 a) : dans l'image du coup, chaque lecture encore audible de la
+  // voix du mort descend à zéro en STRANGLE_S depuis son gain réel, dans son emplacement ; si le mort râle, sa vitesse
+  // tombe aussi de 5 demi-tons (le cri s'étrangle). L'emplacement est réattribuable dès ce tick : la voix suivante y
+  // démarre à la fin de l'extinction (slotFadeEnd).
+  const strangleVoice = (ch: Chain, pitch: boolean, tick: Tick, now: number): void => {
+    ch.log.endTick = tick
+    ch.log.endTime = now
+    ch.log.endMode = 'agonie'
+    ch.log.endCause = 'mort'
+    ch.log.endDurationS = STRANGLE_S
+    retired.push(ch)
+    // Voix pas encore audible (en direct, emplacement encore en fin) : elle ne sonnera pas.
+    if (ch.log.startTime > now) {
+      for (const p of ch.parts) stopPart(p, ch.log.startTime)
+      ch.stopAt = ch.log.startTime
+      ch.log.endDurationS = 0
+      return
+    }
+    for (const p of ch.parts) {
+      if (p.stopAt !== null && p.stopAt <= now) continue
+      if (pitch) {
+        p.src.playbackRate.setValueAtTime(p.rate, now)
+        p.src.playbackRate.linearRampToValueAtTime(p.rate * STRANGLE_RATE, now + STRANGLE_S)
+      }
+      // Une lecture déjà sortante (fondu enchaîné de phase en cours) finit son propre fondu, plus court.
+      if (p.stopAt === null) fadeOutPart(p, now, STRANGLE_S)
+    }
+    ch.stopAt = Math.max(now, ...ch.parts.map((p) => p.stopAt ?? now))
+    if (ch.log.slot !== null) slotFadeEnd.set(ch.log.slot, now + STRANGLE_S)
+    const last = ch.log.phases[ch.log.phases.length - 1]
+    if (last && pitch)
+      ch.log.phases.push({
+        tick,
+        time: now,
+        phase: last.phase,
+        file: last.file,
+        muffled: last.muffled,
+        rate: 1,
+        rateTo: STRANGLE_RATE,
+        rampS: STRANGLE_S,
+      })
+  }
+
+  // Râle (L4, §19, B5 A19) : sur sa piste d'agonie, hors des emplacements et de l'étage des voix. Il monte en
+  // AGONY_ATTACK_S dans l'image du coup, tient, s'éteint, et s'est tu à la fin programmée de l'agonie.
+  const startRale = (
+    c: Extract<Cmd, { t: 'voice-agony' }> & { readonly lane: number; readonly file: string },
+    tick: Tick,
+    now: number,
+    familyOf: (id: EntityId) => FamilyKind | null,
+  ): void => {
+    const end = now + AGONIE_END_S
+    const tap = agonyTaps[c.lane] as GainNode
+    const ch = newChain('râle', c.id, null, tick, now, c.pos, familyOf(c.id), tap, creatures)
+    const p = play(c.file, now, ch.fade, { gain: 0, rate: c.rate })
+    const attack = FADE_IN.map((k) => k * p.level)
+    const g = p.gain.gain
+    g.setValueCurveAtTime(attack, now, AGONY_ATTACK_S)
+    g.setValueAtTime(p.level, now + AGONY_DECAY_FROM_S)
+    g.exponentialRampToValueAtTime(p.level * FLOOR, end)
+    g.setValueAtTime(0, end)
+    p.curve = { t0: now, dur: AGONY_ATTACK_S, values: attack }
+    stopPart(p, end)
+    ch.parts.push(p)
+    ch.live = p
+    ch.stopAt = end
+    ch.log.phases.push({
+      tick,
+      time: now,
+      phase: 'râle',
+      file: c.file,
+      muffled: c.muffled,
+      rate: c.rate,
+      offsetS: 0,
+    })
+    ch.log.endTick = tick
+    ch.log.endTime = now
+    ch.log.endMode = 'agonie'
+    ch.log.endCause = 'mort'
+    ch.log.endDurationS = AGONIE_END_S
+    ch.log.lane = c.lane
+    ch.log.rank = c.rank
+    ch.log.agonyEnd = { tick: tick + AGONIE_TICKS, time: end }
+    retired.push(ch)
   }
 
   const endChain = (
@@ -367,9 +496,10 @@ export const createGraph = (
     ch.log.endTime = now
     ch.log.endMode = mode
     ch.log.endCause = cause
-    if (mode === 'cut') {
-      cutChain(ch, now)
-      ch.log.endDurationS = CUT_RAMP_S
+    if (mode === 'agonie') {
+      // Source d'un mort (gargouillis, chant, scie, coutures) : elle s'éteint pendant l'agonie.
+      dieOut(ch, now, now + AGONIE_END_S)
+      ch.log.endDurationS = AGONIE_END_S
       retired.push(ch)
       return
     }
@@ -382,8 +512,8 @@ export const createGraph = (
     ch.log.endDurationS = SOFT_FADE_S
     if (ch.log.kind === 'voix' && ch.log.slot !== null) slotFadeEnd.set(ch.log.slot, end)
     if (strangle) {
-      // §8.10 : le chant s'éteint en fondu sur un étranglement, hors de l'étage de fondu, coupé si la mort suit.
-      const p = play(roleFile.etranglement, now, ch.cut)
+      // §8.10 : le chant s'éteint en fondu sur un étranglement, hors de l'étage de fondu, éteint avec l'agonie si la mort suit.
+      const p = play(roleFile.etranglement, now, ch.death)
       ch.parts.push(p)
       const len =
         (p.src.buffer?.duration ?? 0) -
@@ -402,12 +532,16 @@ export const createGraph = (
     endingChains.push(ch)
   }
 
-  const deathCutFading = (id: EntityId, tick: Tick, now: number): void => {
+  // Mort d'une créature : une fin douce encore en cours qui finirait après l'agonie (étranglement d'une prière) s'éteint
+  // pour finir avec elle. Les fondus plus courts finissent d'eux-mêmes avant.
+  const deathBound = (id: EntityId, tick: Tick, now: number): void => {
+    const end = now + AGONIE_END_S
     for (let i = endingChains.length - 1; i >= 0; i--) {
       const ch = endingChains[i] as Chain
-      if (ch.log.id !== id || (ch.stopAt !== null && now >= ch.stopAt)) continue
-      cutChain(ch, now)
-      ch.log.cutDuringFade = { tick, time: now }
+      if (ch.log.id !== id || (ch.stopAt !== null && ch.stopAt <= end)) continue
+      dieOut(ch, now, end)
+      ch.log.diedDuringFade = { tick, time: now }
+      if (ch.log.endTime !== null) ch.log.endDurationS = end - ch.log.endTime
       endingChains.splice(i, 1)
       retired.push(ch)
     }
@@ -463,14 +597,28 @@ export const createGraph = (
   const apply: Graph['apply'] = (cmds, tick, now, familyOf) => {
     for (const c of cmds) {
       switch (c.t) {
+        case 'death':
+          deathBound(c.id, tick, now)
+          break
+        case 'agony-denied':
+          agonyDenied.push({ tick, time: now, id: c.id, reason: c.reason })
+          break
+        case 'voice-agony': {
+          const held = c.slot === null ? undefined : voiceChains.get(c.slot)
+          if (held && c.slot !== null && held.log.id === c.id && held.log.endTick === null) {
+            voiceChains.delete(c.slot)
+            strangleVoice(held, c.file !== null, tick, now)
+          }
+          if (c.lane !== null && c.file !== null)
+            startRale({ ...c, lane: c.lane, file: c.file }, tick, now, familyOf)
+          break
+        }
         case 'voice-end': {
           const ch = voiceChains.get(c.slot)
           if (ch && ch.log.id === c.id && ch.log.endTick === null) {
             voiceChains.delete(c.slot)
             endChain(ch, c.mode, c.cause, tick, now, false)
           }
-          // Une mort coupe aussi toute fin douce encore audible de la même créature.
-          if (c.mode === 'cut') deathCutFading(c.id, tick, now)
           break
         }
         case 'src-end': {
@@ -479,17 +627,15 @@ export const createGraph = (
             srcChains.delete(c.key)
             endChain(ch, c.mode, c.cause, tick, now, c.strangle)
           }
-          if (c.mode === 'cut') deathCutFading(c.id, tick, now)
           break
         }
         case 'voice-start': {
-          const cutEnd = slotCutEnd.get(c.slot)
           const fadeEnd = slotFadeEnd.get(c.slot)
-          const at = Math.max(
-            now,
-            cutEnd !== undefined && cutEnd > now ? cutEnd + QUANTUM_S : now,
-            fadeEnd !== undefined && fadeEnd > now ? fadeEnd : now,
-          )
+          const at = fadeEnd !== undefined && fadeEnd > now ? fadeEnd : now
+          // L'étage des voix sans voix à traiter n'avance pas son automatisation (Chrome, mesuré au banc : après une
+          // mort sans autre voix, la remontée restait figée à −7,4 dB jusqu'à la mort suivante). Le gain courant est
+          // reposé quand une voix arrive : la rampe en cours, s'il y en a une, repart de ce point sans saut.
+          voicesBus.gain.setValueAtTime(voiceDuckAt(now), now)
           const ch = newChain(
             'voix',
             c.id,
@@ -661,7 +807,7 @@ export const createGraph = (
           p.gain.disconnect()
         }
         ch.fade.disconnect()
-        ch.cut.disconnect()
+        ch.death.disconnect()
         ch.pan.disconnect()
         retired.splice(i, 1)
       }
@@ -699,9 +845,10 @@ export const createGraph = (
     dropBefore(log.oneshots, false)
     dropBefore(log.ducks, false)
     dropBefore(log.nappe, true)
+    dropBefore(agonyDenied, false)
     let w = 0
     for (const s of log.sources) {
-      const last = Math.max(s.endTick ?? Number.POSITIVE_INFINITY, s.cutDuringFade?.tick ?? -1)
+      const last = Math.max(s.endTick ?? Number.POSITIVE_INFINITY, s.diedDuringFade?.tick ?? -1)
       if (last >= from) log.sources[w++] = s
     }
     log.sources.length = w
@@ -721,7 +868,7 @@ export const createGraph = (
     }
     for (const ch of chains) {
       ch.fade.disconnect()
-      ch.cut.disconnect()
+      ch.death.disconnect()
       ch.pan.disconnect()
     }
     voiceChains.clear()
@@ -729,12 +876,36 @@ export const createGraph = (
     endingChains.length = 0
     retired.length = 0
     oneshotParts = []
-    for (const n of [master, creatures, voicesBus, impacts, ambPre, ambPost, nappe, others, ...slotTaps])
+    for (const n of [
+      master,
+      creatures,
+      voicesBus,
+      voicesPre,
+      impacts,
+      ambPre,
+      ambPost,
+      nappe,
+      others,
+      ...slotTaps,
+      ...agonyTaps,
+    ])
       n.disconnect()
   }
 
   return {
-    taps: { slots: slotTaps, others, creatures, voices: voicesBus, nappe, ambPre, ambPost, master, impacts },
+    taps: {
+      slots: slotTaps,
+      others,
+      creatures,
+      voicesPre,
+      voices: voicesBus,
+      nappe,
+      ambPre,
+      ambPost,
+      master,
+      impacts,
+      agony: agonyTaps,
+    },
     log,
     apply,
     frame,

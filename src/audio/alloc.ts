@@ -8,6 +8,7 @@
 // - au-delà du rang 28, la voix est volée ;
 // - une voix volée finit en fondu (§19) : l'emplacement reste occupé jusqu'à la fin du fondu, et le corps
 //   qui l'attend la reçoit au premier tick où l'emplacement est libre.
+// Le râle d'un mort ne prend pas d'emplacement : il joue sur une piste d'agonie (director.ts).
 // Les rangs 21 à 24 servent de zone d'approche : un corps qui y entre déclenche le vol plusieurs ticks avant
 // d'atteindre les 20 premiers, que B5.O8 (c) garantit à 8 ticks près.
 import type { EntityId, Tick } from '../sim/index'

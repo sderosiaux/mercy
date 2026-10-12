@@ -8,7 +8,7 @@ import { bankFor } from './bank'
 import { GAME_JOURNAL_TICKS } from './constants'
 import { direct, initialDirector, type Pools } from './director'
 import { type AudioLog, type Bank, createGraph, type Graph, type JournalMode } from './graph'
-import { byRole, type Manifest } from './manifest'
+import { AGONY_ROLES, byRole, type Manifest } from './manifest'
 import { orientListener } from './orientation'
 
 export const poolsOf = (m: Manifest): Pools => ({
@@ -16,6 +16,9 @@ export const poolsOf = (m: Manifest): Pools => ({
   halete: byRole(m, 'halètement').map((e) => e.id),
   inspire: byRole(m, 'inspiration').map((e) => e.id),
   etouffe: byRole(m, 'cri-etouffe').map((e) => e.id),
+  agony: new Map(
+    m.files.flatMap((e) => (AGONY_ROLES.has(e.role) && e.follows !== undefined ? [[e.follows, e.id]] : [])),
+  ),
 })
 
 export interface AudioEngine {

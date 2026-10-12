@@ -1,6 +1,7 @@
-// Comment finit un son : coupure nette pour une mort donnée, fondu pour tout le reste (§19, L4, principe 3).
+// Comment finit un son : agonie pour une mort donnée (la voix passe au râle, les autres sources s'éteignent, tout se
+// tait à la fin de l'agonie), fondu pour tout le reste (§19, L4, principe 3).
 // Logique pure : la cause se lit dans les SimEvent du tick et dans l'état du monde, jamais ailleurs.
-import type { Creature, EntityId, SimEvent } from '../sim/index'
+import type { Creature, EntityId, FamilyKind, SimEvent } from '../sim/index'
 
 export type EndCause =
   | 'mort'
@@ -12,18 +13,22 @@ export type EndCause =
   | 'reinitialisation'
   | 'disparition' // entité retirée du monde sans autre cause connue
 
-export type EndMode = 'cut' | 'fade'
+export type EndMode = 'agonie' | 'fade'
 
-// La seule règle : une mort coupe net, rien d'autre ne coupe net.
-export const endModeFor = (cause: EndCause): EndMode => (cause === 'mort' ? 'cut' : 'fade')
+// La seule règle : une mort ouvre une agonie (et seule une mort donne un râle) ; toute autre fin est un fondu.
+export const endModeFor = (cause: EndCause): EndMode => (cause === 'mort' ? 'agonie' : 'fade')
 
 export const deathIdsOf = (events: readonly SimEvent[]): ReadonlySet<EntityId> =>
   new Set(events.flatMap((e) => (e.type === 'death' ? [e.id] : [])))
 
+// Familles qui ont une voix : toutes, sauf le Membre errant (précision de phase B). Toute mort d'une créature d'une de
+// ces familles donne un râle si le budget de voix le permet (décision de l'orchestrateur, 2026-10-12).
+export const hasVoice = (f: FamilyKind): boolean => f !== 'membre'
+
 // Un corps vocalise s'il est Abattu, ou absorbé dans le sac d'un Porteur (D8 : voix étouffée). Un Membre errant
 // n'a pas de voix ; un corps assemblé en Recousu n'est plus un corps qui vocalise.
 export const vocalising = (c: Creature, byId: ReadonlyMap<EntityId, Creature>): boolean =>
-  c.family !== 'membre' &&
+  hasVoice(c.family) &&
   (c.state.kind === 'abattu' || (c.state.kind === 'absorbe' && byId.get(c.state.into)?.family === 'porteur'))
 
 // Cause de fin de la voix d'un corps qui avait une voix au tick précédent et n'en garde pas.

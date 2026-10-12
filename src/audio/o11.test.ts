@@ -5,7 +5,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { QUANTUM } from './constants'
 import type { Manifest } from './manifest'
-import { analyseFile, cryLevelRows, type FileShape, shapeOf } from './o11'
+import { analyseFile, cryLevelRows, type FileShape, raleLevelRows, shapeOf } from './o11'
 import { fromPcm16 } from './wav'
 
 const SR = 48_000
@@ -98,5 +98,60 @@ describe('banque livrée, fichiers tels que joués (B5.O11 a et g)', () => {
       analyses.filter(({ e }) => e.role === 'cri').map(({ e, a }) => ({ id: e.id, mf: a.mf })),
     )
     expect(g.filter((r) => !r.pass).map((r) => `${r.file} ${r.value.toFixed(2)} dB`)).toEqual([])
+  })
+})
+
+describe('fichiers d’agonie : B5.O11 (a), (b), (c), (h) amendés et forme du râle tel qu’entendu (O3 b à d)', () => {
+  const shape: FileShape = { role: 'rale', loop: false, loopStart: 0, loopEnd: 0, startOffset: 0 }
+  const rowsOf = (x: Float32Array) => analyseFile('x', { ...shape, loopEnd: x.length }, [x], SR).rows
+
+  it('un râle tenu sans trou passe ; un trou de 40 dB échoue (c) ; un râle trop court échoue (b) ; un râle qui enfle échoue la forme', () => {
+    const ok = rowsOf(steps([-20, 200]))
+    for (const c of ['a', 'b', 'c', 'agonie-forme'])
+      expect({ c, pass: row(ok, c)?.pass }).toEqual({ c, pass: true })
+    expect(row(rowsOf(steps([-20, 30], [-60, 12], [-20, 200])), 'c')?.pass).toBe(false)
+    expect(row(rowsOf(steps([-20, 100])), 'b')?.pass).toBe(false)
+    // Le deuxième quart 12 dB plus fort que le premier : le râle ne décroît pas (O3 c).
+    expect(row(rowsOf(steps([-30, 38], [-18, 200])), 'agonie-forme')?.pass).toBe(false)
+  })
+
+  it('(h) : M_f de chaque râle à ±3 dB de la médiane des râles de même traitement', () => {
+    const rows = raleLevelRows([
+      { id: 'r1', role: 'rale', mf: -24 },
+      { id: 'r2', role: 'rale', mf: -25 },
+      { id: 'r3', role: 'rale', mf: -29 },
+      { id: 'e1', role: 'rale-etouffe', mf: -40 },
+    ])
+    expect(rows.map((r) => [r.file, r.pass])).toEqual([
+      ['r1', true],
+      ['r2', true],
+      ['r3', false],
+      ['e1', true],
+    ])
+  })
+
+  it('la banque : un râle par cri et par cri étouffé, du même timbre, qui passe ses critères', () => {
+    const dir = path.resolve(__dirname, '../../public/audio')
+    const m = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8')) as Manifest
+    const agony = m.files.filter((f) => f.role === 'rale' || f.role === 'rale-etouffe')
+    const followed = new Set(agony.map((f) => f.follows))
+    const voices = m.files.filter((x) => x.role === 'cri' || x.role === 'cri-etouffe')
+    expect(voices.filter((f) => !followed.has(f.id)).map((f) => f.id)).toEqual([])
+    const bad = agony.flatMap((f) => {
+      const voice = m.files.find((x) => x.id === f.follows)
+      const wrongRole = voice?.role !== (f.role === 'rale' ? 'cri' : 'cri-etouffe')
+      const rows = analyseFile(f.id, shapeOf(f), [readWav(path.join(dir, f.file))], f.sampleRate).rows
+      const failed = ['a', 'b', 'c', 'e', 'agonie-forme'].filter((c) => row(rows, c)?.pass !== true)
+      return wrongRole || failed.length ? [`${f.id} ${wrongRole ? 'timbre ' : ''}${failed.join(' ')}`] : []
+    })
+    expect(bad).toEqual([])
+    const h = raleLevelRows(
+      agony.map((f) => ({
+        id: f.id,
+        role: f.role,
+        mf: analyseFile(f.id, shapeOf(f), [readWav(path.join(dir, f.file))], f.sampleRate).mf,
+      })),
+    )
+    expect(h.filter((r) => !r.pass).map((r) => r.file)).toEqual([])
   })
 })
