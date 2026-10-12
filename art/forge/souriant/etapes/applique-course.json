@@ -1,0 +1,16 @@
+{
+  "key": "applique-course",
+  "fingerprint": "32ce0c82f5ea8631f166002f75b51f9b8e3fb46f6136738cd34eaa30d8d6fc62",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e47-942d-7578-bc67-922ccb84c22e",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/souriant/files/applique-course.glb",
+      "sha256": "2c9d028249f568cc56904b884548073fa0f8b90b68558f5d1804fe9c44ed4c4c"
+    }
+  },
+  "updatedAt": "2026-10-12T04:03:34.071Z"
+}

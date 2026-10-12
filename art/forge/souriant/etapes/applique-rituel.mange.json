@@ -1,0 +1,16 @@
+{
+  "key": "applique-rituel.mange",
+  "fingerprint": "a5aa1cc82d4d1d4c08d9830d7b7dd17bddf0d07610a8178f42d13d4b71a6efca",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e47-1984-73b3-807b-dd1fa9526af8",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/souriant/files/applique-rituel.mange.glb",
+      "sha256": "558c76b8cbb2a7dcfc52bc0081133ad3c2a1a7c772e0dd1725c0c78e9c18d889"
+    }
+  },
+  "updatedAt": "2026-10-12T04:03:05.800Z"
+}

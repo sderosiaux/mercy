@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-rituel.danse",
+  "fingerprint": "29ade6846f036933b1f0ac9aa007482e1f8fa42ec1e5bb960de2cbdff893a2c4",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e45-cb3d-7631-8a0b-9ea369b013c3",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:01:55.586Z"
+}

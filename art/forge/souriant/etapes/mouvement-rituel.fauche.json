@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-rituel.fauche",
+  "fingerprint": "14fac0a240c0ef3239a22ba3e50d8055e6a34f98d38e367c297e125a2f9677a8",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e46-64df-7222-98d0-c9cfdd59a9ea",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:02:24.620Z"
+}

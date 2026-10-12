@@ -1,0 +1,16 @@
+{
+  "key": "applique-rituel.danse",
+  "fingerprint": "67004871d5e63c9e505cc5b2768fb4e2ab9d4823b6880de1c90b061fb732e52f",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e46-362d-718b-995f-b98a0a985ad0",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/souriant/files/applique-rituel.danse.glb",
+      "sha256": "b432e858ecb384fa17641b2db88b79fc26d62f5c80a5a1b47e2850ffe95f280c"
+    }
+  },
+  "updatedAt": "2026-10-12T04:02:07.677Z"
+}

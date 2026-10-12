@@ -101,11 +101,11 @@ describe('fiches des six personnages de P0', () => {
   it("portent les hauteurs et budgets décidés par l'orchestrateur (requêtes F1-1 et F1-2, 2026-10-12)", () => {
     const attendu: Record<string, { h: number; tri: number; tex: number }> = {
       bourreau: { h: 1.95, tri: 25000, tex: 2048 },
-      souriant: { h: 1.85, tri: 10000, tex: 1024 },
+      souriant: { h: 1.85, tri: 10500, tex: 2048 },
       recousu: { h: 2.15, tri: 18000, tex: 2048 },
-      porteur: { h: 1.6, tri: 10000, tex: 1024 },
-      confesseur: { h: 1.8, tri: 10000, tex: 1024 },
-      chirurgien: { h: 2.05, tri: 10000, tex: 1024 },
+      porteur: { h: 1.6, tri: 10500, tex: 2048 },
+      confesseur: { h: 1.8, tri: 10500, tex: 2048 },
+      chirurgien: { h: 2.05, tri: 10500, tex: 2048 },
     }
     for (const id of P0) {
       const s = parseAsset(fiche(id))

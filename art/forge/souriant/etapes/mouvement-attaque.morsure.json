@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-attaque.morsure",
+  "fingerprint": "4547234141fb3a1d3f20ceab887e67db37f7b1da247ac5359c38c48597dabdc0",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e47-b658-74c3-acfe-8c2e616bb417",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:03:51.183Z"
+}

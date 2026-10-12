@@ -1,0 +1,16 @@
+{
+  "key": "applique-rituel.fauche",
+  "fingerprint": "ca5656b63f31d457a8c6e2b9be1dbba87405390d6050cd383fc0341427e0751e",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e46-a816-723a-af25-730e671aeab1",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/souriant/files/applique-rituel.fauche.glb",
+      "sha256": "8084d8e1f370d4cd0723d0574f8c796c60856a2c99c5da69a3107ce0c3bcb8d9"
+    }
+  },
+  "updatedAt": "2026-10-12T04:02:37.303Z"
+}

@@ -1,0 +1,16 @@
+{
+  "key": "anim-bib-0",
+  "fingerprint": "44cdb7f6b9bdc87a4d539e58a0a94694521b69485205a963c6b7fac9526fbf2e",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e45-894d-7602-888a-8036e451ee80",
+  "estimatedCredits": 12,
+  "credits": 12,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/souriant/files/anim-bib-0.glb",
+      "sha256": "eb5d4f7af0bdbc985e1fbf1e5a54ff68ed01c9e20cc8f6c0aacf4616ab741441"
+    }
+  },
+  "updatedAt": "2026-10-12T04:01:28.346Z"
+}

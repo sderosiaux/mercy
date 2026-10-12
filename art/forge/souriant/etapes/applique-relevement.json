@@ -1,0 +1,16 @@
+{
+  "key": "applique-relevement",
+  "fingerprint": "f558d246eca72c03c86820e5c6a8f4c0ae7faaae4827433873ad4ff848cd6796",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e48-d699-753d-a80d-40260d615807",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/souriant/files/applique-relevement.glb",
+      "sha256": "abd661bbf8e9d7f7821804501ce5757eca0572df6652bdf8135c17b6c6d8de53"
+    }
+  },
+  "updatedAt": "2026-10-12T04:04:54.651Z"
+}

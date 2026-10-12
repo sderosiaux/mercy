@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-rituel.mange",
+  "fingerprint": "0b1e5e234591720a060bc6344aa109d3e1be8b1239250fc966e2ae9071c6ad0e",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e46-d899-75b7-91e4-c6e70a14f53e",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:02:53.775Z"
+}

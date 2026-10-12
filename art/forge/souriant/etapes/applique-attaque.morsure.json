@@ -1,0 +1,16 @@
+{
+  "key": "applique-attaque.morsure",
+  "fingerprint": "509f905851d9f37cdb4efdfbb8bdee06ccc702bba956618b1257cda453f8ba27",
+  "status": "reussi",
+  "endpoint": "animations",
+  "taskId": "01a12e47-f9b9-77ba-aeca-cb8573ad3fcf",
+  "estimatedCredits": 3,
+  "credits": 3,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/souriant/files/applique-attaque.morsure.glb",
+      "sha256": "4487ae3deac2ef3a8ad210d72de8ce6ef3f4835cddfb2db699f16918f3d8c3c6"
+    }
+  },
+  "updatedAt": "2026-10-12T04:03:58.201Z"
+}

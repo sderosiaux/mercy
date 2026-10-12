@@ -1,0 +1,16 @@
+{
+  "key": "rig",
+  "fingerprint": "2f9ddc083ce87d01d3384ce26f023c6f4953991a405785706892aee99e2d1fe8",
+  "status": "reussi",
+  "endpoint": "rigging",
+  "taskId": "01a12e44-5f9b-7100-ab4f-08659312b54f",
+  "estimatedCredits": 5,
+  "credits": 5,
+  "outputs": {
+    "glb": {
+      "file": "art/forge/.cache/souriant/files/rig.glb",
+      "sha256": "be90de55bdeb68e3cd65b33eff1e6eadb3e5b92f3bfa427352236ee96ed40388"
+    }
+  },
+  "updatedAt": "2026-10-12T04:00:10.234Z"
+}

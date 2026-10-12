@@ -1,0 +1,11 @@
+{
+  "key": "mouvement-abattu.torsion",
+  "fingerprint": "34dc32b0871fde8d9741f6ab710c077f64f6cf76f446ff445489c8ce148c2f69",
+  "status": "reussi",
+  "endpoint": "text-to-motion",
+  "taskId": "01a12e48-14a6-70c3-a522-f9e106f2d425",
+  "estimatedCredits": 10,
+  "credits": 10,
+  "outputs": {},
+  "updatedAt": "2026-10-12T04:04:09.563Z"
+}

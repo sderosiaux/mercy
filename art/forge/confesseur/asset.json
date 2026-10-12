@@ -20,8 +20,8 @@
     "pbr": true
   },
   "budgets": {
-    "triangles": 10000,
-    "texturePx": 1024
+    "triangles": 10500,
+    "texturePx": 2048
   },
   "squelette": "humanoide",
   "interruption": {

@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "assets": {
+    "souriant": {
+      "id": "souriant",
+      "nom": "Le Souriant",
+      "famille": "souriant",
+      "glb": "models/souriant.glb",
+      "sha256": "29d18586ee424525ffae884615eea3ce10bd6707df4d698894b78450396d47bb",
+      "hauteurM": 1.85,
+      "clips": [
+        {
+          "name": "rituel.danse",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "rituel.fauche",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "rituel.mange",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "course",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1.7397458658710399
+        },
+        {
+          "name": "attaque.morsure",
+          "boucle": false,
+          "impactS": 0.417,
+          "startS": 0,
+          "rate": 1.0425
+        },
+        {
+          "name": "reaction",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "chute",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "abattu.reptation",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 2.0024617693751066
+        },
+        {
+          "name": "abattu.torsion",
+          "boucle": true,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        },
+        {
+          "name": "relevement",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1.3111111323038738
+        },
+        {
+          "name": "mort.debout",
+          "boucle": false,
+          "impactS": null,
+          "startS": 0,
+          "rate": 1
+        }
+      ],
+      "recetteGlobale": {
+        "interruptionFadeS": 0.033,
+        "mort": "mixer.timeScale = 0 (horloge du mélangeur gelée)"
+      },
+      "validation": {
+        "verdict": "refuse",
+        "rapport": "art/forge/souriant/validation.json",
+        "glbSha256": "29d18586ee424525ffae884615eea3ce10bd6707df4d698894b78450396d47bb"
+      },
+      "credits": {
+        "meshy": 138,
+        "parCle": {
+          "modele": 30,
+          "rig": 5,
+          "anim-bib-0": 12,
+          "mouvement-rituel.danse": 10,
+          "applique-rituel.danse": 3,
+          "mouvement-rituel.fauche": 10,
+          "applique-rituel.fauche": 3,
+          "mouvement-rituel.mange": 10,
+          "applique-rituel.mange": 3,
+          "mouvement-course": 10,
+          "applique-course": 3,
+          "mouvement-attaque.morsure": 10,
+          "applique-attaque.morsure": 3,
+          "mouvement-abattu.torsion": 10,
+          "applique-abattu.torsion": 3,
+          "mouvement-relevement": 10,
+          "applique-relevement": 3
+        }
+      },
+      "majLe": "2026-10-12T04:04:54.916Z"
+    }
+  }
+}
