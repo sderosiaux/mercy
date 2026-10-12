@@ -17,7 +17,7 @@ import {
   type Vec2,
   type World,
 } from '../sim/index'
-import { sacColor } from './look'
+import { sacCastsLight } from './look'
 import { PALETTE } from './palette'
 
 export type LightKind = 'torche' | 'brasero' | 'chandelle' | 'lune' | 'priere' | 'sac' | 'reliquaire'
@@ -91,12 +91,13 @@ export const LIGHT_KINDS: Readonly<
     shadow: false,
     fixed: false,
   },
+  // Sac au stade 3 seulement : rouge vif (§17). Valeurs d'avant E5 au stade 3 : 9 × (0,5 + 0,5 × 3), importance 8.
   sac: {
-    color: PALETTE.chair.sacLueur,
-    intensity: 9,
+    color: PALETTE.rougeVif,
+    intensity: 18,
     range: 6,
     flicker: 0.12,
-    importance: 5,
+    importance: 8,
     shadow: false,
     fixed: false,
   },
@@ -239,7 +240,7 @@ export const selectLights = (
 const lerp = (a: number, b: number, k: number): number => a + (b - a) * k
 
 // Chandelle du reliquaire (planche du Bourreau) : le rayon de lumière autour du joueur, à la manière de Diablo.
-// Halo de prière : vert maladif, son intensité monte avec la canalisation. Lueur du sac : couleur du stade.
+// Halo de prière : vert maladif, son intensité monte avec la canalisation. Lueur du sac : rouge vif, au stade 3 seulement.
 export const entityLights = (world: World, prev: World, alpha: number, t: number): LightSource[] => {
   const out: LightSource[] = []
   const p = world.player
@@ -273,13 +274,14 @@ export const entityLights = (world: World, prev: World, alpha: number, t: number
     }
     if (c.family === 'porteur') {
       const stage = c.familyData[PORTEUR_STAGE_KEY] ?? 0
-      if (stage >= 1) out.push(sacLight(c, x, z, stage))
+      if (sacCastsLight(stage)) out.push(sacLight(c, x, z))
     }
   }
   return out
 }
 
-const sacLight = (c: Creature, x: number, z: number, stage: number): LightSource => {
+// Lueur du sac au stade 3 (look.ts, sacCastsLight : aux stades 0 à 2, le sac n'éclaire rien).
+const sacLight = (c: Creature, x: number, z: number): LightSource => {
   const back = 0.9 // au-delà du sac : la lueur baigne le sol derrière le Porteur sans brûler son corps
   return source(
     'sac',
@@ -287,11 +289,6 @@ const sacLight = (c: Creature, x: number, z: number, stage: number): LightSource
     x - back * Math.cos(c.facing),
     c.state.kind === 'abattu' ? 0.8 : 1.9,
     z - back * Math.sin(c.facing),
-    {
-      color: sacColor(stage),
-      intensity: LIGHT_KINDS.sac.intensity * (0.5 + 0.5 * stage),
-      importance: stage >= 3 ? 8 : LIGHT_KINDS.sac.importance,
-      owner: c.id,
-    },
+    { owner: c.id },
   )
 }

@@ -132,12 +132,18 @@ describe('sources tirées des entités', () => {
     expect(late?.fixed).toBe(false)
   })
 
-  it('fait luire le sac selon son stade, rouge vif au stade 3', () => {
-    let w = scene([{ family: 'porteur', pos: { x: 4, z: 0 }, state: 'hostile' }], { families })
-    expect(entityLights(w, w, 1, 0).some((s) => s.kind === 'sac')).toBe(false)
-    w = withCreature(w, 1, { familyData: { [PORTEUR_STAGE_KEY]: 3 } })
-    const sac = entityLights(w, w, 1, 0).find((s) => s.kind === 'sac')
+  it('n’allume le sac qu’au stade 3, en rouge vif (§17, §30.10 : aux stades 0 à 2, sa lueur n’éclaire rien)', () => {
+    const w = scene([{ family: 'porteur', pos: { x: 4, z: 0 }, state: 'hostile' }], { families })
+    for (const stage of [0, 1, 2]) {
+      const ws = withCreature(w, 1, { familyData: { [PORTEUR_STAGE_KEY]: stage } })
+      expect(entityLights(ws, ws, 1, 0).some((s) => s.kind === 'sac')).toBe(false)
+    }
+    const w3 = withCreature(w, 1, { familyData: { [PORTEUR_STAGE_KEY]: 3 } })
+    const sac = entityLights(w3, w3, 1, 0).find((s) => s.kind === 'sac')
     expect(sac?.color).toBe(PALETTE.rougeVif)
+    // Stade 3 inchangé par E5 : 9 cd × (0,5 + 0,5 × 3), importance 8.
+    expect(sac?.intensity).toBe(18)
+    expect(sac?.importance).toBe(8)
   })
 
   it('n’allume rien pour un mort (un mort ne prie pas, son sac est éteint)', () => {

@@ -27,7 +27,7 @@ import { type AnimFrame, animate, deathFrame, type MachineInput, phase01 } from 
 import { AnimMemory, PLAYER_TRACK } from '../anim/memory'
 import { encodeId, ROLE } from '../idpass'
 import { DEAD_PROXY_LAYER } from '../lightrig'
-import { greyMix, rimOf, sacColor } from '../look'
+import { greyMix, rimOf, sacColor, sacLuminanceOnly } from '../look'
 import { PALETTE } from '../palette'
 import { urlParam } from '../quality'
 import { type ClassShift, parseShiftOverride, shiftFor, withOverrides } from './classes'
@@ -420,6 +420,7 @@ export class ModelLayer {
     u.uSacScale.value = SAC_SCALE_0 + SAC_SCALE_STEP * stage
     u.uSacTint.value.setHex(sacColor(stage))
     u.uSacGlow.value = stage >= 1 ? SAC_GLOW : 0
+    u.uSacLumOnly.value = sacLuminanceOnly(stage) ? 1 : 0
     // Halo du Confesseur : vert maladif en prière seulement (requête E1 R1), fer sombre sinon.
     const praying = c.family === 'confesseur' && c.action?.kind === 'canalisation'
     u.uHaloTint.value.setHex(praying ? PALETTE.vertMaladif : PALETTE.habit.haloConfesseur)

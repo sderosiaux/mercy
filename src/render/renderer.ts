@@ -150,6 +150,10 @@ const assetBaseDefault = (): string => {
   return env?.BASE_URL ?? '/'
 }
 
+// Instrument (E5, attribuer une couleur à une lumière) : `sanslumiere=reliquaire,sac,priere` éteint ces sources
+// d'entité (éclairage et brouillard). Lu au chargement du module : les outils de dev réécrivent l'URL au redémarrage.
+const SANS_LUMIERE = new Set((urlParam('sanslumiere') ?? '').split(',').filter(Boolean))
+
 export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptions = {}): Renderer => {
   const q: QualitySpec = qualityFrom(options.quality)
   const shadows = options.shadows ?? true
@@ -432,7 +436,8 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
 
     // Lumières : sources fixes du décor et sources des entités visibles (une entité masquée emporte sa lumière).
     const ents = entityLights(world, prev, alpha, t).filter(
-      (s: LightSource) => s.owner === undefined || visible(s.owner < 0 ? PLAYER_ID : s.owner),
+      (s: LightSource) =>
+        (s.owner === undefined || visible(s.owner < 0 ? PLAYER_ID : s.owner)) && !SANS_LUMIERE.has(s.kind),
     )
     rig.setLantern(ents.find((s) => s.kind === 'reliquaire') ?? null)
     if (texturesLoaded && !envCaptured) captureEnvironment()

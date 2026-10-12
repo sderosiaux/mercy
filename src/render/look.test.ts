@@ -1,8 +1,71 @@
 import { describe, expect, it } from 'vitest'
 import type { Creature } from '../sim/index'
 import { mannequin, scene } from '../sim/testing'
-import { bodyClass, decalColor, greyMix, marksOf, pulse, rimOf, sacColor, telegraphColor, tone } from './look'
+import { deltaE00, hexToLab, type Lab, srgbToLab } from './color-science'
+import {
+  bodyClass,
+  decalColor,
+  greyMix,
+  marksOf,
+  pulse,
+  rimOf,
+  sacCastsLight,
+  sacColor,
+  sacLuminanceOnly,
+  telegraphColor,
+  tone,
+} from './look'
 import { mixHex, PALETTE } from './palette'
+import { LOOK } from './post'
+
+// Chaîne de tons d'un pixel de personnage, recopiée de shaders.ts (TONEMAP_GLSL, e1GradeMix avec model = 1, sans
+// brouillard, vignettage ni grain) : radiance de scène linéaire → sRGB 8 bits → CIELAB.
+type Rgb = readonly [number, number, number]
+const toLinear = (c8: number): number => {
+  const c = c8 / 255
+  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+}
+const scaled = (hex: number, k: number): Rgb => [
+  k * toLinear((hex >> 16) & 255),
+  k * toLinear((hex >> 8) & 255),
+  k * toLinear(hex & 255),
+]
+const mat = (m: readonly Rgb[], v: Rgb): Rgb => [
+  (m[0] as Rgb)[0] * v[0] + (m[0] as Rgb)[1] * v[1] + (m[0] as Rgb)[2] * v[2],
+  (m[1] as Rgb)[0] * v[0] + (m[1] as Rgb)[1] * v[1] + (m[1] as Rgb)[2] * v[2],
+  (m[2] as Rgb)[0] * v[0] + (m[2] as Rgb)[1] * v[1] + (m[2] as Rgb)[2] * v[2],
+]
+const ACES_IN: readonly Rgb[] = [
+  [0.59719, 0.35458, 0.04823],
+  [0.076, 0.90834, 0.01566],
+  [0.0284, 0.13383, 0.83777],
+]
+const ACES_OUT: readonly Rgb[] = [
+  [1.60475, -0.53108, -0.07367],
+  [-0.10208, 1.10813, -0.00605],
+  [-0.00327, -0.07276, 1.07602],
+]
+const clamp01 = (x: number): number => Math.min(1, Math.max(0, x))
+const shown = (radiance: Rgb): Lab => {
+  const fit = (x: number): number =>
+    (x * (x + 0.0245786) - 0.000090537) / (x * (0.983729 * x + 0.432951) + 0.238081)
+  const a = mat(ACES_IN, radiance.map((x) => x * LOOK.exposure) as unknown as Rgb)
+  const c = mat(ACES_OUT, a.map(fit) as unknown as Rgb).map(clamp01)
+  const [r, g, b] = c as unknown as Rgb
+  const l = 0.2126 * r + 0.7152 * g + 0.0722 * b
+  const mx = Math.max(r, g, b)
+  const keep = ((t: number) => t * t * (3 - 2 * t))(
+    clamp01(((mx - Math.min(r, g, b)) / Math.max(mx, 1e-4) - 0.3) / 0.35),
+  )
+  const sat = LOOK.modelSaturation + (1 - LOOK.modelSaturation) * keep
+  const lc = clamp01(0.18 * (Math.max(l, 0) / 0.18) ** LOOK.contrast)
+  const k = l > 1e-5 ? lc / l : 1
+  const graded = [r, g, b].map((x) => clamp01((l + (x - l) * sat) * k)) // teinte des personnages : LOOK.modelTint = 0
+  const s8 = graded.map((x) =>
+    Math.round(255 * (x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055)),
+  )
+  return srgbToLab(s8[0] as number, s8[1] as number, s8[2] as number)
+}
 
 const recousu = mannequin()
 const world = scene(
@@ -94,6 +157,25 @@ describe('autres couleurs porteuses de sens', () => {
     expect(sacColor(0)).toBe(PALETTE.chair.sac)
     expect(sacColor(2)).toBe(PALETTE.chair.sacLueur)
     expect(sacColor(3)).toBe(PALETTE.rougeVif)
+  })
+  it('ne laisse la lumière teinter le sac, et le sac éclairer, qu’au stade 3', () => {
+    expect([0, 1, 2, 3].map(sacLuminanceOnly)).toEqual([true, true, true, false])
+    expect([0, 1, 2, 3].map(sacCastsLight)).toEqual([false, false, false, true])
+  })
+  it('tient la couleur du sac aux stades 0 à 2 loin du rouge vif à toute luminance (exposition, ACES, étalonnage)', () => {
+    // Sous une lumière qui ne change que sa luminance (sacLuminanceOnly), le sac affiche k × sa couleur : quel que
+    // soit k, il reste à au moins 13 de ΔE00 du rouge vif (seuil de E5, audit du §30). Le stade 3, lui, l'atteint.
+    expect(LOOK.modelTint).toBe(0) // la recopie de l'étalonnage ci-dessus suppose des personnages sans teinte froide
+    const rv = hexToLab(PALETTE.rougeVif)
+    const closest = (hex: number): number => {
+      let m = Number.POSITIVE_INFINITY
+      for (let e = -3; e <= 2; e += 0.01) m = Math.min(m, deltaE00(shown(scaled(hex, 10 ** e)), rv))
+      return m
+    }
+    expect(closest(sacColor(0))).toBeGreaterThan(13)
+    expect(closest(sacColor(1))).toBeGreaterThan(13)
+    expect(closest(sacColor(2))).toBeGreaterThan(13)
+    expect(closest(sacColor(3))).toBeLessThan(10)
   })
   it('garde le sang frais rouge vif pendant 2 s, puis rouge brun', () => {
     expect(decalColor(0)).toBe(PALETTE.rougeVif)

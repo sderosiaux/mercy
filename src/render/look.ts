@@ -75,6 +75,19 @@ export const sacColor = (stage: number): number => {
   return mixHex(PALETTE.chair.sac, PALETTE.chair.sacLueur, stage / 2)
 }
 
+// Le rouge vif ne désigne que le sac au stade 3 (§17, §30.10 ; audit du §30, E5). Une lumière chaude ou rouge sur
+// un albédo rouge pousse le produit vers le primaire rouge de l'écran, que la courbe ACES rend tel quel : c'est le
+// rouge vif. Mesuré avant E5 : sac vide sous la chandelle du Bourreau à ΔE00 6,7 du rouge vif ; sac au stade 2 sous
+// sa propre lueur à 9,4, et la chair voisine à 6,5. D'où deux règles, aux stades 0 à 2 seulement :
+// - le sac ne prend des lumières que leur luminance, sa chromaticité reste la couleur du stade : mise à l'échelle
+//   seule, à travers l'exposition, ACES et l'étalonnage des personnages, la couleur du stade 2 ne s'approche jamais
+//   à moins de 13,7 du rouge vif (stade 1 : 18,3 ; stade 0 : 23,5) ;
+// - le sac n'éclaire rien (lights.ts) : aucune teinte de la palette assez rouge pour se lire « sac » ne tient la
+//   chair d'un voisin hors du rouge vif à toutes les distances.
+// Au stade 3, la lumière garde sa couleur et le sac éclaire en rouge vif : c'est le danger imminent.
+export const sacLuminanceOnly = (stage: number): boolean => stage < 3
+export const sacCastsLight = (stage: number): boolean => stage >= 3
+
 // Décalque de sang : rouge vif pendant 2 s, puis rouge brun (§17).
 export const decalColor = (age: number): number =>
   age < RENDER.sangFraisTicks ? PALETTE.rougeVif : PALETTE.rougeBrun.sangAncien

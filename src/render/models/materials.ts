@@ -41,6 +41,7 @@ export interface ModelUniforms {
   readonly uSacCenter: { value: Vector3 }
   readonly uSacTint: { value: Color }
   readonly uSacGlow: { value: number }
+  readonly uSacLumOnly: { value: number } // 1 : la lumière ne donne au sac que sa luminance (stades 0 à 2)
   readonly uHaloTint: { value: Color }
   readonly uHaloGlow: { value: number } // 0 : halo de fer ; > 0 : prière (vert maladif)
   readonly uSeams: { value: number } // Cicatrices visibles (0 à 3)
@@ -58,6 +59,7 @@ export const modelUniforms = (sacCenter: Vector3): ModelUniforms => ({
   uSacCenter: { value: sacCenter.clone() },
   uSacTint: { value: new Color(PALETTE.chair.sac) },
   uSacGlow: { value: 0 },
+  uSacLumOnly: { value: 1 },
   uHaloTint: { value: new Color(PALETTE.vertMaladif) },
   uHaloGlow: { value: 0 },
   uSeams: { value: 0 },
@@ -143,6 +145,7 @@ export const bodyMaterial = (
 ${FRAG_PARS}
 uniform vec3 uSacTint;
 uniform float uSacGlow;
+uniform float uSacLumOnly;
 uniform vec3 uHaloTint;
 uniform float uHaloGlow;
 uniform float uSeams;
@@ -176,11 +179,18 @@ ${CLASS_SHIFT_GLSL}`,
       )
       // Masque des personnages (E3) : alpha 0 dans la scène (matière opaque, sans mélange), lu par la composition pour
       // leur laisser la couleur que l'étalonnage froid retire au décor (post.ts, LOOK.modelSaturation).
+      // Sac aux stades 0 à 2 (E5) : la lumière reçue ne lui donne que sa luminance ; la chromaticité reste celle de la
+      // couleur du stade (palette). Pourquoi : look.ts, sacLuminanceOnly.
       // Plancher de la chair (E4) : la luminance ne descend pas sous celle de l'albédo × uLivingFloor ; ce qui manque
       // est rendu dans la couleur de l'albédo (la chair, pas la lumière froide de la nuit). Au-dessus : rien ne change.
       .replace(
         '#include <opaque_fragment>',
-        `{
+        `if ( e2Sac && uSacLumOnly > 0.5 ) {
+    vec3 e5Lit = outgoingLight - totalEmissiveRadiance;
+    vec3 e5Tint = uSacTint / max( dot( uSacTint, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-6 );
+    outgoingLight = e5Tint * dot( e5Lit, vec3( 0.2126, 0.7152, 0.0722 ) ) + totalEmissiveRadiance;
+  }
+  {
     vec3 e4Floor = diffuseColor.rgb * uLivingFloor;
     float e4Lf = dot( e4Floor, vec3( 0.2126, 0.7152, 0.0722 ) );
     float e4Lo = dot( outgoingLight, vec3( 0.2126, 0.7152, 0.0722 ) );
@@ -243,6 +253,11 @@ void main() {
 }
 `
 
+// Instrument (E5, §30.10) : `idsac=1` donne au sac du Porteur le rôle 7 dans la passe d'identification, pour mesurer
+// la couleur du sac seul. Sans lui, le sac est du corps (B2). Lu au chargement du module : les outils de dev
+// réécrivent l'URL au redémarrage.
+export const ROLE_SAC_INSTRUMENT = 7
+const ID_SAC = urlParam('idsac') === '1'
 // Corps (scène) : aucun test de scène. Liseré et marques (couche des signaux) : le leur.
 const ID_FRAG = (which: 'body' | 'rim' | 'mark'): string => /* glsl */ `
 uniform vec3 uId;
@@ -253,6 +268,7 @@ void main() {
   ${which === 'mark' ? `if ( vMark < 0.5 ) discard;\n  ${SCENE_DEPTH_CALL.marque}` : ''}
   ${which === 'rim' ? SCENE_DEPTH_CALL.liseré : ''}
   gl_FragColor = vec4( uId, 1.0 );
+  ${which === 'body' && ID_SAC ? `if ( abs( vPart - 3.0 ) < 0.5 ) gl_FragColor.b = ${ROLE_SAC_INSTRUMENT}.0 / 255.0;` : ''}
 }
 `
 
