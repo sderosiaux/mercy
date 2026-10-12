@@ -132,6 +132,7 @@ export interface EntityReading {
   readonly marque: number
   readonly corpsCmedian: number // O1 vivant
   readonly allCmedian: number // O1 mort
+  readonly Lmedian: number // luminance médiane de tous les pixels (réglage de la lumière)
   readonly allCp90: number
   readonly signal: Lab | null // O2
   readonly dRefs: { readonly ivoire: number; readonly or: number; readonly gris: number } | null
@@ -298,6 +299,7 @@ export const readFrame = (
       marque: p.marque.length,
       corpsCmedian: median(labs(p.corps).map(chroma)),
       allCmedian: median(all.map(chroma)),
+      Lmedian: median(all.map((l) => l.L)),
       allCp90: pct(all.map(chroma), 0.9),
       signal,
       dRefs,

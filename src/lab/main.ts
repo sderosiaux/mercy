@@ -13,6 +13,7 @@ import {
 } from '../render/index'
 import { step, type World } from '../sim/index'
 import { type Candidate, drawProbes, MARKER, markerCenter } from '../viewer/session'
+import { auditFrame } from './audit'
 import { readFrame, referenceAccumulator, summarize } from './measure'
 import { InvalidScene } from './policies'
 import { type LabScene, SCENES, sceneById } from './scenes'
@@ -41,16 +42,20 @@ const toDataUrl = (img: PixelImage): string => {
   return c.toDataURL('image/png')
 }
 
-const run = (scene: LabScene): void => {
+const run = async (scene: LabScene): Promise<void> => {
   const canvas = document.createElement('canvas')
   canvas.className = 'lab-canvas'
   app.append(canvas)
+  // Qualité (`qualite=haute|basse`) et caméra (`camera=p20|proche`) : lues par le rendu dans l'URL.
   const renderer = createRenderer(canvas, {
     pixelRatio: 1,
     shake: params.get('shake') === '1',
+    shadows: params.get('ombres') !== '0', // ombres=0 : mesure du coût des ombres
     antialias: params.get('aa') === '1', // mesure par défaut : couverture identique à la passe d'identification
     preserveDrawingBuffer: true,
   })
+  // Textures chargées et environnement capturé avant toute image mesurée.
+  await renderer.ready()
   const hud = params.get('hud') === '0' ? null : createHud(app)
   const label = document.createElement('div')
   label.className = 'lab-label'
@@ -63,7 +68,7 @@ const run = (scene: LabScene): void => {
   // Les décalques de la scène sont du sang ancien (rouge brun), posés avant le tick 0.
   const seedGore = (): void => {
     renderer.debug.clearGore()
-    for (const d of scene.decals ?? []) renderer.debug.addDecal(d.pos, d.size, -1000)
+    for (const d of scene.decals ?? []) renderer.debug.addDecal(d.pos, d.size, d.born ?? -1000)
     renderer.observe(world)
   }
   const reset = (): void => {
@@ -489,6 +494,33 @@ const run = (scene: LabScene): void => {
         }
         return { creatures: world.creatures.length, maxErrorM: worst }
       },
+      // Audit §30 (E1) : créatures debout sans ivoire ni or, acier du Bourreau, télégraphes contre le sang et les morts.
+      audit: () => auditFrame(renderer, world),
+      // Temps de frame complet (CPU + GPU) : chaque image est rendue puis on attend la fin du travail du GPU (lecture
+      // d’un pixel). Pas plafonné par la synchro verticale, contrairement à perf.
+      frametime: () => {
+        const n = Number(params.get('frames') ?? '240')
+        const ms: number[] = []
+        for (let i = 0; i < n; i++) {
+          stepOnce()
+          draw()
+          ms.push(renderer.debug.syncFrameMs())
+        }
+        const fs = ms.slice(10)
+        const s = renderer.debug.stats()
+        return {
+          frames: fs.length,
+          frameMs: { p50: q(fs, 0.5), p95: q(fs, 0.95), max: q(fs, 1) },
+          stats: s,
+          lights: renderer.debug.lights().length,
+          creatures: {
+            nonMortes: world.creatures.filter((c) => c.state.kind !== 'mort').length,
+            mortes: world.creatures.filter((c) => c.state.kind === 'mort').length,
+          },
+          gpu: renderer.debug.gpu(),
+          canvas: [canvas.width, canvas.height],
+        }
+      },
       // Taux de visibilité (B2 §5) : pixels visibles / pixels de l'entité rendue seule.
       visibility: () => {
         const count = (img: PixelImage): Map<number, number> => {
@@ -539,5 +571,5 @@ const run = (scene: LabScene): void => {
 
 const id = params.get('scene')
 const scene = id ? sceneById(id) : undefined
-if (scene) run(scene)
+if (scene) void run(scene)
 else listScenes()

@@ -1,290 +1,45 @@
-// Poses procédurales des créatures et du Bourreau : assemblages de segments rigides (§17), animés par
-// l'horloge de rendu en ticks (§18). Pur : aucune dépendance au WebGL, testable sous Node.
+// Poses procédurales des créatures : assemblages de segments rigides (§17), animés par l'horloge de rendu en
+// ticks (§18), habillés de matières (E1 : chair, tissu, cuir, fer, os, bois). Pur : aucune dépendance au WebGL.
 // Deux règles de lecture (§18, §30.3) : tout ce qui vit tremble ; un mort ne bouge plus du tout. La pose d'un
 // mort ne dépend que de sa position, de son orientation, de sa famille et du tick de sa mort.
-import { Euler, Matrix4, Quaternion, Vector3 } from 'three'
-import { actionPhase, type Creature, type Player, TICK_HZ, TUNING, type Vec2 } from '../sim/index'
-import { greyMix, marksOf, type Rim, rimOf, sacColor, tone } from './look'
+import { Matrix4 } from 'three'
+import { actionPhase, type Creature, TUNING, type Vec2 } from '../sim/index'
+import { greyMix, marksOf, rimOf, sacColor, tone } from './look'
 import { PALETTE } from './palette'
+import {
+  type Angles,
+  type ArmState,
+  type Body,
+  Builder,
+  type Dims,
+  type Frames,
+  gait,
+  humanoid,
+  joint,
+  legLen,
+  type Paint,
+  phaseOf,
+  type RigContext,
+  rest,
+  sec,
+  smooth,
+  TAU,
+  tremble,
+} from './rig-core'
 
-export type Shape = 'box' | 'sphere' | 'cylinder' | 'cone' | 'torus'
-export type Mat = 'lit' | 'flat' | 'glow'
-export type Role = 'corps' | 'marque' | 'autre'
-
-export interface Segment {
-  readonly part: string
-  readonly shape: Shape
-  readonly mat: Mat
-  readonly role: Role
-  readonly color: number
-  readonly size: readonly [number, number, number]
-  readonly frame: Matrix4 // transformation monde du segment, sans l'échelle de sa taille
-  readonly hull: boolean // porte le liseré quand le corps est Abattu
-}
-
-export interface Body {
-  readonly id: number
-  readonly segments: readonly Segment[]
-  readonly rim: Rim | null
-}
-
-export interface RigContext {
-  readonly t: number // horloge de rendu, en ticks (tick + alpha)
-  readonly groupPhase: number // phase partagée du groupe de Rituel, [0, 1)
-  readonly speed: number // m/s, déduit de la position précédente
-  readonly targeted: boolean // cible de Sentence sous le curseur (§21)
-  readonly limbStage: number // stade du sac (Porteur)
-  readonly prayerColor: number | null // halo en prière (Confesseur)
-}
-
-// ---------------------------------------------------------------------------------------------------------
-// Outils de cinématique
-
-const TAU = Math.PI * 2
-const _e = new Euler(0, 0, 0, 'XYZ')
-const _q = new Quaternion()
-const _p = new Vector3()
-const ONE = new Vector3(1, 1, 1)
-
-const joint = (parent: Matrix4, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0): Matrix4 => {
-  _e.set(rx, ry, rz, 'XYZ')
-  _q.setFromEuler(_e)
-  _p.set(x, y, z)
-  return new Matrix4().multiplyMatrices(parent, new Matrix4().compose(_p, _q, ONE))
-}
-
-// Phase pseudo-aléatoire stable d'une entité (aucun tirage, aucune horloge).
-export const phaseOf = (id: number, k: number): number => {
-  const s = Math.sin(id * 12.9898 + k * 78.233) * 43758.5453
-  return (s - Math.floor(s)) * TAU
-}
-
-const smooth = (a: number, b: number, x: number): number => {
-  const u = Math.min(1, Math.max(0, (x - a) / (b - a)))
-  return u * u * (3 - 2 * u)
-}
-
-class Builder {
-  readonly segments: Segment[] = []
-  constructor(private readonly grey: number) {}
-  seg(
-    parent: Matrix4,
-    part: string,
-    shape: Shape,
-    size: readonly [number, number, number],
-    offset: readonly [number, number, number],
-    color: number,
-    opts: { mat?: Mat; role?: Role; hull?: boolean; rot?: readonly [number, number, number] } = {},
-  ): Matrix4 {
-    const r = opts.rot ?? [0, 0, 0]
-    const frame = joint(parent, offset[0], offset[1], offset[2], r[0], r[1], r[2])
-    this.segments.push({
-      part,
-      shape,
-      mat: opts.mat ?? 'lit',
-      role: opts.role ?? 'corps',
-      color,
-      size,
-      frame,
-      hull: opts.hull ?? true,
-    })
-    return frame
-  }
-  get g(): number {
-    return this.grey
-  }
-}
-
-// ---------------------------------------------------------------------------------------------------------
-// Humanoïde générique
-
-interface Dims {
-  readonly thigh: number
-  readonly shin: number
-  readonly legT: number
-  readonly hipW: number
-  readonly torsoW: number
-  readonly torsoH: number
-  readonly torsoD: number
-  readonly head: number
-  readonly upperL: number
-  readonly foreL: number
-  readonly armTL: number
-  readonly upperR: number
-  readonly foreR: number
-  readonly armTR: number
-  readonly hand: number
-}
-
-interface Angles {
-  lean: number // tangage du buste (négatif : penché en avant)
-  sway: number // roulis du buste
-  twist: number
-  headP: number
-  headR: number
-  headY: number
-  shLp: number
-  shLr: number
-  shRp: number
-  shRr: number
-  elL: number
-  elR: number
-  hipLp: number
-  hipLr: number
-  hipRp: number
-  hipRr: number
-  knL: number
-  knR: number
-  drop: number // abaissement du bassin, m
-}
-
-const rest = (): Angles => ({
-  lean: 0,
-  sway: 0,
-  twist: 0,
-  headP: 0,
-  headR: 0,
-  headY: 0,
-  shLp: 0,
-  shLr: -0.08,
-  shRp: 0,
-  shRr: 0.08,
-  elL: 0.15,
-  elR: 0.15,
-  hipLp: 0,
-  hipLr: 0,
-  hipRp: 0,
-  hipRr: 0,
-  knL: 0,
-  knR: 0,
-  drop: 0,
-})
-
-interface Paint {
-  readonly skin: number
-  readonly torso: number
-  readonly legs: number
-  readonly arms: number
-  readonly head: number
-}
-
-interface Frames {
-  readonly pelvis: Matrix4
-  readonly torso: Matrix4
-  readonly head: Matrix4
-  readonly handL: Matrix4 | null
-  readonly handR: Matrix4 | null
-  readonly shoulderL: Matrix4
-  readonly shoulderR: Matrix4
-}
-
-type ArmState = 'ok' | 'severed' | 'broken'
-
-const humanoid = (
-  b: Builder,
-  root: Matrix4,
-  d: Dims,
-  a: Angles,
-  paint: Paint,
-  opts: { legs: boolean; armL: ArmState; armR: ArmState; headShape?: Shape },
-): Frames => {
-  const pelvis = joint(root, 0, -a.drop, 0)
-  if (opts.legs) {
-    for (const [side, hp, hr, kn] of [
-      [-1, a.hipLp, a.hipLr, a.knL],
-      [1, a.hipRp, a.hipRr, a.knR],
-    ] as const) {
-      const hip = joint(pelvis, 0, 0, side * d.hipW, hr, 0, hp)
-      b.seg(
-        hip,
-        side < 0 ? 'cuisseG' : 'cuisseD',
-        'box',
-        [d.legT, d.thigh, d.legT],
-        [0, -d.thigh / 2, 0],
-        paint.legs,
-      )
-      const knee = joint(hip, 0, -d.thigh, 0, 0, 0, -kn)
-      b.seg(
-        knee,
-        side < 0 ? 'jambeG' : 'jambeD',
-        'box',
-        [d.legT * 0.85, d.shin, d.legT * 0.85],
-        [0, -d.shin / 2, 0],
-        paint.legs,
-      )
-    }
-  }
-  const torso = joint(pelvis, 0, 0, 0, a.sway, a.twist, a.lean)
-  b.seg(torso, 'buste', 'box', [d.torsoD, d.torsoH, d.torsoW], [0, d.torsoH / 2, 0], paint.torso)
-  const neck = joint(torso, 0, d.torsoH, 0, a.headR, a.headY, a.headP)
-  const head = b.seg(
-    neck,
-    'tete',
-    opts.headShape ?? 'sphere',
-    [d.head, d.head, d.head],
-    [0, d.head / 2, 0],
-    paint.head,
-  )
-  const arm = (
-    side: -1 | 1,
-    p: number,
-    r: number,
-    el: number,
-    state: ArmState,
-  ): [Matrix4, Matrix4 | null] => {
-    const up = side < 0 ? d.upperL : d.upperR
-    const fo = side < 0 ? d.foreL : d.foreR
-    const th = side < 0 ? d.armTL : d.armTR
-    const shoulder = joint(torso, 0, d.torsoH - th * 0.6, side * (d.torsoW / 2 + th / 2), side * r, 0, p)
-    if (state === 'severed') {
-      b.seg(
-        shoulder,
-        side < 0 ? 'moignonG' : 'moignonD',
-        'box',
-        [th, th * 0.8, th],
-        [0, -th * 0.4, 0],
-        paint.arms,
-      )
-      return [shoulder, null]
-    }
-    b.seg(shoulder, side < 0 ? 'brasG' : 'brasD', 'box', [th, up, th], [0, -up / 2, 0], paint.arms)
-    const elbow = joint(shoulder, 0, -up, 0, 0, 0, state === 'broken' ? 0.05 : el)
-    b.seg(
-      elbow,
-      side < 0 ? 'avantBrasG' : 'avantBrasD',
-      'box',
-      [th * 0.9, fo, th * 0.9],
-      [0, -fo / 2, 0],
-      paint.arms,
-    )
-    const hand = joint(elbow, 0, -fo, 0)
-    b.seg(
-      hand,
-      side < 0 ? 'mainG' : 'mainD',
-      'box',
-      [d.hand, d.hand, d.hand * 0.6],
-      [0, -d.hand / 2, 0],
-      paint.skin,
-    )
-    return [shoulder, hand]
-  }
-  const broken = (s: ArmState) => s === 'broken'
-  const [shoulderL, handL] = arm(
-    -1,
-    broken(opts.armL) ? 0.05 : a.shLp,
-    broken(opts.armL) ? -0.05 : a.shLr,
-    a.elL,
-    opts.armL,
-  )
-  const [shoulderR, handR] = arm(
-    1,
-    broken(opts.armR) ? 0.05 : a.shRp,
-    broken(opts.armR) ? 0.05 : a.shRr,
-    a.elR,
-    opts.armR,
-  )
-  return { pelvis, torso, head, handL, handR, shoulderL, shoulderR }
-}
+export { PLAYER_ID, playerBody } from './rig-bourreau'
+export {
+  type Body,
+  MATTERS,
+  type Mat,
+  type Matter,
+  phaseOf,
+  type RigContext,
+  type Role,
+  type Segment,
+  type Shape,
+  segmentCorners,
+} from './rig-core'
 
 // ---------------------------------------------------------------------------------------------------------
 // Familles (silhouettes du §17)
@@ -320,6 +75,7 @@ const PROFILES: Record<'souriant' | 'recousu' | 'porteur' | 'confesseur' | 'chir
     faceUp: true,
     stepHz: 3.4,
     paint: (g) => {
+      // Maigre, chair nue sous des haillons qui pendent du bassin (planche creatures-souriant-recousu).
       const s = tone(PALETTE.chair.souriant, g)
       return { skin: s, torso: s, legs: s, arms: s, head: s }
     },
@@ -373,7 +129,7 @@ const PROFILES: Record<'souriant' | 'recousu' | 'porteur' | 'confesseur' | 'chir
     stepHz: 1.5,
     paint: (g) => {
       const s = tone(PALETTE.chair.porteur, g)
-      return { skin: s, torso: s, legs: s, arms: s, head: s }
+      return { skin: s, torso: tone(PALETTE.habit.haillon, g), legs: s, arms: s, head: s, mTorso: 'tissu' }
     },
   },
   confesseur: {
@@ -400,7 +156,16 @@ const PROFILES: Record<'souriant' | 'recousu' | 'porteur' | 'confesseur' | 'chir
     paint: (g) => {
       const robe = tone(PALETTE.chair.chasuble, g, 'sombre')
       const s = tone(PALETTE.chair.confesseur, g)
-      return { skin: s, torso: robe, legs: robe, arms: robe, head: s }
+      return {
+        skin: s,
+        torso: robe,
+        legs: robe,
+        arms: robe,
+        head: s,
+        mTorso: 'tissu',
+        mLegs: 'tissu',
+        mArms: 'tissu',
+      }
     },
   },
   chirurgien: {
@@ -425,40 +190,12 @@ const PROFILES: Record<'souriant' | 'recousu' | 'porteur' | 'confesseur' | 'chir
     faceUp: false,
     stepHz: 1.9,
     paint: (g) => {
+      // Robe sous le tablier ; bras et mains nus, démesurés.
       const s = tone(PALETTE.chair.chirurgien, g)
-      return { skin: s, torso: s, legs: s, arms: s, head: s }
+      const robe = tone(PALETTE.habit.haillon, g)
+      return { skin: s, torso: robe, legs: robe, arms: s, head: s, mTorso: 'tissu', mLegs: 'tissu' }
     },
   },
-}
-
-const legLen = (d: Dims): number => d.thigh + d.shin
-
-// ---------------------------------------------------------------------------------------------------------
-// Animation : tout est fonction de t (ticks)
-
-const sec = (t: number): number => t / TICK_HZ
-
-// Micro-mouvement permanent du vivant (§18) : plusieurs fréquences, dont une ≥ 2 Hz, pour qu'aucune fenêtre
-// de 0,5 s ne soit immobile.
-const tremble = (a: Angles, t: number, id: number, gain: number): void => {
-  const s = sec(t)
-  a.headR +=
-    gain * (0.1 * Math.sin(TAU * 2.3 * s + phaseOf(id, 1)) + 0.05 * Math.sin(TAU * 5.1 * s + phaseOf(id, 2)))
-  a.headY += gain * 0.12 * Math.sin(TAU * 0.9 * s + phaseOf(id, 3))
-  a.shLp += gain * 0.08 * Math.sin(TAU * 2.7 * s + phaseOf(id, 4))
-  a.shRp += gain * 0.08 * Math.sin(TAU * 3.1 * s + phaseOf(id, 5))
-  a.lean += gain * 0.025 * Math.sin(TAU * 0.45 * s + phaseOf(id, 6))
-}
-
-const gait = (a: Angles, t: number, id: number, hz: number, amp: number): void => {
-  const ph = TAU * hz * sec(t) + phaseOf(id, 7)
-  const s = Math.sin(ph)
-  a.hipLp = amp * s
-  a.hipRp = -amp * s
-  a.knL = amp * 1.1 * Math.max(0, -Math.sin(ph - 0.6))
-  a.knR = amp * 1.1 * Math.max(0, Math.sin(ph - 0.6))
-  a.shLp += -0.6 * amp * s
-  a.shRp += 0.6 * amp * s
 }
 
 type FamilyKey = keyof typeof PROFILES
@@ -722,7 +459,17 @@ const familyExtras = (
         [0.06, d.head * 0.6, d.head * 0.7],
         [d.head * 0.47, d.head / 2, 0],
         tone(PALETTE.chair.souriantMasque, grey, 'clair'),
-        { hull: false },
+        { hull: false, matter: 'os' },
+      )
+      // Haillons qui pendent du bassin.
+      b.seg(
+        fr.pelvis,
+        'haillons',
+        'cone',
+        [d.torsoW * 1.25, d.thigh * 0.95, d.torsoD * 1.6],
+        [0, -d.thigh * 0.4, 0],
+        tone(PALETTE.habit.haillon, grey),
+        { hull: false, matter: 'tissu', rot: [0, 0, Math.PI] },
       )
       b.seg(
         fr.head,
@@ -747,9 +494,34 @@ const familyExtras = (
           { hull: false, rot: [0.4 * (i - 1), 0, 0] },
         )
       }
+      // Bras-marteau de fer (planche creatures-souriant-recousu), couronne de pointes, pagne.
       if (fr.handR) {
-        b.seg(fr.handR, 'poing', 'box', [0.3, 0.3, 0.3], [0, -0.2, 0], tone(PALETTE.chair.recousu, grey))
+        b.seg(fr.handR, 'poing', 'box', [0.34, 0.4, 0.34], [0, -0.22, 0], tone(PALETTE.matiere.fer, grey), {
+          matter: 'fer',
+          role: 'autre', // objet de fer (comme la lame du Bourreau), pas de la chair
+        })
       }
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * TAU
+        b.seg(
+          fr.head,
+          `pointe${i}`,
+          'cone',
+          [0.04, 0.16, 0.04],
+          [Math.cos(a) * d.head * 0.4, d.head * 1.02, Math.sin(a) * d.head * 0.4],
+          tone(PALETTE.matiere.fer, grey),
+          { hull: false, matter: 'fer', role: 'autre' },
+        )
+      }
+      b.seg(
+        fr.pelvis,
+        'pagne',
+        'cone',
+        [d.torsoW * 1.05, d.thigh * 0.8, d.torsoD * 1.3],
+        [0, -d.thigh * 0.3, 0],
+        tone(PALETTE.habit.haillon, grey),
+        { hull: false, matter: 'tissu', rot: [0, 0, Math.PI] },
+      )
       break
     case 'porteur': {
       // Bosse dorsale translucide qui luit selon le stade (§17), toujours dans le dos.
@@ -764,8 +536,18 @@ const familyExtras = (
         [-(d.torsoD / 2 + r * 0.38), d.torsoH * 0.6, 0],
         sac,
         {
-          mat: alive ? 'glow' : 'lit',
+          // Vide (stade 0), le sac est une membrane terne ; il ne luit qu'une fois chargé.
+          mat: alive && stage >= 1 ? 'glow' : 'lit',
         },
+      )
+      b.seg(
+        fr.pelvis,
+        'haillons',
+        'cone',
+        [d.torsoW * 1.3, d.thigh * 0.9, d.torsoD * 1.4],
+        [0, -d.thigh * 0.35, 0],
+        tone(PALETTE.habit.haillon, grey),
+        { hull: false, matter: 'tissu', rot: [0, 0, Math.PI] },
       )
       break
     }
@@ -778,10 +560,15 @@ const familyExtras = (
         [d.torsoW * 2.2, d.thigh + d.shin + 0.05, d.torsoW * 2.2],
         [0, -(d.thigh + d.shin) / 2 + 0.02, 0],
         tone(PALETTE.chair.chasuble, grey, 'sombre'),
+        { matter: 'tissu' },
       )
-      const halo = alive && ctx.prayerColor !== null ? ctx.prayerColor : tone(PALETTE.os, grey, 'clair')
+      const halo =
+        alive && ctx.prayerColor !== null
+          ? ctx.prayerColor
+          : tone(PALETTE.habit.haloConfesseur, grey, 'clair')
       b.seg(fr.head, 'halo', 'torus', [d.head * 1.9, d.head * 1.9, 0.6], [0, d.head * 1.25, 0], halo, {
         mat: alive && ctx.prayerColor !== null ? 'glow' : 'lit',
+        matter: 'fer',
         hull: false,
         rot: [Math.PI / 2, 0, 0.25],
       })
@@ -796,8 +583,20 @@ const familyExtras = (
         [0.04, d.torsoH + d.thigh * 0.8, d.torsoW * 1.05],
         [d.torsoD / 2 + 0.03, (d.torsoH - d.thigh * 0.8) / 2, 0],
         tone(PALETTE.chair.tablier, grey),
-        { hull: false },
+        { hull: false, matter: 'cuir' },
       )
+      // Ceinture de scies et d'aiguilles.
+      for (let i = 0; i < 4; i++) {
+        b.seg(
+          fr.torso,
+          `outil${i}`,
+          'box',
+          [0.03, 0.2 + 0.05 * (i % 2), 0.05],
+          [d.torsoD / 2 + 0.07, -0.02, (i - 1.5) * d.torsoW * 0.28],
+          tone(PALETTE.matiere.fer, grey),
+          { hull: false, matter: 'fer', role: 'autre' },
+        )
+      }
       break
   }
   // Plaie ouverte à 50 % de Chair, et sur tout corps à terre (§21, L1).
@@ -900,138 +699,4 @@ const membreBody = (b: Builder, c: Creature, pos: Vec2, facing: number, t: numbe
   b.seg(elbow, 'avantBras', 'box', [0.18, 0.5, 0.18], [0, 0.25, 0], skin)
   const hand = joint(elbow, 0, 0.5, 0, 0, 0, 0.5 * Math.sin(TAU * 3.3 * s + phaseOf(c.id, 22)))
   b.seg(hand, 'main', 'box', [0.2, 0.2, 0.12], [0, 0.1, 0], skin)
-}
-
-// ---------------------------------------------------------------------------------------------------------
-// Le Bourreau
-
-const BOURREAU: Dims = {
-  thigh: 0.46,
-  shin: 0.44,
-  legT: 0.17,
-  hipW: 0.13,
-  torsoW: 0.56,
-  torsoH: 0.66,
-  torsoD: 0.34,
-  head: 0.3,
-  upperL: 0.34,
-  foreL: 0.32,
-  armTL: 0.13,
-  upperR: 0.34,
-  foreR: 0.32,
-  armTR: 0.13,
-  hand: 0.12,
-}
-
-export const PLAYER_ID = 0xffff
-
-export const playerBody = (p: Player, pos: Vec2, facing: number, t: number, speed: number): Body => {
-  const b = new Builder(0)
-  const a = rest()
-  const act = p.action
-  let yawExtra = 0
-  let rollPitch = 0
-  let lift = 0
-  if (speed > 0.15 && (!act || act.kind === 'frappe')) gait(a, t, PLAYER_ID, 1.8, 0.55)
-  a.shRp = 0.5
-  a.elR = 0.9
-  if (act) {
-    const span = Math.max(1, act.end - act.start)
-    const q = Math.min(1, Math.max(0, (t - act.start) / span))
-    switch (act.kind) {
-      case 'frappe': {
-        // L'impact a lieu au tick de départ (sim) : le geste part tout de suite, puis récupère.
-        const swing = smooth(0, 0.25, q)
-        const step = act.comboStep ?? 0
-        if (step === 2) {
-          a.shRp = 2.9 - 2.4 * swing
-          a.shLp = 2.6 - 2.0 * swing
-          a.lean = -0.35 * swing
-          a.drop = 0.1 * swing
-        } else {
-          const dir = step === 0 ? 1 : -1
-          a.twist = dir * (0.6 - 1.2 * swing)
-          a.shRp = 1.4
-          a.shRr = 0.3 + dir * (0.9 - 1.6 * swing)
-          a.elR = 0.4
-        }
-        break
-      }
-      case 'esquive':
-        rollPitch = -TAU * q
-        a.drop = 0.35
-        a.knL = 1.8
-        a.knR = 1.8
-        a.hipLp = 1.4
-        a.hipRp = 1.4
-        a.lean = -0.6
-        lift = 0
-        break
-      case 'sentence': {
-        const raise = smooth(0, 0.75, q)
-        const fall = smooth(0.85, 1, q)
-        a.shRp = 0.5 + 2.5 * raise - 2.6 * fall
-        a.shLp = 0.3 + 2.4 * raise - 2.5 * fall
-        a.lean = 0.15 * raise - 0.5 * fall
-        a.drop = 0.12 * fall
-        break
-      }
-      case 'balayage':
-        yawExtra = -TAU * smooth(0, 0.5, q)
-        a.shRp = 1.5
-        a.shRr = 1.2
-        a.elR = 0.1
-        a.drop = 0.15
-        break
-      case 'charge':
-        a.lean = -0.6
-        a.shRp = 1.4
-        a.elR = 0.2
-        gait(a, t, PLAYER_ID, 4, 0.8)
-        break
-    }
-  }
-  tremble(a, t, PLAYER_ID, 0.5)
-  const hipH = BOURREAU.thigh + BOURREAU.shin
-  let root = joint(new Matrix4(), pos.x, hipH + lift, pos.z, 0, -facing + yawExtra, 0)
-  if (rollPitch !== 0) root = joint(joint(root, 0, -0.45, 0, 0, 0, rollPitch), 0, 0.45, 0)
-  const paint: Paint = {
-    skin: PALETTE.bourreau.peau,
-    torso: PALETTE.bourreau.cuir,
-    legs: PALETTE.bourreau.cuir,
-    arms: PALETTE.bourreau.cuir,
-    head: PALETTE.bourreau.capuche,
-  }
-  const fr = humanoid(b, root, BOURREAU, a, paint, { legs: true, armL: 'ok', armR: 'ok', headShape: 'cone' })
-  if (fr.handR) {
-    const grip = joint(fr.handR, 0, -0.06, 0, 0, 0, Math.PI / 2)
-    if (p.weapon === 'couperet') {
-      b.seg(grip, 'manche', 'cylinder', [0.05, 0.42, 0.05], [0, 0.12, 0], PALETTE.bourreau.manche, {
-        hull: false,
-      })
-      b.seg(grip, 'lame', 'box', [0.04, 0.42, 0.3], [0, 0.48, 0.1], PALETTE.bourreau.acier, {
-        hull: false,
-        role: 'autre',
-      })
-    } else {
-      b.seg(grip, 'manche', 'cylinder', [0.06, 0.75, 0.06], [0, 0.28, 0], PALETTE.bourreau.manche, {
-        hull: false,
-      })
-      b.seg(grip, 'tete', 'box', [0.26, 0.26, 0.26], [0, 0.72, 0], PALETTE.bourreau.acier, {
-        hull: false,
-        role: 'autre',
-      })
-    }
-  }
-  return { id: PLAYER_ID, segments: b.segments, rim: null }
-}
-
-// Coins de la boîte englobante d'un segment, en coordonnées monde (I4).
-export const segmentCorners = (s: Segment): Vector3[] => {
-  const [w, h, dd] = s.size
-  const out: Vector3[] = []
-  for (const x of [-0.5, 0.5])
-    for (const y of [-0.5, 0.5])
-      for (const z of [-0.5, 0.5]) out.push(new Vector3(x * w, y * h, z * dd).applyMatrix4(s.frame))
-  return out
 }

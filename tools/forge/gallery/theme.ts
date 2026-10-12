@@ -8,7 +8,7 @@ export const SCENE = {
   fond: PALETTE.noir, // noir profond (§17), aussi couleur du brouillard
   torche: 0xff8a3c, // flamme de torche, corps noir vers 1900 K (ART_DIRECTION : seules sources chaudes)
   lune: 0x8ea4c6, // lune froide très faible qui dessine les silhouettes (ART_DIRECTION)
-  neutre: PALETTE.lumiere.soleil, // lumière neutre de B2 : sans chroma, pour juger formes et couleurs
+  neutre: PALETTE.lumiere.neutre, // lumière neutre de B2 : sans chroma, pour juger formes et couleurs
 } as const
 
 // Intensités en candela / lux (three, rendu physique). La DA veut le noir dominant, la torche vacillante.

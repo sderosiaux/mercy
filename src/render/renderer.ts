@@ -1,74 +1,65 @@
-// Rendu three de P0 : lit un World (et le précédent, avec alpha), ne l'écrit jamais. Toute animation est une
-// fonction de l'horloge de rendu t = tick précédent + alpha (en ticks, soit t / 60 s) : rendre deux fois la même
-// paire de mondes donne la même image. Instruments de B2 §12 : I1 (idPass), I2 (debug : secousse, isoler,
-// masquer, lecture des pixels du canvas sans le HUD DOM), I4 (poses).
+// Moteur de présentation (E1) sur three : lit un World (et le précédent, avec alpha), ne l'écrit jamais. Toute
+// animation est une fonction de l'horloge de rendu t = tick précédent + alpha (en ticks) : rendre deux fois la même
+// paire de mondes donne la même image (B2 I2).
+//
+// Image : décor de La Fosse (decor.ts) et créatures vivantes, éclairés par le système de lumière (lights.ts,
+// lightrig.ts), rendus en HDR ; gore (goreview.ts) ; post-traitement (post.ts : brouillard éclairé, halo des
+// flammes, ACES, étalonnage, vignettage, grain) ; puis la couche des signaux par-dessus (liseré, marques, morts,
+// télégraphes, sceau), hors de l'étalonnage, testée contre la profondeur de la scène. Instruments de B2 §12 : I1
+// (idPass), I2 (debug : secousse, isoler, masquer, lecture des pixels du canvas sans le HUD DOM), I4 (poses).
 import {
-  BackSide,
-  BoxGeometry,
-  type BufferGeometry,
-  CircleGeometry,
-  Color,
-  ConeGeometry,
-  CylinderGeometry,
-  DirectionalLight,
-  DoubleSide,
-  Euler,
-  HemisphereLight,
-  InstancedBufferAttribute,
-  InstancedMesh,
+  Group,
   type Material,
   Matrix4,
   Mesh,
-  MeshBasicMaterial,
-  MeshStandardMaterial,
+  NoToneMapping,
+  type Object3D,
   PCFShadowMap,
   PerspectiveCamera,
-  PlaneGeometry,
-  Quaternion,
+  PMREMGenerator,
   RGBAFormat,
-  RingGeometry,
   Scene,
   type ShaderMaterial,
-  SphereGeometry,
   SRGBColorSpace,
-  TorusGeometry,
+  type Texture,
   UnsignedByteType,
   Vector3,
   WebGLRenderer,
   WebGLRenderTarget,
 } from 'three'
-import {
-  actionPhase,
-  type Creature,
-  PORTEUR_STAGE_KEY,
-  sentenceTarget,
-  TUNING,
-  type Vec2,
-  type World,
-} from '../sim/index'
-import { cameraPose, shakeOffset } from './camera'
+import { type Creature, PORTEUR_STAGE_KEY, sentenceTarget, type Vec2, type World } from '../sim/index'
+import { BodyLayer } from './bodies'
+import { CAMERAS, type CameraPreset, cameraPose, isCameraPreset, shakeOffset } from './camera'
 import { RENDER } from './constants'
+import { buildDecor, WALL_HALF } from './decor'
 import { GoreMemory, SPARK_TICKS } from './gore'
-import { encodeId, instancedIdMaterial, ROLE, uniformIdMaterial } from './idpass'
-import { decalColor, telegraphColor } from './look'
+import { GoreLayer } from './goreview'
+import { LightRig } from './lightrig'
+import { entityLights, type LightSource } from './lights'
+import { cutUniforms, fixedLightUniforms, overlayUniforms, pbr, skinMaterial, TextureBank } from './materials'
 import { PALETTE } from './palette'
+import { gradeUniforms, PostPipeline } from './post'
+import { type QualityLevel, type QualitySpec, qualityFrom, urlParam } from './quality'
 import {
   type Body,
   creatureBody,
+  type Matter,
   PLAYER_ID,
   playerBody,
   type RigContext,
   type Segment,
-  type Shape,
   segmentCorners,
 } from './rig'
 
 export interface RendererOptions {
-  readonly antialias?: boolean
+  readonly antialias?: boolean // canvas seulement (couche des signaux) ; P0 : faux (B2, mesures au pixel)
   readonly shadows?: boolean
   readonly shake?: boolean
   readonly pixelRatio?: number
   readonly preserveDrawingBuffer?: boolean
+  readonly quality?: QualityLevel // sinon paramètre d'URL `qualite`, sinon haute
+  readonly camera?: CameraPreset // sinon paramètre d'URL `camera`, sinon §20
+  readonly assetBase?: string // racine des textures (Vite : BASE_URL)
 }
 
 export interface PixelImage {
@@ -96,6 +87,17 @@ export interface RenderStats {
   readonly decals: number
   readonly bodies: number
   readonly cpuMs: number
+  readonly lights: number // lumières actives (créneaux allumés)
+  readonly shadowLights: number
+  readonly quality: QualityLevel
+  readonly camera: CameraPreset
+}
+
+export interface LightInfo {
+  readonly key: string
+  readonly kind: string
+  readonly weight: number
+  readonly shadow: boolean
 }
 
 export interface RenderDebug {
@@ -110,6 +112,10 @@ export interface RenderDebug {
   clearGore(): void // oublie décalques, éclats et dernier coup (nouvelle partie)
   gpu(): string
   project(x: number, y: number, z: number): readonly [number, number] // point monde → pixels CSS du canvas
+  setCamera(preset: CameraPreset): void
+  setTelegraphs(on: boolean): void // instrument : afficher ou masquer les télégraphes (mesure de leur lisibilité)
+  lights(): readonly LightInfo[] // sources actives de la dernière image
+  syncFrameMs(): number // rend la dernière image et attend la fin du travail du GPU (temps de frame complet)
 }
 
 export interface Renderer {
@@ -117,159 +123,9 @@ export interface Renderer {
   observe(world: World): void // évènements d'un pas (décalques, éclats), à appeler après chaque step
   setAim(aim: Vec2 | null): void
   screenToGround(x: number, y: number): Vec2
+  ready(): Promise<void> // textures chargées et environnement capturé : l'image est alors définitive
   readonly debug: RenderDebug
   dispose(): void
-}
-
-// ---------------------------------------------------------------------------------------------------------
-// Lots instanciés : une forme × une matière. Chaque lot a sa géométrie, donc son attribut d'identification.
-
-const RIM_M = 0.04 // forme (C4) : épaisseur du liseré, m
-const RIM_STRONG_M = 0.065 // liseré intensifié sous le curseur de Sentence (§21)
-
-const unitGeometry = (s: Shape): BufferGeometry => {
-  switch (s) {
-    case 'box':
-      return new BoxGeometry(1, 1, 1)
-    case 'sphere':
-      return new SphereGeometry(0.5, 18, 12)
-    case 'cylinder':
-      return new CylinderGeometry(0.5, 0.5, 1, 16)
-    case 'cone':
-      return new ConeGeometry(0.5, 1, 18)
-    case 'torus':
-      return new TorusGeometry(0.45, 0.05, 8, 28)
-  }
-}
-
-type Kind = 'lit' | 'flat' | 'glow' | 'rim'
-
-interface BatchSpec {
-  readonly geometry: () => BufferGeometry
-  readonly material: Material
-  readonly idMaterial: ShaderMaterial
-  readonly capacity: number
-  readonly cast: boolean
-  readonly receive: boolean
-  readonly renderOrder?: number
-}
-
-class Batch {
-  mesh: InstancedMesh
-  private ids: InstancedBufferAttribute
-  count = 0
-  private capacity: number
-  private readonly color = new Color()
-
-  constructor(
-    private readonly scene: Scene,
-    private readonly spec: BatchSpec,
-  ) {
-    this.capacity = spec.capacity
-    const built = this.build(this.capacity)
-    this.mesh = built.mesh
-    this.ids = built.ids
-  }
-
-  private build(capacity: number): { mesh: InstancedMesh; ids: InstancedBufferAttribute } {
-    const geo = this.spec.geometry()
-    const ids = new InstancedBufferAttribute(new Uint8Array(capacity * 3), 3, true)
-    geo.setAttribute('aId', ids)
-    const mesh = new InstancedMesh(geo, this.spec.material, capacity)
-    mesh.instanceColor = new InstancedBufferAttribute(new Float32Array(capacity * 3), 3)
-    mesh.frustumCulled = false
-    mesh.count = 0
-    mesh.castShadow = this.spec.cast
-    mesh.receiveShadow = this.spec.receive
-    mesh.renderOrder = this.spec.renderOrder ?? 0
-    mesh.userData.idMaterial = this.spec.idMaterial
-    this.scene.add(mesh)
-    return { mesh, ids }
-  }
-
-  begin(): void {
-    this.count = 0
-  }
-
-  push(m: Matrix4, hex: number, id: number, role: number): void {
-    if (this.count >= this.capacity) this.grow()
-    const i = this.count++
-    this.mesh.setMatrixAt(i, m)
-    this.mesh.setColorAt(i, this.color.setHex(hex))
-    const [r, g, b] = encodeId(id, role)
-    const a = this.ids.array as Uint8Array
-    a[i * 3] = r
-    a[i * 3 + 1] = g
-    a[i * 3 + 2] = b
-  }
-
-  private grow(): void {
-    const old = this.mesh
-    const oldIds = this.ids
-    const n = this.count
-    this.capacity *= 2
-    const built = this.build(this.capacity)
-    built.mesh.instanceMatrix.array.set(old.instanceMatrix.array.subarray(0, n * 16))
-    const oc = old.instanceColor
-    if (oc && built.mesh.instanceColor) built.mesh.instanceColor.array.set(oc.array.subarray(0, n * 3))
-    ;(built.ids.array as Uint8Array).set((oldIds.array as Uint8Array).subarray(0, n * 3))
-    this.scene.remove(old)
-    old.geometry.dispose()
-    old.dispose()
-    this.mesh = built.mesh
-    this.ids = built.ids
-  }
-
-  end(): void {
-    this.mesh.count = this.count
-    this.mesh.instanceMatrix.needsUpdate = true
-    if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true
-    this.ids.needsUpdate = true
-  }
-
-  dispose(): void {
-    this.scene.remove(this.mesh)
-    this.mesh.geometry.dispose()
-    this.mesh.dispose()
-  }
-}
-
-// ---------------------------------------------------------------------------------------------------------
-// Objets au sol réutilisés d'une image à l'autre (télégraphes, halos de prière, sceau)
-
-class Pool {
-  private readonly items: Mesh[] = []
-  private used = 0
-  constructor(
-    private readonly scene: Scene,
-    private readonly make: () => Mesh,
-  ) {}
-  begin(): void {
-    this.used = 0
-  }
-  next(): Mesh {
-    let m = this.items[this.used]
-    if (!m) {
-      m = this.make()
-      this.items.push(m)
-      this.scene.add(m)
-    }
-    this.used++
-    m.visible = true
-    return m
-  }
-  end(): void {
-    for (let i = this.used; i < this.items.length; i++) {
-      const m = this.items[i]
-      if (m) m.visible = false
-    }
-  }
-  dispose(): void {
-    for (const m of this.items) {
-      this.scene.remove(m)
-      ;(m.material as Material).dispose()
-    }
-  }
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -284,232 +140,81 @@ const lerpAngle = (a: number, b: number, t: number): number => {
 const insideHost = (c: Creature): boolean =>
   c.state.kind === 'absorbe' || (c.state.kind === 'mort' && c.unionOf !== null && c.family !== 'membre')
 
+const assetBaseDefault = (): string => {
+  const env = (import.meta as unknown as { env?: { BASE_URL?: string } }).env
+  return env?.BASE_URL ?? '/'
+}
+
 export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptions = {}): Renderer => {
+  const q: QualitySpec = qualityFrom(options.quality)
   const shadows = options.shadows ?? true
   let shake = options.shake ?? true
+  const urlCam = urlParam('camera')
+  let preset: CameraPreset = options.camera ?? (isCameraPreset(urlCam) ? urlCam : 'p20')
   const gl = new WebGLRenderer({
     canvas,
-    antialias: options.antialias ?? true,
+    antialias: options.antialias ?? false,
     preserveDrawingBuffer: options.preserveDrawingBuffer ?? false,
     powerPreference: 'high-performance',
   })
   gl.outputColorSpace = SRGBColorSpace
+  gl.toneMapping = NoToneMapping // la courbe de tons est dans la composition (post.ts)
   gl.setPixelRatio(options.pixelRatio ?? 1)
   gl.shadowMap.enabled = shadows
   gl.shadowMap.type = PCFShadowMap
+  gl.info.autoReset = false
 
   const scene = new Scene()
-  scene.background = new Color(PALETTE.noir)
+  // Couche des signaux, en quatre passes (bodies.ts) : sol, morts, télégraphes, signaux des corps.
+  const overlays = [new Scene(), new Scene(), new Scene(), new Scene()] as const
+  const dynamic = new Group() // créatures et gore : masqués pendant la capture de l'environnement
+  scene.add(dynamic)
   const camera = new PerspectiveCamera(RENDER.camera.fovDeg, 1, 1, 120)
+  const bank = new TextureBank(options.assetBase ?? assetBaseDefault())
+  const decor = buildDecor(bank, shadows ? q : { ...q, shadowLights: 0, moonShadow: false })
+  scene.add(decor.group)
+  const rig = new LightRig(scene, shadows ? q : { ...q, shadowLights: 0, moonShadow: false }, WALL_HALF)
+  rig.setFixed(decor.lights)
 
-  // Une source dominante, ombres franches (§17) ; lumière neutre pour ne pas teinter les morts (B2.O1).
-  scene.add(new HemisphereLight(PALETTE.lumiere.ciel, PALETTE.lumiere.sol, 1.15))
-  const sun = new DirectionalLight(PALETTE.lumiere.soleil, 2.2)
-  sun.position.set(-6, 14, 4)
-  sun.target.position.set(0, 0, 0)
-  sun.castShadow = shadows
-  const half = TUNING.arenaHalf + 2
-  sun.shadow.camera.left = -half
-  sun.shadow.camera.right = half
-  sun.shadow.camera.top = half
-  sun.shadow.camera.bottom = -half
-  sun.shadow.camera.near = 1
-  sun.shadow.camera.far = 40
-  sun.shadow.mapSize.set(2048, 2048)
-  sun.shadow.bias = -0.0006
-  sun.shadow.normalBias = 0.02
-  scene.add(sun)
-  scene.add(sun.target)
-
-  // Sol de l'arène : dalles de pierre grise, joints sombres, bordure noire.
-  const size = TUNING.arenaHalf * 2
-  const ground = new Mesh(
-    new PlaneGeometry(size, size),
-    new MeshStandardMaterial({ color: PALETTE.gris.pierre, roughness: 0.95 }),
-  )
-  ground.rotation.x = -Math.PI / 2
-  ground.receiveShadow = shadows
-  ground.userData.idMaterial = uniformIdMaterial(0, ROLE.sol)
-  scene.add(ground)
-  const curbMat = new MeshStandardMaterial({ color: PALETTE.noir, roughness: 1 })
-  const curbs: Mesh[] = []
-  for (const [x, z, w, d] of [
-    [0, -TUNING.arenaHalf - 0.25, size + 1, 0.5],
-    [0, TUNING.arenaHalf + 0.25, size + 1, 0.5],
-    [-TUNING.arenaHalf - 0.25, 0, 0.5, size],
-    [TUNING.arenaHalf + 0.25, 0, 0.5, size],
-  ] as const) {
-    const m = new Mesh(new BoxGeometry(w, 0.3, d), curbMat)
-    m.position.set(x, 0.15, z)
-    m.userData.idMaterial = uniformIdMaterial(0, ROLE.autre)
-    scene.add(m)
-    curbs.push(m)
-  }
-  const joints = new Batch(scene, {
-    geometry: () => new BoxGeometry(1, 0.002, 1),
-    material: new MeshStandardMaterial({ color: PALETTE.gris.pierreJoint, roughness: 1 }),
-    idMaterial: instancedIdMaterial(),
-    capacity: 64,
-    cast: false,
-    receive: shadows,
-  })
-  {
-    const m = new Matrix4()
-    const q = new Quaternion()
-    joints.begin()
-    for (let k = -TUNING.arenaHalf + 2; k < TUNING.arenaHalf; k += 2) {
-      joints.push(
-        m.compose(new Vector3(k, 0.001, 0), q, new Vector3(0.03, 1, size)),
-        PALETTE.technique.neutre,
-        0,
-        ROLE.sol,
-      )
-      joints.push(
-        m.compose(new Vector3(0, 0.001, k), q, new Vector3(size, 1, 0.03)),
-        PALETTE.technique.neutre,
-        0,
-        ROLE.sol,
+  // Matières des segments vivants.
+  const tissu = bank.set('tissu')
+  const cuir = bank.set('cuir')
+  const fer = bank.set('fer')
+  const bois = bank.set('bois')
+  const desat = (m: ReturnType<typeof pbr>, key: string): ReturnType<typeof pbr> => {
+    // L'albédo du jeu de textures ne donne que la luminance ; la couleur vient de la palette (instance).
+    m.onBeforeCompile = (s) => {
+      s.fragmentShader = s.fragmentShader.replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+  diffuseColor.rgb = vec3( dot( diffuseColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) ) * 2.2;`,
       )
     }
-    joints.end()
-  }
-
-  // Corps : une matière éclairée (chair humide, spéculaire), une plate (marques dorées), une lumineuse (sac,
-  // halo en prière), une pour le liseré (coque inversée, couleur exacte de la palette).
-  const litMat = new MeshStandardMaterial({ color: PALETTE.technique.neutre, roughness: 0.5, metalness: 0 })
-  const flatMat = new MeshBasicMaterial({ color: PALETTE.technique.neutre })
-  const glowMat = new MeshBasicMaterial({ color: PALETTE.technique.neutre, transparent: true, opacity: 0.88 })
-  const rimMat = new MeshBasicMaterial({ color: PALETTE.technique.neutre, side: BackSide })
-  const idFront = instancedIdMaterial()
-  const idBack = instancedIdMaterial(BackSide)
-  const SHAPES: readonly Shape[] = ['box', 'sphere', 'cylinder', 'cone', 'torus']
-  const batches = new Map<string, Batch>()
-  for (const s of SHAPES) {
-    const geometry = () => unitGeometry(s)
-    const big = s === 'box'
-    batches.set(
-      `lit:${s}`,
-      new Batch(scene, {
-        geometry,
-        material: litMat,
-        idMaterial: idFront,
-        capacity: big ? 4096 : 512,
-        cast: shadows,
-        receive: shadows,
-      }),
-    )
-    batches.set(
-      `flat:${s}`,
-      new Batch(scene, {
-        geometry,
-        material: flatMat,
-        idMaterial: idFront,
-        capacity: 256,
-        cast: shadows,
-        receive: false,
-      }),
-    )
-    batches.set(
-      `glow:${s}`,
-      new Batch(scene, {
-        geometry,
-        material: glowMat,
-        idMaterial: idFront,
-        capacity: 64,
-        cast: false,
-        receive: false,
-      }),
-    )
-    batches.set(
-      `rim:${s}`,
-      new Batch(scene, {
-        geometry,
-        material: rimMat,
-        idMaterial: idBack,
-        capacity: big ? 2048 : 256,
-        cast: false,
-        receive: false,
-      }),
-    )
-  }
-  const batch = (kind: Kind, s: Shape): Batch => {
-    const b = batches.get(`${kind}:${s}`)
-    if (!b) throw new Error(`lot absent ${kind}:${s}`)
-    return b
-  }
-
-  // Décalques de sang : éclaboussures au sol, sous les télégraphes (§18).
-  const splat = (): BufferGeometry => {
-    const g = new CircleGeometry(0.5, 14)
-    const p = g.getAttribute('position')
-    for (let i = 1; i < p.count; i++) {
-      const k = 0.75 + 0.35 * Math.abs(Math.sin(i * 2.3))
-      p.setXY(i, p.getX(i) * k, p.getY(i) * k)
-    }
-    return g
-  }
-  const decals = new Batch(scene, {
-    geometry: splat,
-    material: new MeshStandardMaterial({
-      color: PALETTE.technique.neutre,
-      roughness: 0.35,
-      polygonOffset: true,
-      polygonOffsetFactor: -1,
-      polygonOffsetUnits: -1,
-      depthWrite: false,
-    }),
-    idMaterial: instancedIdMaterial(undefined, false),
-    capacity: 512,
-    cast: false,
-    receive: shadows,
-    renderOrder: 1,
-  })
-
-  // Télégraphes, halos de prière, sceau : objets au sol, toujours au-dessus des décalques (§18, §30.13).
-  const sectorCache = new Map<string, BufferGeometry>()
-  const sector = (arcDeg: number, inner: number): BufferGeometry => {
-    const key = `${arcDeg}:${inner}`
-    let g = sectorCache.get(key)
-    if (!g) {
-      const th = (arcDeg * Math.PI) / 180
-      const segs = Math.max(8, Math.round(arcDeg / 6))
-      g =
-        inner > 0
-          ? new RingGeometry(inner, 1, segs, 1, -th / 2, th)
-          : new CircleGeometry(1, segs, -th / 2, th)
-      g.rotateX(-Math.PI / 2)
-      sectorCache.set(key, g)
-    }
-    return g
-  }
-  const lane = new PlaneGeometry(1, 1).rotateX(-Math.PI / 2).translate(0.5, 0, 0)
-  const makeGroundMesh = (opacity: number, order: number) => (): Mesh => {
-    const m = new Mesh(
-      lane,
-      new MeshBasicMaterial({
-        color: PALETTE.rougeBrun.telegraphe,
-        transparent: opacity < 1,
-        opacity,
-        depthWrite: false,
-        side: DoubleSide,
-        polygonOffset: true,
-        polygonOffsetFactor: -2 - order,
-        polygonOffsetUnits: -2 - order,
-      }),
-    )
-    m.renderOrder = 2 + order
-    m.userData.idMaterial = uniformIdMaterial(0, ROLE.autre, false)
+    m.customProgramCacheKey = () => `e1-desat-${key}`
     return m
   }
-  const telBorder = new Pool(scene, makeGroundMesh(0.85, 0))
-  const telFill = new Pool(scene, makeGroundMesh(0.32, 1))
-  const telProgress = new Pool(scene, makeGroundMesh(0.5, 2))
-  const telEdge = new Pool(scene, makeGroundMesh(1, 3))
-  const halos = new Pool(scene, makeGroundMesh(0.22, 0))
-  const haloEdges = new Pool(scene, makeGroundMesh(0.9, 1))
-  const seals = new Pool(scene, makeGroundMesh(1, 3))
-  const pools = [telBorder, telFill, telProgress, telEdge, halos, haloEdges, seals]
+  const matterMaterials: Record<Matter, Material> = {
+    chair: skinMaterial(cuir.normal),
+    tissu: desat(
+      pbr(tissu, { tint: PALETTE.technique.neutre, normalScale: 1.2, envIntensity: 0.05 }),
+      'tissu',
+    ),
+    cuir: desat(
+      pbr(cuir, { tint: PALETTE.technique.neutre, normalScale: 1, roughness: 0.8, envIntensity: 0.3 }),
+      'cuir',
+    ),
+    fer: pbr(fer, { tint: PALETTE.technique.neutre, useArmMetal: true, envIntensity: 0.5 }),
+    os: pbr(null, { tint: PALETTE.technique.neutre, roughness: 0.65 }),
+    bois: pbr(bois, { tint: PALETTE.technique.neutre, normalScale: 1 }),
+  }
+  const bodies = new BodyLayer(
+    { scene: dynamic, ground: overlays[0], dead: overlays[1], tel: overlays[2], signals: overlays[3] },
+    matterMaterials,
+    shadows,
+  )
+  const goreLayer = new GoreLayer(dynamic)
 
+  let post: PostPipeline | null = null
   const gore = new GoreMemory()
   let aim: Vec2 | null = null
   let isolated: number | null = null
@@ -517,13 +222,11 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
   let last: { world: World; prev: World; alpha: number } | null = null
   let lastBodies: Body[] = []
   let lastCpu = 0
+  let lastLights: LightInfo[] = []
+  let texturesLoaded = false
+  let envCaptured = false
+  let envTexture: Texture | null = null
   const deadCache = new Map<number, { key: string; body: Body }>()
-  const tmp = new Matrix4()
-  const tmpS = new Matrix4()
-  const tmpQ = new Quaternion()
-  const tmpE = new Euler()
-  const tmpP = new Vector3()
-  const tmpV = new Vector3()
 
   const visible = (id: number): boolean => (isolated === null ? !hidden.has(id) : id === isolated)
 
@@ -533,22 +236,18 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     const pr = gl.getPixelRatio()
     if (canvas.width !== Math.floor(w * pr) || canvas.height !== Math.floor(h * pr)) gl.setSize(w, h, false)
     camera.aspect = w / h
-  }
-
-  const pushBody = (body: Body, sink: number): void => {
-    for (const s of body.segments) {
-      tmpS.makeScale(s.size[0], s.size[1], s.size[2])
-      tmp.multiplyMatrices(s.frame, tmpS)
-      if (sink !== 0) tmp.elements[13] = (tmp.elements[13] ?? 0) - sink
-      const role = s.role === 'marque' ? ROLE.marque : s.role === 'autre' ? ROLE.autre : ROLE.corps
-      batch(s.mat, s.shape).push(tmp, s.color, body.id, role)
-      if (body.rim && s.hull) {
-        const d = 2 * (body.rim.strong ? RIM_STRONG_M : RIM_M)
-        tmpS.makeScale(s.size[0] + d, s.size[1] + d, s.size[2] + d)
-        tmp.multiplyMatrices(s.frame, tmpS)
-        batch('rim', s.shape).push(tmp, body.rim.color, body.id, ROLE.lisere)
-      }
-    }
+    const ctx = gl.getContext()
+    const bw = ctx.drawingBufferWidth
+    const bh = ctx.drawingBufferHeight
+    // La scène peut être rendue en dessous de la résolution du canvas (qualité basse) ; la couche des signaux, elle,
+    // reste à pleine résolution et lit la profondeur de la scène en coordonnées normalisées.
+    const sw = Math.max(1, Math.round(bw * q.renderScale))
+    const sh = Math.max(1, Math.round(bh * q.renderScale))
+    if (!post) post = new PostPipeline(q, sw, sh)
+    post.setSize(sw, sh)
+    overlayUniforms.uViewport.value.set(bw, bh)
+    gradeUniforms.uResolution.value.set(bw, bh)
+    overlayUniforms.uSceneDepth.value = post.depthTexture
   }
 
   // Phase partagée d'un groupe de Rituel : celle du plus petit id du groupe, qui ne quitte jamais le monde.
@@ -592,68 +291,40 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     }
   }
 
-  const place = (
-    m: Mesh,
-    geo: BufferGeometry,
-    pos: Vec2,
-    yaw: number,
-    sx: number,
-    sz: number,
-    y: number,
-    hex: number,
-  ): void => {
-    m.geometry = geo
-    m.position.set(pos.x, y, pos.z)
-    m.rotation.set(0, yaw, 0)
-    m.scale.set(Math.max(1e-4, sx), 1, Math.max(1e-4, sz))
-    ;(m.material as MeshBasicMaterial).color.setHex(hex)
-  }
-
-  // Télégraphe au sol de l'attaque en cours, halo de prière, sceau de Sentence.
-  const groundEffects = (
-    c: Creature,
-    pos: Vec2,
-    facing: number,
-    t: number,
-    w: World,
-    target: number | null,
-  ) => {
-    const a = c.action
-    const yaw = -facing
-    if (a && (c.state.kind === 'hostile' || c.state.kind === 'rituel') && a.kind === 'attaque') {
-      const def = w.families[c.family]?.actions[a.name]
-      if (def && actionPhase(a, Math.floor(t)) === 'telegraphe') {
-        const col = telegraphColor(a.activeAt - t)
-        const p = Math.min(1, Math.max(0, (t - a.start) / Math.max(1, a.activeAt - a.start)))
-        const r = def.reach + (c.size === 'large' ? TUNING.radiusLarge : TUNING.radiusSmall) * 0.5
-        if (def.arcDeg !== undefined) {
-          place(telBorder.next(), sector(def.arcDeg, 0.9), pos, yaw, r + 0.08, r + 0.08, 0.008, PALETTE.noir)
-          place(telFill.next(), sector(def.arcDeg, 0), pos, yaw, r, r, 0.01, col)
-          place(telProgress.next(), sector(def.arcDeg, 0), pos, yaw, r * p, r * p, 0.012, col)
-          place(telEdge.next(), sector(def.arcDeg, 0.93), pos, yaw, r, r, 0.014, col)
-        } else {
-          const wd = c.size === 'large' ? 1.2 : 0.7
-          place(telBorder.next(), lane, pos, yaw, r + 0.1, wd + 0.16, 0.008, PALETTE.noir)
-          place(telFill.next(), lane, pos, yaw, r, wd, 0.01, col)
-          place(telProgress.next(), lane, pos, yaw, r * p, wd, 0.012, col)
+  // Environnement des reflets (boue mouillée, fer, sang frais) : capturé une fois, depuis le centre de la fosse,
+  // à t = 0 (même image quel que soit le tick du premier rendu).
+  const captureEnvironment = (): void => {
+    if (!q.reflections) {
+      envCaptured = true
+      return
+    }
+    rig.update(decor.lights, { x: 0, z: 0 }, 0, 30)
+    decor.update(0)
+    dynamic.visible = false
+    const pm = new PMREMGenerator(gl)
+    const rt = pm.fromScene(scene, 0.02, 0.1, 90, { size: 256, position: new Vector3(0, 1.6, 0) })
+    pm.dispose()
+    dynamic.visible = true
+    envTexture = rt.texture
+    scene.traverse((o) => {
+      if (o instanceof Mesh) {
+        const m = o.material as Material & { envMap?: Texture | null }
+        if (
+          'envMap' in m &&
+          m.envMap === null &&
+          (m as { isMeshStandardMaterial?: boolean }).isMeshStandardMaterial
+        ) {
+          m.envMap = envTexture
+          m.needsUpdate = true
         }
       }
-    }
-    if (a && c.family === 'confesseur' && a.kind === 'canalisation' && c.state.kind !== 'mort') {
-      const R = w.families[c.family]?.actions[a.name]?.reach ?? TUNING.confesseur.prayerRadius
-      const p = Math.min(1, Math.max(0, (t - a.start) / Math.max(1, a.activeAt - a.start)))
-      place(halos.next(), sector(360, 0), pos, 0, R * p, R * p, 0.006, PALETTE.vertMaladif)
-      place(haloEdges.next(), sector(360, 0.95), pos, 0, R * p, R * p, 0.007, PALETTE.vertMaladif)
-    }
-    if (target === c.id && c.state.kind === 'abattu') {
-      const col = c.resistant ? PALETTE.or.base : PALETTE.ivoire.base
-      place(seals.next(), sector(360, 0.82), pos, 0, 0.95, 0.95, 0.009, col)
-      place(seals.next(), sector(360, 0.9), pos, 0, 0.6, 0.6, 0.009, col)
-    }
+    })
+    envCaptured = true
   }
 
   const draw = (world: World, prev: World, alpha: number): void => {
     const t0 = performance.now()
+    gl.info.reset() // compteurs de toute l’image : passes d’ombre, scène, post-traitement, couche des signaux
     gore.ingest(prev)
     gore.ingest(world)
     resize()
@@ -666,22 +337,20 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     const act = pp.action
     const sentence = act?.kind === 'sentence' ? (t - act.start) / Math.max(1, act.end - act.start) : 0
     const sh = shake ? shakeOffset(gore.lastHit === null ? null : t - gore.lastHit, t) : { x: 0, z: 0 }
-    const cam = cameraPose({ focus: ppos, aim, aspect: camera.aspect, sentence, shake: sh })
+    const cam = cameraPose({ focus: ppos, aim, aspect: camera.aspect, sentence, shake: sh, preset })
     camera.position.set(cam.position[0], cam.position[1], cam.position[2])
     camera.lookAt(cam.target[0], cam.target[1], cam.target[2])
     camera.fov = cam.fovDeg
     camera.near = Math.max(1, cam.distance - 30)
-    camera.far = cam.distance + 40
+    camera.far = cam.distance + 60
     camera.updateProjectionMatrix()
+    camera.updateMatrixWorld()
 
-    for (const b of batches.values()) b.begin()
-    decals.begin()
-    for (const p of pools) p.begin()
-
+    bodies.begin()
     const target = aim ? sentenceTarget(world, aim) : null
     const phases = groupPhases(world)
     const sinks = sinkDepths(world, t)
-    const bodies: Body[] = []
+    const list: Body[] = []
     for (const c of world.creatures) {
       if (insideHost(c) || !visible(c.id)) continue
       const sinkK = sinks.get(c.id) ?? 0
@@ -702,41 +371,66 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
       } else {
         body = creatureBody(c, pos, facing, ctxFor(c, pc, t, dt, phases, target))
       }
-      bodies.push(body)
-      pushBody(body, sinkK * 0.6)
-      groundEffects(c, pos, facing, t, world, target)
+      list.push(body)
+      bodies.push(body, c.state.kind === 'mort', sinkK * 0.6)
+      bodies.ground(c, pos, facing, t, world, target)
     }
     if (visible(PLAYER_ID)) {
       const speed = (Math.hypot(pp.pos.x - ppPrev.pos.x, pp.pos.z - ppPrev.pos.z) * 60) / dt
       const pb = playerBody(pp, ppos, lerpAngle(ppPrev.facing, pp.facing, alpha), t, speed)
-      bodies.push(pb)
-      pushBody(pb, 0)
+      list.push(pb)
+      bodies.push(pb, false, 0)
     }
-    // Éclats dorés d'un coup sur un Résistant à terre (L4).
     for (const s of gore.sparks) {
       const age = t - s.born
       if (age < 0 || age >= SPARK_TICKS || !visible(s.id)) continue
-      for (let k = 0; k < 6; k++) {
-        const ang = k * 1.047 + s.born
-        const r = 0.15 + age * 0.05
-        tmpP.set(s.x + Math.cos(ang) * r, 0.3 + age * 0.03 - age * age * 0.002, s.z + Math.sin(ang) * r)
-        tmp.compose(tmpP, camera.quaternion, tmpV.set(0.06, 0.06, 0.06))
-        batch('flat', 'box').push(tmp, PALETTE.or.crete, 0, ROLE.autre)
-      }
+      bodies.spark(s.x, s.z, s.born, age, camera.quaternion)
     }
-    // Décalques : rouge vif pendant 2 s, puis rouge brun (§17).
-    for (const d of gore.decals) {
-      if (d.born > t) continue
-      tmpQ.setFromEuler(tmpE.set(-Math.PI / 2, 0, d.rot, 'XYZ'))
-      tmp.compose(tmpP.set(d.x, 0.003, d.z), tmpQ, tmpV.set(d.size * 2, d.size * 2, 1))
-      decals.push(tmp, decalColor(t - d.born), 0, ROLE.decalque)
-    }
-    for (const b of batches.values()) b.end()
-    decals.end()
-    for (const p of pools) p.end()
-    lastBodies = bodies
-    gl.setRenderTarget(null)
-    gl.render(scene, camera)
+    bodies.end()
+    goreLayer.update(gore, t)
+    lastBodies = list
+
+    // Lumières : sources fixes du décor et sources des entités visibles (une entité masquée emporte sa lumière).
+    const ents = entityLights(world, prev, alpha, t).filter(
+      (s: LightSource) => s.owner === undefined || visible(s.owner < 0 ? PLAYER_ID : s.owner),
+    )
+    rig.setLantern(ents.find((s) => s.kind === 'reliquaire') ?? null)
+    if (texturesLoaded && !envCaptured) captureEnvironment()
+    const viewRadius = CAMERAS[preset].champM * 0.72
+    const frame = rig.update(
+      [...decor.lights, ...ents],
+      { x: cam.target[0], z: cam.target[2] },
+      t,
+      viewRadius,
+    )
+    lastLights = [
+      ...frame.selection.shadowed.map((a) => ({
+        key: a.src.key,
+        kind: a.src.kind,
+        weight: a.weight,
+        shadow: true,
+      })),
+      ...frame.selection.point.map((a) => ({
+        key: a.src.key,
+        kind: a.src.kind,
+        weight: a.weight,
+        shadow: false,
+      })),
+    ]
+    decor.update(t)
+    cutUniforms.uCutTarget.value.set(ppos.x, 1.0, ppos.z)
+    cutUniforms.uCutCam.value.copy(camera.position)
+    overlayUniforms.uCamNear.value = camera.near
+    overlayUniforms.uCamFar.value = camera.far
+    fixedLightUniforms.uCamPosW.value.copy(camera.position)
+
+    const p = post as PostPipeline
+    p.renderScene(gl, scene, camera)
+    p.compose(gl, camera, t, frame.fog, true)
+    gl.autoClear = false
+    gl.clearDepth()
+    for (const o of overlays) gl.render(o, camera)
+    gl.autoClear = true
     lastCpu = performance.now() - t0
   }
 
@@ -770,9 +464,16 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
       idTarget = new WebGLRenderTarget(w, h, { format: RGBAFormat, type: UnsignedByteType, samples: 0 })
     }
     const swapped: { o: Mesh; m: Material | Material[] }[] = []
-    scene.traverse((o) => {
-      const idm = o.userData.idMaterial as ShaderMaterial | undefined
-      if (idm && o instanceof Mesh) {
+    const hiddenObjs: Object3D[] = []
+    const swap = (root: Object3D): void =>
+      root.traverse((o) => {
+        if (!(o instanceof Mesh) || !o.visible) return
+        const idm = o.userData.idMaterial as ShaderMaterial | undefined
+        if (!idm) {
+          o.visible = false
+          hiddenObjs.push(o)
+          return
+        }
         swapped.push({ o, m: o.material })
         // Même résolution de profondeur que la passe couleur (décalques et objets au sol décalés).
         const src = o.material as Material
@@ -780,24 +481,27 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
         idm.polygonOffsetFactor = src.polygonOffsetFactor
         idm.polygonOffsetUnits = src.polygonOffsetUnits
         idm.depthWrite = src.depthWrite
-        idm.depthTest = src.depthTest
+        idm.depthTest = true
         idm.side = src.side
         o.material = idm
-      }
-    })
-    const bg = scene.background
-    scene.background = new Color(PALETTE.technique.fondId)
+      })
+    swap(scene)
+    for (const o of overlays) swap(o)
     const auto = gl.shadowMap.autoUpdate
     gl.shadowMap.autoUpdate = false
     gl.setRenderTarget(idTarget)
-    gl.clear()
+    gl.setClearColor(PALETTE.technique.fondId, 1)
+    gl.clear(true, true, true)
+    gl.autoClear = false
     gl.render(scene, camera)
+    for (const o of overlays) gl.render(o, camera)
+    gl.autoClear = true
     const buf = new Uint8Array(w * h * 4)
     gl.readRenderTargetPixels(idTarget, 0, 0, w, h, buf)
     gl.setRenderTarget(null)
     gl.shadowMap.autoUpdate = auto
-    scene.background = bg
     for (const s of swapped) s.o.material = s.m
+    for (const o of hiddenObjs) o.visible = true
     return { width: w, height: h, data: flip(w, h, buf) }
   }
 
@@ -834,6 +538,11 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     return { x: camera.position.x + dir.x * k, z: camera.position.z + dir.z * k }
   }
 
+  const readyPromise = bank.ready.then(() => {
+    texturesLoaded = true
+    if (last) draw(last.world, last.prev, last.alpha)
+  })
+
   return {
     render(world, prev, alpha) {
       last = { world, prev, alpha }
@@ -846,6 +555,7 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
       aim = p
     },
     screenToGround,
+    ready: () => readyPromise,
     debug: {
       setShake(on) {
         shake = on
@@ -862,10 +572,14 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
       stats: () => ({
         calls: gl.info.render.calls,
         triangles: gl.info.render.triangles,
-        instances: [...batches.values()].reduce((n, b) => n + b.count, 0),
+        instances: bodies.instances,
         decals: gore.decals.length,
         bodies: lastBodies.length,
         cpuMs: lastCpu,
+        lights: lastLights.filter((l) => l.weight > 0).length,
+        shadowLights: lastLights.filter((l) => l.shadow && l.weight > 0).length,
+        quality: q.level,
+        camera: preset,
       }),
       clearGore() {
         gore.clear()
@@ -884,17 +598,31 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
         const ext = ctx.getExtension('WEBGL_debug_renderer_info')
         return ext ? String(ctx.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : 'inconnu'
       },
+      setTelegraphs(on) {
+        bodies.showTelegraphs = on
+      },
+      setCamera(p) {
+        preset = p
+      },
+      lights: () => lastLights,
+      syncFrameMs() {
+        const t1 = performance.now()
+        if (last) draw(last.world, last.prev, last.alpha)
+        const ctx = gl.getContext()
+        const px = new Uint8Array(4)
+        ctx.readPixels(0, 0, 1, 1, ctx.RGBA, ctx.UNSIGNED_BYTE, px)
+        return performance.now() - t1
+      },
     },
     dispose() {
-      for (const b of batches.values()) b.dispose()
-      decals.dispose()
-      joints.dispose()
-      for (const p of pools) p.dispose()
-      for (const g of sectorCache.values()) g.dispose()
-      lane.dispose()
+      bodies.dispose()
+      goreLayer.dispose()
+      decor.dispose()
+      rig.dispose()
+      post?.dispose()
       idTarget?.dispose()
-      ground.geometry.dispose()
-      for (const m of curbs) m.geometry.dispose()
+      envTexture?.dispose()
+      for (const m of Object.values(matterMaterials)) m.dispose()
       gl.dispose()
     },
   }

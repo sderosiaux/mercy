@@ -1,0 +1,432 @@
+{
+  "note": "Textures du jeu : source, URL, licence et résolution de chaque fichier. Écrit par scripts/fetch-textures.ts.",
+  "sets": {
+    "boue": "brown_mud_03",
+    "terre": "excavated_soil_wall",
+    "pierre": "castle_wall_slates",
+    "bois": "rough_wood",
+    "fer": "rust_coarse_01",
+    "cuir": "brown_leather",
+    "tissu": "rough_linen"
+  },
+  "files": [
+    {
+      "file": "textures/boue/boue_albedo.jpg",
+      "set": "boue",
+      "map": "albedo",
+      "source": "Poly Haven",
+      "asset": "brown_mud_03",
+      "page": "https://polyhaven.com/a/brown_mud_03",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_mud_03/brown_mud_03_diff_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 526262,
+      "md5": "b99d14c26debf660457b9497f2facec6",
+      "authors": [
+        "Rob Tuytel"
+      ]
+    },
+    {
+      "file": "textures/boue/boue_normal.jpg",
+      "set": "boue",
+      "map": "normal",
+      "source": "Poly Haven",
+      "asset": "brown_mud_03",
+      "page": "https://polyhaven.com/a/brown_mud_03",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_mud_03/brown_mud_03_nor_gl_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 1229474,
+      "md5": "97e4449786551a25c69587a864be6eb3",
+      "authors": [
+        "Rob Tuytel"
+      ]
+    },
+    {
+      "file": "textures/boue/boue_arm.jpg",
+      "set": "boue",
+      "map": "arm",
+      "source": "Poly Haven",
+      "asset": "brown_mud_03",
+      "page": "https://polyhaven.com/a/brown_mud_03",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_mud_03/brown_mud_03_arm_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 277655,
+      "md5": "7b38c1d97fc073b4128982314b27af27",
+      "authors": [
+        "Rob Tuytel"
+      ]
+    },
+    {
+      "file": "textures/terre/terre_albedo.jpg",
+      "set": "terre",
+      "map": "albedo",
+      "source": "Poly Haven",
+      "asset": "excavated_soil_wall",
+      "page": "https://polyhaven.com/a/excavated_soil_wall",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/excavated_soil_wall/excavated_soil_wall_diff_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 639659,
+      "md5": "d54b94d47cbe687a0a41853b2f9b29db",
+      "authors": [
+        "Amal Kumar"
+      ]
+    },
+    {
+      "file": "textures/terre/terre_normal.jpg",
+      "set": "terre",
+      "map": "normal",
+      "source": "Poly Haven",
+      "asset": "excavated_soil_wall",
+      "page": "https://polyhaven.com/a/excavated_soil_wall",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/excavated_soil_wall/excavated_soil_wall_nor_gl_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 1320275,
+      "md5": "102de7c8d31a1c845082b8163e85938a",
+      "authors": [
+        "Amal Kumar"
+      ]
+    },
+    {
+      "file": "textures/terre/terre_arm.jpg",
+      "set": "terre",
+      "map": "arm",
+      "source": "Poly Haven",
+      "asset": "excavated_soil_wall",
+      "page": "https://polyhaven.com/a/excavated_soil_wall",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/excavated_soil_wall/excavated_soil_wall_arm_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 828247,
+      "md5": "c03807366ae4e93ef2fd40f75d11bc59",
+      "authors": [
+        "Amal Kumar"
+      ]
+    },
+    {
+      "file": "textures/pierre/pierre_albedo.jpg",
+      "set": "pierre",
+      "map": "albedo",
+      "source": "Poly Haven",
+      "asset": "castle_wall_slates",
+      "page": "https://polyhaven.com/a/castle_wall_slates",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/castle_wall_slates/castle_wall_slates_diff_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 625282,
+      "md5": "0f32f47b63c6303ba0d2c79d6672a402",
+      "authors": [
+        "Rob Tuytel"
+      ]
+    },
+    {
+      "file": "textures/pierre/pierre_normal.jpg",
+      "set": "pierre",
+      "map": "normal",
+      "source": "Poly Haven",
+      "asset": "castle_wall_slates",
+      "page": "https://polyhaven.com/a/castle_wall_slates",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/castle_wall_slates/castle_wall_slates_nor_gl_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 1072473,
+      "md5": "e2909f4123b3dce0a4774de14e5f8685",
+      "authors": [
+        "Rob Tuytel"
+      ]
+    },
+    {
+      "file": "textures/pierre/pierre_arm.jpg",
+      "set": "pierre",
+      "map": "arm",
+      "source": "Poly Haven",
+      "asset": "castle_wall_slates",
+      "page": "https://polyhaven.com/a/castle_wall_slates",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/castle_wall_slates/castle_wall_slates_arm_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 298965,
+      "md5": "64f46720879286eb74fa194210910640",
+      "authors": [
+        "Rob Tuytel"
+      ]
+    },
+    {
+      "file": "textures/bois/bois_albedo.jpg",
+      "set": "bois",
+      "map": "albedo",
+      "source": "Poly Haven",
+      "asset": "rough_wood",
+      "page": "https://polyhaven.com/a/rough_wood",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rough_wood/rough_wood_diff_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 567074,
+      "md5": "92d4b3dd46bab95248f5a7680b7882e7",
+      "authors": [
+        "Rob Tuytel"
+      ]
+    },
+    {
+      "file": "textures/bois/bois_normal.jpg",
+      "set": "bois",
+      "map": "normal",
+      "source": "Poly Haven",
+      "asset": "rough_wood",
+      "page": "https://polyhaven.com/a/rough_wood",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rough_wood/rough_wood_nor_gl_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 790334,
+      "md5": "1c9829c9023f74c74eaeba28e56e5144",
+      "authors": [
+        "Rob Tuytel"
+      ]
+    },
+    {
+      "file": "textures/bois/bois_arm.jpg",
+      "set": "bois",
+      "map": "arm",
+      "source": "Poly Haven",
+      "asset": "rough_wood",
+      "page": "https://polyhaven.com/a/rough_wood",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rough_wood/rough_wood_arm_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 137749,
+      "md5": "3879ef7144ffa11e43e504e590ccf1d7",
+      "authors": [
+        "Rob Tuytel"
+      ]
+    },
+    {
+      "file": "textures/fer/fer_albedo.jpg",
+      "set": "fer",
+      "map": "albedo",
+      "source": "Poly Haven",
+      "asset": "rust_coarse_01",
+      "page": "https://polyhaven.com/a/rust_coarse_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rust_coarse_01/rust_coarse_01_diff_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 845196,
+      "md5": "c2d2facc7184f216d15a8f9957d3aa4c",
+      "authors": [
+        "Dimitrios Savva",
+        "Rico Cilliers"
+      ]
+    },
+    {
+      "file": "textures/fer/fer_normal.jpg",
+      "set": "fer",
+      "map": "normal",
+      "source": "Poly Haven",
+      "asset": "rust_coarse_01",
+      "page": "https://polyhaven.com/a/rust_coarse_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rust_coarse_01/rust_coarse_01_nor_gl_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 763053,
+      "md5": "77f701cbbf5042f6531e7a5af3a4d171",
+      "authors": [
+        "Dimitrios Savva",
+        "Rico Cilliers"
+      ]
+    },
+    {
+      "file": "textures/fer/fer_arm.jpg",
+      "set": "fer",
+      "map": "arm",
+      "source": "Poly Haven",
+      "asset": "rust_coarse_01",
+      "page": "https://polyhaven.com/a/rust_coarse_01",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rust_coarse_01/rust_coarse_01_arm_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 833378,
+      "md5": "28b26e393942bc25ef62f76b55fe4649",
+      "authors": [
+        "Dimitrios Savva",
+        "Rico Cilliers"
+      ]
+    },
+    {
+      "file": "textures/cuir/cuir_albedo.jpg",
+      "set": "cuir",
+      "map": "albedo",
+      "source": "Poly Haven",
+      "asset": "brown_leather",
+      "page": "https://polyhaven.com/a/brown_leather",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_leather/brown_leather_albedo_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 503348,
+      "md5": "080b3bf1372766ff2c7ff121ed07b5e8",
+      "authors": [
+        "Rob Tuytel"
+      ]
+    },
+    {
+      "file": "textures/cuir/cuir_normal.jpg",
+      "set": "cuir",
+      "map": "normal",
+      "source": "Poly Haven",
+      "asset": "brown_leather",
+      "page": "https://polyhaven.com/a/brown_leather",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_leather/brown_leather_nor_gl_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 863280,
+      "md5": "b63ae0121a415c23d74eed0b07fc6065",
+      "authors": [
+        "Rob Tuytel"
+      ]
+    },
+    {
+      "file": "textures/cuir/cuir_arm.jpg",
+      "set": "cuir",
+      "map": "arm",
+      "source": "Poly Haven",
+      "asset": "brown_leather",
+      "page": "https://polyhaven.com/a/brown_leather",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/brown_leather/brown_leather_arm_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 436931,
+      "md5": "40778465932d0a0816a9fbdab00e2a5d",
+      "authors": [
+        "Rob Tuytel"
+      ]
+    },
+    {
+      "file": "textures/tissu/tissu_albedo.jpg",
+      "set": "tissu",
+      "map": "albedo",
+      "source": "Poly Haven",
+      "asset": "rough_linen",
+      "page": "https://polyhaven.com/a/rough_linen",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rough_linen/rough_linen_diff_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1026,
+      "bytes": 835801,
+      "md5": "663db789fb075462b685c1f740e58930",
+      "authors": [
+        "colormass",
+        "Rico Cilliers"
+      ]
+    },
+    {
+      "file": "textures/tissu/tissu_normal.jpg",
+      "set": "tissu",
+      "map": "normal",
+      "source": "Poly Haven",
+      "asset": "rough_linen",
+      "page": "https://polyhaven.com/a/rough_linen",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rough_linen/rough_linen_nor_gl_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1026,
+      "bytes": 916843,
+      "md5": "3350269a2e9c472aa406bd3cc1eaf2c8",
+      "authors": [
+        "colormass",
+        "Rico Cilliers"
+      ]
+    },
+    {
+      "file": "textures/tissu/tissu_arm.jpg",
+      "set": "tissu",
+      "map": "arm",
+      "source": "Poly Haven",
+      "asset": "rough_linen",
+      "page": "https://polyhaven.com/a/rough_linen",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rough_linen/rough_linen_arm_1k.jpg",
+      "license": "CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+      "resolution": "1k",
+      "width": 1024,
+      "height": 1026,
+      "bytes": 1191393,
+      "md5": "ffe777973056d79d6b2a1324e8451295",
+      "authors": [
+        "colormass",
+        "Rico Cilliers"
+      ]
+    },
+    {
+      "file": "textures/gen/banniere-1-alpha.png",
+      "set": "gen",
+      "map": "banniere-1",
+      "source": "GPT Image (gpt-image-2.5-sunburst, ~/.claude/scripts/generate_image.py, 768x1280, quality high)",
+      "asset": "art/textures/banniere-1-alpha.png",
+      "page": "",
+      "url": "art/textures/banniere-1-alpha.png",
+      "license": "Image générée pour MERCY (aucune œuvre tierce)",
+      "resolution": "384x640",
+      "width": 384,
+      "height": 640,
+      "bytes": 342738,
+      "md5": "24c919c154370256d141b749ae991829",
+      "prompt": "Flat front orthographic view of a single torn medieval religious processional banner, hanging cloth, faded dark oxblood and soot-brown fabric, a crude faded painted figure of a hooded saint with a dull halo in the center, embroidered border mostly worn away, ragged frayed bottom edge with long tears and holes, stains, centered and isolated on a pure flat black background, no pole, no shadow, game texture asset, dark grim medieval style",
+      "processing": "Original : art/textures/banniere-1.png. Fond noir rendu transparent : alpha = smoothstep(6, 20, max(R, G, B)) ; réduit de moitié (Lanczos) en 384x640."
+    },
+    {
+      "file": "textures/gen/banniere-2-alpha.png",
+      "set": "gen",
+      "map": "banniere-2",
+      "source": "GPT Image (gpt-image-2.5-sunburst, ~/.claude/scripts/generate_image.py, 768x1280, quality high)",
+      "asset": "art/textures/banniere-2-alpha.png",
+      "page": "",
+      "url": "art/textures/banniere-2-alpha.png",
+      "license": "Image générée pour MERCY (aucune œuvre tierce)",
+      "resolution": "384x640",
+      "width": 384,
+      "height": 640,
+      "bytes": 333781,
+      "md5": "28d4c08608c2e21e2aeed5a2cde6d418",
+      "prompt": "Flat front orthographic view of a single tattered medieval church banner, faded charcoal and dirty bone-white linen, a faded painted symbol of a weeping mother figure with hands joined, ragged torn bottom edge split into strips, burn holes, mud stains, centered and isolated on a pure flat black background, no pole, no shadow, game texture asset, grim dark medieval style",
+      "processing": "Original : art/textures/banniere-2.png. Fond noir rendu transparent : alpha = smoothstep(6, 20, max(R, G, B)) ; réduit de moitié (Lanczos) en 384x640."
+    }
+  ]
+}

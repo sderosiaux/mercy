@@ -1,0 +1,16 @@
+[
+  {
+    "name": "banniere-1",
+    "file": "banniere-1-alpha.png",
+    "generator": "GPT Image (gpt-image-2.5-sunburst, ~/.claude/scripts/generate_image.py, 768x1280, quality high)",
+    "prompt": "Flat front orthographic view of a single torn medieval religious processional banner, hanging cloth, faded dark oxblood and soot-brown fabric, a crude faded painted figure of a hooded saint with a dull halo in the center, embroidered border mostly worn away, ragged frayed bottom edge with long tears and holes, stains, centered and isolated on a pure flat black background, no pole, no shadow, game texture asset, dark grim medieval style",
+    "processing": "Original : art/textures/banniere-1.png. Fond noir rendu transparent : alpha = smoothstep(6, 20, max(R, G, B)) ; réduit de moitié (Lanczos) en 384x640."
+  },
+  {
+    "name": "banniere-2",
+    "file": "banniere-2-alpha.png",
+    "generator": "GPT Image (gpt-image-2.5-sunburst, ~/.claude/scripts/generate_image.py, 768x1280, quality high)",
+    "prompt": "Flat front orthographic view of a single tattered medieval church banner, faded charcoal and dirty bone-white linen, a faded painted symbol of a weeping mother figure with hands joined, ragged torn bottom edge split into strips, burn holes, mud stains, centered and isolated on a pure flat black background, no pole, no shadow, game texture asset, grim dark medieval style",
+    "processing": "Original : art/textures/banniere-2.png. Fond noir rendu transparent : alpha = smoothstep(6, 20, max(R, G, B)) ; réduit de moitié (Lanczos) en 384x640."
+  }
+]

@@ -60,11 +60,35 @@ const ICONS = {
 } as const
 
 // Le Glas (R) n'est pas dans P0 (§28) : son emplacement reste visible et éteint.
+// Les touches sont lues par position physique (KeyboardEvent.code) : l'étiquette affichée est celle de la touche du
+// joueur à cette position (KeyQ est « A » sur un clavier AZERTY), lue dans la disposition du clavier quand le
+// navigateur la donne (navigator.keyboard.getLayoutMap), sinon apprise à la première frappe, sinon celle du QWERTY.
 const RITES = [
-  { id: 'balayage', key: 'clic droit', cost: TUNING.balayage.cost, locked: false },
-  { id: 'charge', key: 'Q', cost: TUNING.charge.cost, locked: false },
-  { id: 'glas', key: 'R', cost: null, locked: true },
+  { id: 'balayage', key: 'clic droit', code: null, cost: TUNING.balayage.cost, locked: false },
+  { id: 'charge', key: 'Q', code: 'KeyQ', cost: TUNING.charge.cost, locked: false },
+  { id: 'glas', key: 'R', code: 'KeyR', cost: null, locked: true },
 ] as const
+
+interface LayoutNavigator {
+  readonly keyboard?: { getLayoutMap?: () => Promise<{ get(code: string): string | undefined }> }
+}
+
+// Étiquette d'une touche physique : appelle `apply` avec la lettre réelle dès qu'elle est connue.
+export const watchKeyLabel = (code: string, apply: (label: string) => void): (() => void) => {
+  const nav = (typeof navigator === 'undefined' ? {} : navigator) as LayoutNavigator
+  void nav.keyboard
+    ?.getLayoutMap?.()
+    .then((m) => {
+      const k = m.get(code)
+      if (k) apply(k.toUpperCase())
+    })
+    .catch(() => {})
+  const learn = (e: KeyboardEvent): void => {
+    if (e.code === code && e.key.length === 1) apply(e.key.toUpperCase())
+  }
+  addEventListener('keydown', learn)
+  return () => removeEventListener('keydown', learn)
+}
 
 export const createHud = (container: HTMLElement): Hud => {
   const style = document.createElement('style')
@@ -101,6 +125,13 @@ export const createHud = (container: HTMLElement): Hud => {
   const vie = q<HTMLElement>('.vie .fill')
   const ferveur = q<HTMLElement>('.ferveur .fill')
   const rites = RITES.map((r) => ({ r, el: q<HTMLElement>(`[data-rite="${r.id}"]`) }))
+  const unwatch: (() => void)[] = []
+  for (const { r, el } of rites) {
+    const label = el.querySelector<HTMLElement>('.key')
+    if (r.code && label) unwatch.push(watchKeyLabel(r.code, (k) => (label.textContent = k)))
+  }
+  const swapKey = root.querySelector<HTMLElement>('.arme b')
+  if (swapKey) unwatch.push(watchKeyLabel('KeyX', (k) => (swapKey.textContent = k)))
   const pips = [...root.querySelectorAll<HTMLElement>('.pip i')]
   const arme = q<HTMLElement>('.arme')
   const weapon = q<HTMLElement>('.weapon')
@@ -136,6 +167,7 @@ export const createHud = (container: HTMLElement): Hud => {
       arme.classList.toggle('off', hostileNear)
     },
     dispose() {
+      for (const u of unwatch) u()
       root.remove()
       style.remove()
     },

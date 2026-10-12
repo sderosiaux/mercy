@@ -4,6 +4,7 @@
 import { uvToGround } from '../render/camera'
 import {
   createWorld,
+  FAMILIES,
   type FamilyKind,
   type FamilyRegistry,
   PORTEUR_STAGE_KEY,
@@ -21,7 +22,7 @@ export interface LabScene {
   readonly title: string
   readonly world: () => World
   readonly policy: () => Policy
-  readonly decals?: readonly { readonly pos: Vec2; readonly size: number }[]
+  readonly decals?: readonly { readonly pos: Vec2; readonly size: number; readonly born?: number }[] // born : tick (sang frais), sinon ancien
   readonly aim?: Vec2 // curseur posé, pour montrer le sceau de Sentence
 }
 
@@ -184,7 +185,147 @@ const galleryWorld = (): World => {
   return build(spawns, { families: LAB_FAMILIES_QUIET })
 }
 
+// La Fosse (E1) : tableau proche de la planche key-art-la-fosse, au coin haut de l'arène pour voir les murs, la
+// palissade, les torches, l'escalier. Bourreau au centre, Souriants en Rituel, Recousu, Confesseur en prière,
+// Porteur au stade 2, morts et Abattus dans la boue, sang ancien. `fosse-combat` : le même tableau, le Bourreau frappe.
+const FOSSE_AT = { x: -8.5, z: -10.5 }
+const fosseSpawns = (): SpawnDef[] => {
+  const at = (dx: number, dz: number) => ({ x: FOSSE_AT.x + dx, z: FOSSE_AT.z + dz })
+  const out: SpawnDef[] = []
+  const ring = [
+    [2.2, -1.0],
+    [1.0, 2.6],
+    [-2.4, 1.6],
+    [3.4, 1.8],
+    [-1.2, -2.8],
+  ] as const
+  for (const [dx, dz] of ring) {
+    out.push({ family: 'souriant', pos: at(dx, dz), facing: Math.atan2(-dz, -dx), state: 'rituel', group: 1 })
+  }
+  out.push({ family: 'recousu', pos: at(-3.6, -2.4), facing: 0.6, state: 'rituel', group: 2 })
+  out.push({ family: 'confesseur', pos: at(4.4, -3.2), facing: 2.4, state: 'hostile' })
+  out.push({ family: 'porteur', pos: at(-4.2, 3.4), facing: -0.8, state: 'hostile' })
+  const dead: [number, number, FamilyKind][] = [
+    [1.6, 4.4, 'souriant'],
+    [-2.6, 4.8, 'souriant'],
+    [5.2, 0.6, 'souriant'],
+    [-0.4, -4.6, 'recousu'],
+    [3.0, 4.8, 'souriant'],
+  ]
+  dead.forEach(([dx, dz, family], k) => {
+    out.push({ family, pos: at(dx, dz), facing: k * 1.3, state: 'mort', cicatrices: (k % 2) as 0 | 1 })
+  })
+  out.push({ family: 'souriant', pos: at(-1.5, 3.4), facing: 2.2, state: 'abattu', cicatrices: 1 })
+  out.push({ family: 'souriant', pos: at(5.6, -1.6), facing: 0.4, state: 'abattu', cicatrices: 3 })
+  return out
+}
+const fosseWorld = (): World => {
+  const w = createWorld({
+    seed: 3,
+    variant: 'A',
+    wave: testWave(fosseSpawns(), FOSSE_AT),
+    families: LAB_FAMILIES,
+  })
+  return withCreature(w, 8, { familyData: { [PORTEUR_STAGE_KEY]: 2 } })
+}
+const fosseDecals = (): { pos: Vec2; size: number }[] =>
+  Array.from({ length: 26 }, (_, i) => ({
+    pos: { x: FOSSE_AT.x + (hash01(i, 21) * 2 - 1) * 6, z: FOSSE_AT.z + (hash01(i, 22) * 2 - 1) * 6 },
+    size: 0.25 + hash01(i, 23) * 0.45,
+  }))
+
+// Audit §30.13 (E1) : télégraphes réels (familles du jeu) sur du sang frais et sur des morts. Recousu A arme une
+// Empoignade (cercle de 1,8 m autour de lui), Recousu B un Marteau dont le cône couvre six morts. Impact au tick 60 ;
+// rouge brun avant le tick 48, rouge vif ensuite.
+const AUDIT_A = uvToGround(0.2, 3.1)
+const AUDIT_B = uvToGround(-3.6, -1.2)
+const auditWorld = (): World => {
+  const toPlayer = (p: Vec2) => Math.atan2(-p.z, -p.x)
+  const spawns: SpawnDef[] = [
+    { family: 'recousu', pos: AUDIT_A, facing: toPlayer(AUDIT_A), state: 'hostile' },
+    { family: 'recousu', pos: AUDIT_B, facing: toPlayer(AUDIT_B), state: 'hostile' },
+  ]
+  const fB = toPlayer(AUDIT_B)
+  for (let k = 0; k < 6; k++) {
+    const a = fB + (k - 2.5) * 0.17
+    const r = 1.0 + (k % 3) * 0.55
+    spawns.push({
+      family: 'souriant',
+      pos: { x: AUDIT_B.x + Math.cos(a) * r, z: AUDIT_B.z + Math.sin(a) * r },
+      facing: k * 1.1,
+      state: 'mort',
+    })
+  }
+  let w = createWorld({
+    seed: 5,
+    variant: 'A',
+    wave: testWave(spawns, { x: 0, z: 0 }),
+    families: { ...FAMILIES },
+  })
+  const act = (name: string, limb: string, target: Vec2) => ({
+    name,
+    kind: 'attaque' as const,
+    start: 0,
+    activeAt: 60,
+    end: 60 + 48,
+    target,
+    limb,
+  })
+  w = withCreature(w, 1, { action: act('empoignade', 'brasGauche', { x: 0, z: 0 }) })
+  w = withCreature(w, 2, { action: act('marteau', 'brasDroit', { x: 0, z: 0 }) })
+  return w
+}
+const auditDecals = (): { pos: Vec2; size: number; born: number }[] =>
+  Array.from({ length: 24 }, (_, i) => ({
+    pos: uvToGround((hash01(i, 31) * 2 - 1) * 4, (hash01(i, 32) * 2 - 1) * 4),
+    size: 0.35 + hash01(i, 33) * 0.35,
+    born: 20,
+  }))
+
+// Bord proche de la caméra (§20) : le Bourreau au pied du mur, côté écran bas ; le mur et la palissade entre la
+// caméra et lui se découpent.
+const bordWorld = (): World =>
+  createWorld({
+    seed: 4,
+    variant: 'A',
+    wave: testWave(
+      [
+        { family: 'souriant', pos: uvToGround(-2, -12), facing: 1, state: 'rituel', group: 1 },
+        { family: 'souriant', pos: uvToGround(2.2, -11.5), facing: 2, state: 'mort' },
+      ],
+      uvToGround(0, -13.2),
+    ),
+    families: LAB_FAMILIES_QUIET,
+  })
+
 export const SCENES: readonly LabScene[] = [
+  {
+    id: 'bord',
+    title: 'Bord de la fosse, côté caméra : découpe du mur (§20)',
+    world: bordWorld,
+    policy: () => immobile,
+  },
+  {
+    id: 'audit-telegraphes',
+    title: 'Audit §30.13 : Empoignade et Marteau réels sur du sang frais et sur des morts',
+    world: auditWorld,
+    policy: () => immobile,
+    decals: auditDecals(),
+  },
+  {
+    id: 'fosse',
+    title: 'La Fosse (E1) : tableau de la planche',
+    world: fosseWorld,
+    policy: () => immobile,
+    decals: fosseDecals(),
+  },
+  {
+    id: 'fosse-combat',
+    title: 'La Fosse (E1) : le Bourreau frappe ce qui est debout',
+    world: fosseWorld,
+    policy: () => negligent,
+    decals: fosseDecals(),
+  },
   {
     id: 'S1a',
     title: 'S1a · Fosse figée, joueur immobile',

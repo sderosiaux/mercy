@@ -7,7 +7,7 @@ export const PALETTE = {
   // Ivoire jauni : vivant à terre (liseré des Abattus), os, Excroissances. Le liseré bat entre creux et crête.
   ivoire: { base: 0xe9d9a4, creux: 0xcdbb88, crete: 0xfbefc4 },
   // Os mat (halo du Confesseur hors prière) : famille ivoire, plus sombre que le liseré.
-  os: 0xb5a885,
+  os: 0xb5a885, // réservé aux os (famille ivoire) : jamais sur une créature debout (audit §30.10)
   // Or terni : Résistant (liseré doré, marques), ornement.
   or: { base: 0xb07a0c, creux: 0x9a6a08, crete: 0xc28c1c },
   // Gris cadavérique : mort (désaturation), brume, pierre. Jamais une créature vivante.
@@ -31,23 +31,70 @@ export const PALETTE = {
   // Sans sens réservé : chair des familles (C* ≥ 20 pour que le vivant reste saturé sous la lumière).
   chair: {
     souriant: 0xc07c6c,
-    souriantMasque: 0xeeebe3,
-    recousu: 0x8a5a80,
+    souriantMasque: 0xd6d0c8, // porcelaine : blanche dans la nuit, ni ivoire sous les flammes (audit §30.10) ni bleue sous la lune
+    recousu: 0xac7462,
     couture: 0xd9b0a8,
-    porteur: 0x9a5c6a,
+    porteur: 0x9c6658,
     sac: 0x6c3a4a,
-    sacLueur: 0xd0708c,
-    confesseur: 0xb88070,
+    sacLueur: 0x8e2a3a, // cramoisi sombre : loin du rouge vif du stade 3 et de l'or
+    confesseur: 0xb07074,
     chasuble: 0x5a3c74,
     chirurgien: 0xbc8676,
     tablier: 0x3a5a82,
     plaie: 0x6e1f24,
   },
-  // Le Bourreau : cuir sombre bleuté et acier, distinct de toute créature.
-  bourreau: { cuir: 0x2a3247, capuche: 0x1b2030, peau: 0x8a6a5c, acier: 0x8f99a6, manche: 0x3b2c22 },
+  // Le Bourreau : cuir sombre bleuté, acier rouillé et taché de sang (loin du gris des morts, audit §30.10).
+  bourreau: { cuir: 0x2a3247, capuche: 0x1b2030, peau: 0x8a6a5c, acier: 0x6e5046, manche: 0x3b2c22 },
 
-  // Lumière neutre : une lumière teintée donnerait de la chroma aux morts (B2.O1).
-  lumiere: { soleil: 0xffffff, ciel: 0xffffff, sol: 0xffffff },
+  // Lumière (E1, ART_DIRECTION « Lumière ») : le noir domine ; seules sources chaudes, les flammes ; une lune froide
+  // très faible. Les morts n'en prennent que la luminance (matière des morts, renderer) : aucune lumière teintée,
+  // halo de prière compris, ne leur donne de chroma (B2.O1, arbitrage B3/B2).
+  lumiere: {
+    torche: 0xffa25a, // flamme de poix
+    brasero: 0xff8c40, // braises
+    chandelle: 0xffb46a, // cire
+    reliquaire: 0xffa860, // chandelle du reliquaire, à la ceinture du Bourreau (planche bourreau-sheet)
+    lune: 0x9fb4e0, // lune froide
+    cielNuit: 0x2c3850, // ambiance hémisphérique, ciel
+    solNuit: 0x0e0b09, // ambiance hémisphérique, sol
+    neutre: 0xffffff, // lumière de jugement (galerie de la Forge, laboratoire) : sans chroma, pour lire formes et couleurs
+  },
+
+  // Flammes vues (émissives) : cœur et bord.
+  flamme: { coeur: 0xffd89a, bord: 0xff5a14, braise: 0xc8320c },
+
+  // Matières du décor et des corps (teintes multipliées par les albédos PBR de public/textures).
+  matiere: {
+    boue: 0x929088, // boue humide : teinte claire, multipliée par l'albédo brown_mud_03
+    flaque: 0x2a3026, // eau stagnante verdâtre, très sombre
+    terre: 0x958a7c, // murs de terre de l'ossuaire
+    pierre: 0xc0bab4, // rebords, escalier
+    bois: 0xb0a090, // pieux, gibet, planches
+    fer: 0xc4b4aa, // fer rouillé
+    cuir: 0x7a6656, // tablier, sangles, gants
+    tissu: 0x6e5c4c, // robes, capuches, bannières, haillons
+    osSale: 0x6e6452, // crânes et os de l'ossuaire : os terni et sale, loin de l'ivoire du liseré
+    cire: 0xb8ac90, // chandelles
+    corde: 0x6a5a40,
+    silhouette: 0x4a4448, // spectateurs encapuchonnés du bord
+  },
+
+  // Vêtements des créatures vivantes : C* ≥ 20 (B2.O1 demande C* ≥ 15 sur le corps d'un vivant à l'écran).
+  habit: {
+    haillon: 0x7a4a30, // haillons du Souriant, du Porteur
+    robeChirurgien: 0x5a4636, // robe sous le tablier
+    capuche: 0x1c1a20, // capuche et cuir du Bourreau (très sombre : sous la chandelle, ni or ni ivoire)
+    tablierBourreau: 0x6a5240, // tablier taché du Bourreau
+    masqueFer: 0x463c36, // masque de fer du Bourreau, loin du gris des morts
+    haloConfesseur: 0x5a4c42, // halo de fer du Confesseur hors prière : ni ivoire ni or (audit §30.10)
+  },
+
+  // Brouillard bas (ambiance lunaire) et étalonnage froid : teintes de l'ombre et de la lumière.
+  brouillard: { ambiant: 0x232a38 },
+  etalonnage: { ombres: 0x1e2a3a, lumieres: 0xfff2e0 },
+
+  // Sang : chair à vif des éclats, os brisé des éclats contondants.
+  gore: { chair: 0x5a1612, os: 0x9a8e78 },
 
   // Interface (§21) : ivoire sur noir, discrète.
   hud: { fond: 0x0a0909, encre: 0xe9d9a4, vie: 0x4a1e18, ferveur: 0xb07a0c, cadre: 0xe9d9a4 },
