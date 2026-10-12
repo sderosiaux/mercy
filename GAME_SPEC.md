@@ -169,7 +169,7 @@ Sept lois. Tout le reste du jeu en découle.
 
 - Règle : une créature et ses parties partagent une seule mort.
 - Sont des parties : les Membres errants détachés d'elle, les corps absorbés dans le sac d'un Porteur, les corps assemblés en Recousu par un Chirurgien, les fidèles nés de la Mère, les Gisants reliés à elle.
-- Donner la mort au tout tue toutes ses parties, où qu'elles soient. Elles se figent en gris dans la même image, leurs cris coupés ensemble.
+- Donner la mort au tout tue toutes ses parties, où qu'elles soient. Elles entrent en agonie dans la même image : leurs cris s'étranglent ensemble en râles, elles s'effondrent et grisent ensemble, puis se taisent et se figent ensemble.
 - Donner la mort à une partie ne tue que cette partie. Le tout ne pourra plus la récupérer, mais le Relèvement fait repousser les membres perdus.
 - Usage joueur : abattre un Porteur chargé puis l'achever fait taire tout ce qu'il porte. Tuer un Recousu immobilise ses bras coupés.
 
@@ -294,7 +294,7 @@ Le Registre (menu pause) liste le total des morts données et, pour les créatur
 | Chirurgien | Petite | 50 | 4 m/s | Scalpel (10), seulement acculé | Recoud et assemble | Soigne des Délaissés sur des lits | Long, penché, fuit le joueur à moins de 4 m |
 | Délaissé | Petite | n/a | 0 | Aucune | Est un corps | Gît, chuchote | Abattu permanent : pas de Relèvement autonome, pas de cri |
 
-Porteur. Sac sur le dos, en trois stades. Tant que son sac n'est pas plein, il marche vers l'Abattu le plus proche à moins de 12 m, en pivotant à 90°/s au plus (réglage) pour garder son sac loin du joueur. Il absorbe un Abattu ordinaire ou un Délaissé à moins de 3 m toutes les 1,5 s, jusqu'à 3. Un corps absorbé garde une voix étouffée dans le sac jusqu'à sa mort (coupure commune, L5) ou son expulsion. Au stade 3, il marche sur le joueur et éclate au contact ou après 4 s. Un coup porté dans son dos (arc arrière de 120°) fait éclater le sac sur-le-champ, à son stade actuel. De face, les coups touchent son corps.
+Porteur. Sac sur le dos, en trois stades. Tant que son sac n'est pas plein, il marche vers l'Abattu le plus proche à moins de 12 m, en pivotant à 90°/s au plus (réglage) pour garder son sac loin du joueur. Il absorbe un Abattu ordinaire ou un Délaissé à moins de 3 m toutes les 1,5 s, jusqu'à 3. Un corps absorbé garde une voix étouffée dans le sac jusqu'à sa mort (agonie commune, L5) ou son expulsion. Au stade 3, il marche sur le joueur et éclate au contact ou après 4 s. Un coup porté dans son dos (arc arrière de 120°) fait éclater le sac sur-le-champ, à son stade actuel. De face, les coups touchent son corps.
 
 Éclatement : rayon 2 m + 1 m par stade. Dégâts : 10 + 10 par stade, au joueur comme aux créatures. Toute petite créature ordinaire dans le rayon est abattue, quelle que soit sa Chair. Les grandes créatures et les Résistants subissent les dégâts, vacillent 1,5 s, et leurs Excroissances prennent ×3. Les corps absorbés sont expulsés en Abattus, le Porteur vide tombe Abattu. D'après L5, abattre un Porteur chargé de face puis l'achever tue tout ce qu'il contient.
 
@@ -626,7 +626,7 @@ Télégraphes : anticipation exagérée avec une pose « fausse » propre à cha
 
 Abattus : rampent avec des mouvements propres à chaque famille (le Souriant sur le dos, le Recousu sur les coudes). Relèvement : les mains se plantent 1,5 s avant.
 
-Sentences : courtes, la caméra pousse de 10 %, gel au coup fatal, puis immobilité totale du corps.
+Sentences : courtes, la caméra pousse de 10 %, gel au coup fatal, puis l'agonie du corps (L4) et son immobilité totale.
 
 Bourreau : poids lisible, chaque coup a une anticipation et une récupération. Les Stigmates modifient sa silhouette (plaques dorsales, troisième bras recousu, halo, ventre) sans masquer sa direction ni son arme.
 
@@ -637,7 +637,7 @@ Le son porte de l'information de jeu :
 | Signal | Information |
 |---|---|
 | Halètement puis cri, spatialisé | Un Abattu, sa position, le risque d'alerte |
-| Coupure nette du cri, ambiance −6 dB pendant 0,4 s | Une mort donnée |
+| Cri étranglé en râle puis silence, ambiance −6 dB jusqu'à 0,4 s après la fin du râle | Une mort donnée |
 | Le cri se change en inspiration | Relèvement dans 1,5 s |
 | Gargouillis du Porteur qui monte d'un ton par stade | Stade du sac |
 | Chant du Confesseur qui s'élève | Progression de la prière |
@@ -653,7 +653,7 @@ Impacts d'armes distincts par type (tranchant : chair fendue ; contondant : os q
 
 Budget de voix : 24 emplacements de cri au plus, un par corps (halètement, cri et inspiration compris), priorité aux plus proches, le reste part dans la nappe. Les sons de support (chant, scie, gargouillis) ont leur propre budget et ne passent jamais dans la nappe.
 
-Règles de fin : à la mort, la voix de la créature passe au râle dans l'image du coup et se tait à la fin de l'agonie ; ses autres sources (gargouillis, chant, scie, coutures) s'éteignent pendant l'agonie. Rien de la créature ne sonne après la fin de l'agonie. Toute autre fin de son (relèvement, prière interrompue, absorption, voix volée par le budget, réinitialisation) se fait en fondu d'au moins 80 ms, sans râle : seul un râle signifie une mort donnée. L'atténuation de −6 dB porte sur la nappe et l'ambiance, ne s'empile pas, et dure jusqu'à 0,4 s après la dernière mort d'une grappe. L'auditeur est le joueur.
+Règles de fin : à la mort, la voix de la créature passe au râle dans l'image du coup et se tait à la fin de l'agonie ; ses autres sources (gargouillis, chant, scie, coutures) s'éteignent pendant l'agonie. Rien de la créature ne sonne après la fin de l'agonie. Toute autre fin de son (relèvement, prière interrompue, absorption, voix volée par le budget, réinitialisation) se fait en fondu d'au moins 80 ms, sans râle : seul un râle signifie une mort donnée. L'atténuation de −6 dB porte sur la nappe et l'ambiance (et, depuis le 2026-10-12, les autres voix de cri, −12 dB, jamais le râle), ne s'empile pas, et dure de la première mort d'une grappe jusqu'à 0,4 s après la fin du dernier râle. L'auditeur est le joueur.
 
 ## 20. Caméra
 
@@ -794,7 +794,7 @@ P0, « La Fosse ». Ce qu'il prouve : les lois L1 à L5 sont amusantes et lisibl
 - Arène grise de 30 × 30 m, créatures en blocs et segments sans finition.
 - Bourreau : Frappe, Esquive, Sentence, Balayage, Charge. Couperet et Masse.
 - Souriants, Porteur, Confesseur, Chirurgien, Recousu. Vagues scénarisées de complexité croissante.
-- Cris spatialisés générés par ElevenLabs, coupure nette à la mort.
+- Cris spatialisés générés par ElevenLabs, râle puis silence à la mort (agonie, L4).
 - Mesures : part des corps relevés, délai avant le premier Achèvement volontaire, nombre d'éclatements de Porteur provoqués exprès, prières interrompues, temps par vague.
 - Critères d'abandon : si les testeurs gagnent confortablement sans jamais s'occuper des corps, la pression de Relèvement est trop faible (raccourcir les délais, plus de supports). Si plus de la moitié décrivent le nettoyage des corps comme une corvée, passer à la variante B.
 
@@ -834,7 +834,7 @@ RÉUSSITE : après le bas-côté A, les joueurs ciblent ou interrompent les Conf
 ```
 
 ```
-RÉUSSITE : interrogés après la tranche, les joueurs citent le silence (la coupure du cri) comme un souvenir marquant.
+RÉUSSITE : interrogés après la tranche, les joueurs citent le silence (le cri qui s'étrangle puis se tait) comme un souvenir marquant.
 ÉCHEC : personne ne mentionne le son.
 ```
 
