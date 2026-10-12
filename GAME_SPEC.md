@@ -215,7 +215,7 @@ Définie en L4. Ce qui compte pour le joueur :
 - Sur un ordinaire, la Sentence est un choix : l'Achèvement est plus rapide et donne de la Ferveur, la Sentence soigne mais immobilise 0,6 s dans un combat qui continue.
 - Sur un Résistant, elle est obligatoire et la fenêtre dure 8 s.
 - Sur un Délaissé, elle ne rapporte rien en combat. Elle rapporte un nom, une phrase, et prive les supports d'un corps.
-- Animations par combinaison : type d'arme (tranchant, contondant) × taille (petite, grande), plus Délaissé, plus Mère. La règle sonore est identique partout : le cri s'étrangle en râle dès l'image du coup fatal et se tait à la fin de l'agonie, et l'ambiance baisse de 6 dB jusqu'à 0,4 s après la fin du râle pour que le silence s'entende.
+- Animations par combinaison : type d'arme (tranchant, contondant) × taille (petite, grande), plus Délaissé, plus Mère. La règle sonore est identique partout : le cri s'étrangle en râle dès l'image du coup fatal et se tait à la fin de l'agonie, et l'ambiance baisse de 10 dB jusqu'à 0,4 s après la fin du râle pour que le silence s'entende.
 
 ### 8.3 Ferveur
 
@@ -659,7 +659,7 @@ Le son porte de l'information de jeu :
 | Signal | Information |
 |---|---|
 | Halètement puis cri, spatialisé | Un Abattu, sa position, le risque d'alerte |
-| Cri étranglé en râle puis silence, ambiance −6 dB jusqu'à 0,4 s après la fin du râle | Une mort donnée |
+| Cri étranglé en râle puis silence, ambiance −10 dB jusqu'à 0,4 s après la fin du râle | Une mort donnée |
 | Le cri se change en inspiration | Relèvement dans 1,5 s |
 | Gargouillis du Porteur qui monte d'un ton par stade | Stade du sac |
 | Chant du Confesseur qui s'élève | Progression de la prière |
@@ -675,7 +675,7 @@ Impacts d'armes distincts par type (tranchant : chair fendue ; contondant : os q
 
 Budget de voix : 24 emplacements de cri au plus, un par corps (halètement, cri et inspiration compris), priorité aux plus proches, le reste part dans la nappe. Les sons de support (chant, scie, gargouillis) ont leur propre budget et ne passent jamais dans la nappe.
 
-Règles de fin : à la mort, la voix de la créature passe au râle dans l'image du coup et se tait à la fin de l'agonie ; ses autres sources (gargouillis, chant, scie, coutures) s'éteignent pendant l'agonie. Rien de la créature ne sonne après la fin de l'agonie. Toute autre fin de son (relèvement, prière interrompue, absorption, voix volée par le budget, réinitialisation) se fait en fondu d'au moins 80 ms, sans râle : seul un râle signifie une mort donnée. L'atténuation de −6 dB porte sur la nappe et l'ambiance (et, depuis le 2026-10-12, les autres voix de cri, −12 dB, jamais le râle), ne s'empile pas, et dure de la première mort d'une grappe jusqu'à 0,4 s après la fin du dernier râle. L'auditeur est le joueur.
+Règles de fin : à la mort, la voix de la créature passe au râle dans l'image du coup et se tait à la fin de l'agonie ; ses autres sources (gargouillis, chant, scie, coutures) s'éteignent pendant l'agonie. Rien de la créature ne sonne après la fin de l'agonie. Toute autre fin de son (relèvement, prière interrompue, absorption, voix volée par le budget, réinitialisation) se fait en fondu d'au moins 80 ms, sans râle : seul un râle signifie une mort donnée. L'atténuation de −10 dB porte sur la nappe et l'ambiance (et, depuis le 2026-10-12, les autres voix de cri, −12 dB, jamais le râle), ne s'empile pas, et dure de la première mort d'une grappe jusqu'à 0,4 s après la fin du dernier râle. L'auditeur est le joueur.
 
 ## 20. Caméra
 
@@ -924,3 +924,4 @@ L'agent qui construit ce jeu ne doit pas réinterpréter ces points :
 - 2026-10-12 (décision du concepteur) : le Bourreau fait face à sa direction de marche quand il se déplace, se tourne vers le curseur au début d'un geste (Frappe, Balayage, Charge, Sentence), et garde son orientation à l'arrêt. Il ne regarde plus le curseur en marchant.
 - 2026-10-12 (décision du concepteur) : la lumière s'applique normalement aux créatures ; aucun éclairage d'appoint ne les rend lisibles dans le noir. Dans le noir, un Abattu se lit par son liseré ivoire et un vivant par son mouvement ; ce qui est dans le noir se devine.
 - 2026-10-12 (décision du concepteur) : le sang devient un élément central du jeu, signe de la libération et célébré (§17.1). Chaque coup saigne, la mort libère une gerbe et une flaque, les Abattus saignent et laissent des traînées, le sang ne s'efface plus pendant un combat, le Bourreau se couvre de sang, la Ferveur est du sang. Aucune règle de simulation ne s'ajoute ; les sens de jeu (mort gris, rouge vif réservé, télégraphes lisibles) ne bougent pas. Ses mots : « mieux vaut plus que pas assez ».
+- 2026-10-12 (décision du concepteur, profondeur choisie par l'orchestrateur) : à une mise à mort, la nappe et l'ambiance baissent de 10 dB au lieu de 6 (§8, §19). Le concepteur avait accepté « un ducking plus profond si la retouche ne suffit pas » ; à −6 dB, le silence après une série de morts ne s'entendait pas assez (B5.O10).
