@@ -75,18 +75,6 @@ export interface Chunk {
 }
 
 // Bouffée de brume rouge (libération) : monte, s'étale et s'efface avant la fin des 2 s du sang frais.
-export interface Mist {
-  readonly x: number
-  readonly y: number
-  readonly z: number
-  readonly vx: number
-  readonly vy: number
-  readonly vz: number
-  readonly born: Tick
-  readonly size: number
-  readonly seed: number
-}
-
 // Tache de sang sur un corps vivant ou sur le Bourreau : niveau (0 à 1) ajouté à un tick.
 interface StainStep {
   readonly born: Tick
@@ -100,7 +88,6 @@ export interface StainState {
 
 export const SPARK_TICKS = 14
 export const CHUNKS_MAX = 220
-export const MIST_TICKS = 100 // < 2 s : la brume est du sang frais, elle s'éteint avant de pouvoir être ancienne
 const DROPLET_MAX_TICKS = 90
 const GRAVITY = 9.8 // m/s²
 export const PLAYER_STAIN = -1 // clé des taches du Bourreau
@@ -163,7 +150,6 @@ export class GoreMemory {
   private sparkList: Spark[] = []
   private dropList: Droplet[] = []
   private chunkList: Chunk[] = []
-  private mistList: Mist[] = []
   private readonly stains = new Map<number, { base: number; steps: StainStep[] }>()
   private readonly pools = new Map<EntityId, number>() // flaque d'un Abattu vivant (index de naissance)
   private readonly trailFrom = new Map<EntityId, Vec2>()
@@ -179,7 +165,6 @@ export class GoreMemory {
     this.sparkList = []
     this.dropList = []
     this.chunkList = []
-    this.mistList = []
     this.stains.clear()
     this.pools.clear()
     this.trailFrom.clear()
@@ -205,10 +190,6 @@ export class GoreMemory {
   get chunks(): readonly Chunk[] {
     return this.chunkList
   }
-  get mists(): readonly Mist[] {
-    return this.mistList
-  }
-
   // Taches d'un corps (id) ou du Bourreau (PLAYER_STAIN) à l'horloge t.
   stain(id: number, t: number): StainState {
     const s = this.stains.get(id)
@@ -239,7 +220,6 @@ export class GoreMemory {
     this.dropList = this.dropList.filter(
       (d) => world.tick - d.born < Math.min(DROPLET_MAX_TICKS, landTime(d.y, d.vy) * 60 + 1),
     )
-    this.mistList = this.mistList.filter((m) => world.tick - m.born < MIST_TICKS)
     this.settle(world.tick)
     this.foldStains(world.tick)
   }
@@ -371,25 +351,6 @@ export class GoreMemory {
       })
     }
     if (this.chunkList.length > CHUNKS_MAX) this.chunkList.splice(0, this.chunkList.length - CHUNKS_MAX)
-  }
-
-  // Brume rouge de la libération : bouffées qui montent et s'étalent.
-  private mist(at: Vec2, tick: Tick, n: number, k0: number): void {
-    for (let i = 0; i < n; i++) {
-      const a = rot(tick, k0 + i)
-      const r = 0.15 + h01(tick, k0 + 10 + i) * 0.35
-      this.mistList.push({
-        x: at.x + Math.cos(a) * r,
-        y: 0.5 + h01(tick, k0 + 20 + i) * 0.9,
-        z: at.z + Math.sin(a) * r,
-        vx: Math.cos(a) * (0.2 + h01(tick, k0 + 30 + i) * 0.4),
-        vy: 0.25 + h01(tick, k0 + 40 + i) * 0.35,
-        vz: Math.sin(a) * (0.2 + h01(tick, k0 + 30 + i) * 0.4),
-        born: tick,
-        size: 0.5 + h01(tick, k0 + 50 + i) * 0.6,
-        seed: h01(tick, k0 + 60 + i),
-      })
-    }
   }
 
   // Traînée d'un corps qui rampe (Abattu, Membre errant) : un trait tous les 0,45 m parcourus à terre. Elle montre
@@ -551,7 +512,6 @@ export class GoreMemory {
             { grow: 240, depth: 0.9 },
           )
         }
-        this.mist(p, e.tick, Math.round(6 * s), k0 + 400)
         break
       }
       case 'sever': {
@@ -563,7 +523,6 @@ export class GoreMemory {
         this.add(p, 0.4, e.tick, 'trainee', { rot: d, len: 2.8, depth: 0.6 })
         this.add(p, 0.35, e.tick, 'flaque', { grow: 150, depth: 0.7 })
         this.spray(p, 1.1, d, e.tick, 26, 1.4, Math.PI * 2, 4.2, k0, 2)
-        this.mist(p, e.tick, 3, k0 + 100)
         break
       }
       case 'burst': {

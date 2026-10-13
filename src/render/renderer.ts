@@ -525,7 +525,7 @@ void main() {
       bodies.spark(s.x, s.z, s.born, age, camera.quaternion)
     }
     bodies.end()
-    goreLayer.update(gore, t, camera.quaternion)
+    goreLayer.update(gore, t)
     lastBodies = list
 
     // Lumières : sources du décor et sources des entités visibles (une entité masquée emporte sa lumière). Lumière

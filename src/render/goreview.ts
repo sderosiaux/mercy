@@ -41,7 +41,7 @@ import {
   ZeroFactor,
 } from 'three'
 import { Batch } from './batch'
-import { ballistic, type DecalKind, decalScale, type GoreMemory, isFresh, MIST_TICKS } from './gore'
+import { ballistic, type DecalKind, decalScale, type GoreMemory, isFresh } from './gore'
 import { encodeId, instancedIdMaterial, ROLE } from './idpass'
 import { PALETTE } from './palette'
 import { gradeUniforms } from './post'
@@ -622,51 +622,6 @@ function idVec(id: number, role: number): Vector3 {
 }
 
 // ---------------------------------------------------------------------------------------------------------
-// Brume rouge (libération) : bouffées tournées vers la caméra, éclairées par les lumières de la scène (elle se voit
-// dans la lumière des torches), rouge vif et mouillée comme le sang frais, éteinte avant 2 s.
-
-const mistMaterial = (): MeshStandardMaterial => {
-  const m = keepSceneAlpha(
-    new MeshStandardMaterial({
-      color: PALETTE.rougeVif,
-      roughness: 1,
-      metalness: 0,
-      transparent: true,
-      depthWrite: false,
-      envMapIntensity: 0,
-    }),
-  )
-  m.onBeforeCompile = (s) => {
-    s.vertexShader = s.vertexShader.replace(
-      'void main() {',
-      'attribute vec4 aMist;\nvarying vec4 vMist;\nvarying vec2 vMistUv;\nvoid main() {\n  vMist = aMist;\n  vMistUv = uv;',
-    )
-    s.fragmentShader = s.fragmentShader
-      .replace(
-        '#include <common>',
-        `#include <common>\nvarying vec4 vMist;\nvarying vec2 vMistUv;\n${NOISE_ONCE}`,
-      )
-      .replace(
-        '#include <color_fragment>',
-        `#include <color_fragment>
-  vec2 e7q = vMistUv - 0.5;
-  float e7r = length( e7q ) * 2.0;
-  float e7soft = 1.0 - smoothstep( 0.2, 1.0, e7r );
-  float e7n = 0.45 + 0.55 * e1Fbm( e7q * 3.0 + vec2( vMist.y * 17.0, vMist.x * 2.0 ) );
-  float e7life = smoothstep( 0.0, 0.08, vMist.x ) * ( 1.0 - smoothstep( 0.45, 1.0, vMist.x ) );
-  diffuseColor.a = e7soft * e7n * e7n * e7life * 0.17;
-  if ( diffuseColor.a < 0.01 ) discard;`,
-      )
-      .replace(
-        '#include <emissivemap_fragment>',
-        `#include <emissivemap_fragment>
-  totalEmissiveRadiance += diffuseColor.rgb * 0.05;`,
-      )
-  }
-  m.customProgramCacheKey = () => 'e7-mist'
-  return m
-}
-
 const tmp = new Matrix4()
 const tmpQ2 = new Quaternion()
 const tmpE = new Euler()
@@ -679,7 +634,6 @@ export class GoreLayer {
   private readonly decals: Batch
   private readonly drops: Batch
   private readonly chunks: Batch
-  private readonly mists: Batch
   readonly layer: BloodLayer
   lastStamped = 0
 
@@ -720,16 +674,6 @@ export class GoreLayer {
       cast: true,
       receive: true,
     })
-    this.mists = new Batch(parent, {
-      geometry: () => new PlaneGeometry(1, 1),
-      material: mistMaterial(),
-      idMaterial: null, // voile transparent : il ne cache aucun corps (B2 I1)
-      capacity: 128,
-      cast: false,
-      receive: false,
-      renderOrder: 3,
-      extra: { name: 'aMist', size: 4 },
-    })
   }
 
   // Couche du sol : à appeler avant le rendu de la scène (tamponne le sang absorbé depuis l'image précédente).
@@ -737,7 +681,7 @@ export class GoreLayer {
     this.lastStamped = this.layer.stamp(gl, gore, t)
   }
 
-  update(gore: GoreMemory, t: number, camera: Quaternion): void {
+  update(gore: GoreMemory, t: number): void {
     this.decals.begin()
     for (const d of NO_BLOOD ? [] : gore.decals) {
       if (d.born > t) continue
@@ -784,21 +728,6 @@ export class GoreLayer {
       this.chunks.push(tmp, c.kind === 'os' ? PALETTE.gore.os : PALETTE.gore.chair, 0, ROLE.autre)
     }
     this.chunks.end()
-
-    this.mists.begin()
-    for (const m of NO_BLOOD ? [] : gore.mists) {
-      const age = t - m.born
-      if (age < 0 || age >= MIST_TICKS) continue
-      const s = age / 60
-      const grow = 1 + s * 1.6
-      tmp.compose(
-        tmpV.set(m.x + m.vx * s, m.y + m.vy * s, m.z + m.vz * s),
-        camera,
-        tmpS.set(m.size * grow, m.size * grow, 1),
-      )
-      this.mists.push(tmp, PALETTE.technique.neutre, 0, ROLE.autre, [age / MIST_TICKS, m.seed, 0, 0])
-    }
-    this.mists.end()
   }
 
   dispose(): void {
@@ -806,6 +735,5 @@ export class GoreLayer {
     this.decals.dispose()
     this.drops.dispose()
     this.chunks.dispose()
-    this.mists.dispose()
   }
 }

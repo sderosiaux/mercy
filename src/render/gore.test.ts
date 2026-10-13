@@ -7,7 +7,6 @@ import {
   decalScale,
   GoreMemory,
   isFresh,
-  MIST_TICKS,
   PLAYER_STAIN,
   SPARK_TICKS,
   STAIN_MAX,
@@ -100,10 +99,8 @@ describe('la libération (§17.1) : gerbe, flaque qui s’étend pendant l’ago
     expect(pool.grow).toBeGreaterThan(TUNING.agonie)
     expect(decalScale(pool, 20 + pool.grow)).toBe(1)
     expect(decalScale(pool, 20 + pool.grow + 600)).toBe(1)
-    // Gerbe : un jet de gouttelettes vers le haut ; brume rouge éteinte avant la fin du sang frais.
+    // Gerbe : un jet de gouttelettes vers le haut. Pas de brume lumineuse (retirée à la demande du concepteur).
     expect(g.droplets.filter((d) => d.born === 20).length).toBeGreaterThan(30)
-    expect(g.mists.length).toBeGreaterThan(0)
-    expect(MIST_TICKS).toBeLessThan(RENDER.sangFraisTicks)
   })
 
   it('la Sentence donne le plus de sang', () => {
@@ -118,7 +115,6 @@ describe('la libération (§17.1) : gerbe, flaque qui s’étend pendant l’ago
       g.decals.filter((d) => d.kind === 'flaque').reduce((s, d) => s + d.size * d.size, 0)
     expect(pools(sen)).toBeGreaterThan(pools(ach))
     expect(sen.droplets.length).toBeGreaterThan(ach.droplets.length)
-    expect(sen.mists.length).toBeGreaterThan(ach.mists.length)
   })
 
   it('un Abattu saigne tant qu’il vit : sa flaque cesse de s’étendre quand il se relève', () => {
