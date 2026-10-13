@@ -4,7 +4,6 @@ import { ticks } from '../sim/index'
 
 export const RENDER = {
   lisereHz: 1, // §7 L1 et D13 : le liseré ivoire, doré compris, bat à 1 Hz (réglage)
-  rougeVifTicks: ticks(0.2), // §17, §18 : un télégraphe passe en rouge vif 0,2 s avant l'impact
   sangFraisTicks: ticks(2), // §17 : sang frais en rouge vif pendant 2 s, puis rouge brun
   decalquesMax: 400, // §24, §17.1 : gouttelettes en vol et flaques qui s'étendent (le sang posé passe dans la couche du sol)
   mortsMax: 250, // §17, §24

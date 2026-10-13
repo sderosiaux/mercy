@@ -24,7 +24,7 @@ Le réalisme ne doit jamais coûter la lecture d'un corps (B2, contrat gelé). C
 - ivoire : un vivant à terre. Il porte un liseré lumineux ivoire, discret comme le contour de survol de Diablo, qui bat à 1 Hz ;
 - or terni : un Résistant, liseré doré ;
 - gris cadavérique : un mort, désaturé en 0,3 s, sans liseré, parfaitement immobile ;
-- rouge vif : danger imminent (dernières 0,2 s d'un télégraphe, sac du Porteur au stade 3) et sang frais pendant 2 s, rien d'autre ;
+- rouge vif : danger imminent (sac du Porteur au stade 3) et sang frais pendant 2 s, rien d'autre ;
 - vert maladif : la prière.
 
 Chaque changement de rendu repasse les mesures machine de B2 (écarts de couleur, immobilité des morts) avant d'être accepté.

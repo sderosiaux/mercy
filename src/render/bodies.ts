@@ -29,14 +29,11 @@ import {
 } from 'three'
 import { type Creature, TUNING, type Vec2, type World } from '../sim/index'
 import { Batch, Pool } from './batch'
-import { RENDER } from './constants'
 import { instancedIdMaterial, ROLE, uniformIdMaterial } from './idpass'
 import { DEAD_PROXY_LAYER } from './lightrig'
-import { telegraphColor } from './look'
 import { DEAD_RENDER_ORDER, deadMaterial, signalMaterial } from './materials'
 import { PALETTE } from './palette'
 import { type Body, MATTERS, type Matter, type Shape } from './rig'
-import { telegraphPulse, telegraphZones } from './telegraph'
 
 const RIM_M = 0.04 // forme (C4) : épaisseur du liseré, m
 const RIM_STRONG_M = 0.065 // liseré intensifié sous le curseur de Sentence (§21)
@@ -59,22 +56,18 @@ export const unitGeometry = (s: Shape): BufferGeometry => {
 
 const SHAPES: readonly Shape[] = ['box', 'sphere', 'cylinder', 'cone', 'torus']
 
-// Scène éclairée (vivants et morts) et couche des signaux, dessinée en trois passes dans cet ordre : sol (halo de
-// prière, sceau), télégraphes (au-dessus des morts), signaux des corps (liseré, marques, éclats).
+// Scène éclairée (vivants et morts) et couche des signaux, dessinée en deux passes dans cet ordre : sol (halo de
+// prière, sceau), signaux des corps (liseré, marques, éclats). Aucune zone d'attaque n'est peinte au sol (décision du
+// concepteur, 2026-10-12) : une attaque se lit à la pose d'anticipation de la créature et au son.
 export interface OverlayLayers {
   readonly scene: Object3D
   readonly ground: Object3D
-  readonly tel: Object3D
   readonly signals: Object3D
 }
 
 export class BodyLayer {
   private readonly batches = new Map<string, Batch>()
   private readonly pools: Pool[]
-  private readonly telBorder: Pool
-  private readonly telFill: Pool
-  private readonly telProgress: Pool
-  private readonly telEdge: Pool
   private readonly halos: Pool
   private readonly haloEdges: Pool
   private readonly seals: Pool
@@ -84,7 +77,6 @@ export class BodyLayer {
   private readonly tmpS = new Matrix4()
   private readonly tmpV = new Vector3()
   readonly materials: Material[] = []
-  showTelegraphs = true // instrument (audit §30.13) : masquer les télégraphes pour isoler leurs pixels
 
   constructor(layers: OverlayLayers, matterMaterials: Readonly<Record<Matter, Material>>, shadows: boolean) {
     const { scene } = layers
@@ -191,48 +183,28 @@ export class BodyLayer {
       )
     }
     this.lane = new PlaneGeometry(1, 1).rotateX(-Math.PI / 2).translate(0.5, 0, 0)
-    // Télégraphes : par-dessus les morts (un mort de la scène ne les cache pas, e8TelegraphDepthTest), sous les vivants
-    // (test contre la profondeur de la scène). Halo de prière et sceau : sous les morts (un effet de support ne teint
-    // jamais un mort). La passe d'identification fait de même (arbitrage E4) : un pixel de télégraphe sur un mort est
-    // au télégraphe.
-    const make =
-      (opacity: number, order: number, overDead: boolean, stripes = false) =>
-      (): Mesh => {
-        const mat = signalMaterial({
-          side: DoubleSide,
-          transparent: opacity < 1,
-          opacity,
-          depthWrite: false,
-          depthTest: !overDead,
-          stripes,
-          sceneDepth: overDead ? 'télégraphe' : 'signal',
-        })
-        mat.color.setHex(PALETTE.rougeBrun.telegraphe)
-        const m = new Mesh(this.lane, mat)
-        m.renderOrder = 2 + order
-        m.userData.idMaterial = uniformIdMaterial(0, ROLE.autre, {
-          side: DoubleSide,
-          depthWrite: false,
-          sceneDepth: overDead ? 'télégraphe' : 'signal',
-        })
-        return m
-      }
-    this.telBorder = new Pool(layers.tel, make(0.9, 0, true))
-    this.telFill = new Pool(layers.tel, make(0.3, 1, true, true))
-    this.telProgress = new Pool(layers.tel, make(0.45, 2, true))
-    this.telEdge = new Pool(layers.tel, make(1, 3, true))
-    this.halos = new Pool(layers.ground, make(0.22, 0, false))
-    this.haloEdges = new Pool(layers.ground, make(0.9, 1, false))
-    this.seals = new Pool(layers.ground, make(1, 3, false))
-    this.pools = [
-      this.telBorder,
-      this.telFill,
-      this.telProgress,
-      this.telEdge,
-      this.halos,
-      this.haloEdges,
-      this.seals,
-    ]
+    // Halo de prière et sceau : sous les morts (un effet de support ne teint jamais un mort), testés contre la
+    // profondeur de la scène. La passe d'identification fait de même (arbitrage E4).
+    const make = (opacity: number, order: number) => (): Mesh => {
+      const mat = signalMaterial({
+        side: DoubleSide,
+        transparent: opacity < 1,
+        opacity,
+        depthWrite: false,
+      })
+      const m = new Mesh(this.lane, mat)
+      m.renderOrder = 2 + order
+      m.userData.idMaterial = uniformIdMaterial(0, ROLE.autre, {
+        side: DoubleSide,
+        depthWrite: false,
+        sceneDepth: 'signal',
+      })
+      return m
+    }
+    this.halos = new Pool(layers.ground, make(0.22, 0))
+    this.haloEdges = new Pool(layers.ground, make(0.9, 1))
+    this.seals = new Pool(layers.ground, make(1, 3))
+    this.pools = [this.halos, this.haloEdges, this.seals]
   }
 
   private batch(key: string): Batch {
@@ -324,75 +296,9 @@ export class BodyLayer {
     ;(m.material as MeshBasicMaterial).color.setHex(hex)
   }
 
-  private fill(
-    m: Mesh,
-    geo: BufferGeometry,
-    pos: Vec2,
-    yaw: number,
-    r: number,
-    hex: number,
-    opacity: number,
-  ): void {
-    this.place(m, geo, pos, yaw, r, r, 0.01, hex)
-    ;(m.material as MeshBasicMaterial).opacity = opacity
-  }
-
-  // Télégraphe au sol de l'attaque en cours (§18), halo de prière, sceau de Sentence (§21).
+  // Halo de prière, sceau de Sentence (§21). Aucune zone d'attaque au sol (décision du concepteur, 2026-10-12).
   ground(c: Creature, pos: Vec2, _facing: number, t: number, w: World, target: number | null): void {
     const a = c.action
-    const zones = this.showTelegraphs ? telegraphZones(c, w, t) : []
-    if (a && zones.length > 0) {
-      const left = a.activeAt - t
-      const col = telegraphColor(left)
-      const p = Math.min(1, Math.max(0, (t - a.start) / Math.max(1, a.activeAt - a.start)))
-      const pulse = telegraphPulse(left, t)
-      // Rouge brun : voile léger. Rouge vif : voile dense qui bat (le sang ne bat pas).
-      const fillOpacity = left <= RENDER.rougeVifTicks ? 0.75 + 0.25 * pulse : 0.4
-      // La zone suit le corps interpolé (le rendu peut être entre deux ticks).
-      const dx = pos.x - c.pos.x
-      const dz = pos.z - c.pos.z
-      for (const zn of zones) {
-        const at = { x: zn.x + dx, z: zn.z + dz }
-        if (zn.kind === 'circle') {
-          const r = zn.r
-          this.place(
-            this.telBorder.next(),
-            this.sector(360, 0.86),
-            at,
-            0,
-            r + 0.1,
-            r + 0.1,
-            0.008,
-            PALETTE.noir,
-          )
-          this.fill(this.telFill.next(), this.sector(360, 0), at, 0, r, col, fillOpacity)
-          this.place(this.telProgress.next(), this.sector(360, 0), at, 0, r * p, r * p, 0.012, col)
-          this.place(this.telEdge.next(), this.sector(360, 0.92), at, 0, r, r, 0.014, col)
-          continue
-        }
-        const yaw = -zn.facing
-        const r = zn.reach
-        const half = (zn.arcDeg * Math.PI) / 360
-        this.place(
-          this.telBorder.next(),
-          this.sector(zn.arcDeg, 0.86),
-          at,
-          yaw,
-          r + 0.1,
-          r + 0.1,
-          0.008,
-          PALETTE.noir,
-        )
-        this.fill(this.telFill.next(), this.sector(zn.arcDeg, 0), at, yaw, r, col, fillOpacity)
-        this.place(this.telProgress.next(), this.sector(zn.arcDeg, 0), at, yaw, r * p, r * p, 0.012, col)
-        this.place(this.telEdge.next(), this.sector(zn.arcDeg, 0.92), at, yaw, r, r, 0.014, col)
-        // Bords latéraux du cône : trait noir, puis trait de couleur (le cône se lit fermé sur le sang).
-        for (const s of [-1, 1]) {
-          this.place(this.telBorder.next(), this.lane, at, yaw + s * half, r + 0.1, 0.16, 0.008, PALETTE.noir)
-          this.place(this.telEdge.next(), this.lane, at, yaw + s * half, r, 0.07, 0.014, col)
-        }
-      }
-    }
     if (a && c.family === 'confesseur' && a.kind === 'canalisation' && c.state.kind !== 'mort') {
       const R = w.families[c.family]?.actions[a.name]?.reach ?? TUNING.confesseur.prayerRadius
       const p = Math.min(1, Math.max(0, (t - a.start) / Math.max(1, a.activeAt - a.start)))

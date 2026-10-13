@@ -28,24 +28,6 @@ const medianLab = (ls: Lab[]): Lab | null =>
     ? { L: median(ls.map((l) => l.L)), a: median(ls.map((l) => l.a)), b: median(ls.map((l) => l.b)) }
     : null
 
-// Pixels qui changent quand on masque les télégraphes.
-const telegraphPixels = (r: Renderer): { on: PixelImage; off: PixelImage; idx: number[] } => {
-  r.debug.setTelegraphs(false)
-  const off = r.debug.readPixels()
-  r.debug.setTelegraphs(true)
-  const on = r.debug.readPixels()
-  const idx: number[] = []
-  for (let i = 0; i < on.data.length; i += 4) {
-    if (
-      on.data[i] !== off.data[i] ||
-      on.data[i + 1] !== off.data[i + 1] ||
-      on.data[i + 2] !== off.data[i + 2]
-    )
-      idx.push(i)
-  }
-  return { on, off, idx }
-}
-
 // `given` (E6) : références imposées (celles de B2, refs.json), pour auditer une image sans Résistant ni mort.
 export const auditFrame = (r: Renderer, world: World, given?: { ivoire: Lab; or: Lab; gris: Lab }) => {
   const color = r.debug.readPixels()
@@ -142,38 +124,6 @@ export const auditFrame = (r: Renderer, world: World, given?: { ivoire: Lab; or:
           : ''
     if (kind) hits.push({ id, role, x: p % ids.width, y: Math.floor(p / ids.width), kind })
   }
-  // 2. Télégraphes contre le sang (décalques) : médianes Lab et écart.
-  const tel = telegraphPixels(r)
-  const telSet = new Set(tel.idx)
-  const telLab = medianLab(tel.idx.map((i) => labAt(tel.on, i)))
-  const blood: Lab[] = []
-  for (let i = 0; i < ids.data.length; i += 4) {
-    if (ids.data[i + 2] === ROLE.decalque && !telSet.has(i)) blood.push(labAt(color, i))
-  }
-  const bloodLab = medianLab(blood)
-  // Mesure de l’audit : sur les pixels de sang (et de sol) que le télégraphe recouvre, écart entre l’image avec et
-  // sans télégraphe (ΔE00 médian et p10). Un télégraphe qui se fond dans le sang donne un écart proche de 0.
-  // Rôles sous le télégraphe : passe d'identification sans télégraphe (le télégraphe lui-même est « autre »).
-  r.debug.setTelegraphs(false)
-  const under = r.debug.idPass()
-  r.debug.setTelegraphs(true)
-  const overRole = (role: number): { median: number; p10: number; n: number } => {
-    const des: number[] = []
-    for (const i of tel.idx)
-      if (under.data[i + 2] === role) des.push(deltaE00(labAt(tel.on, i), labAt(tel.off, i)))
-    des.sort((a, b) => a - b)
-    return {
-      median: des[des.length >> 1] ?? Number.NaN,
-      p10: des[Math.floor(des.length * 0.1)] ?? Number.NaN,
-      n: des.length,
-    }
-  }
-  // 3. Télégraphes et morts : part du télégraphe encore visible quand les morts sont là.
-  const deadIds = world.creatures.filter((c) => c.state.kind === 'mort').map((c) => c.id)
-  r.debug.hide(deadIds)
-  const telNoDead = telegraphPixels(r).idx.length
-  r.debug.hide([])
-  r.debug.readPixels()
   return {
     tick: world.tick,
     refs,
@@ -191,16 +141,5 @@ export const auditFrame = (r: Renderer, world: World, given?: { ivoire: Lab; or:
       deGrisMedian: refs.gris && playerLabs.length ? deltaE00(medianLab(playerLabs) as Lab, refs.gris) : null,
     },
     weapon,
-    telegraph: {
-      pixels: tel.idx.length,
-      lab: telLab,
-      blood: bloodLab,
-      bloodPixels: blood.length,
-      deltaE: telLab && bloodLab ? deltaE00(telLab, bloodLab) : null,
-      pixelsWithoutDead: telNoDead,
-      visibleOverDead: telNoDead ? tel.idx.length / telNoDead : null,
-      overBlood: overRole(ROLE.decalque),
-      overGround: overRole(ROLE.sol),
-    },
   }
 }

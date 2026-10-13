@@ -131,7 +131,6 @@ export interface RenderDebug {
   gpu(): string
   project(x: number, y: number, z: number): readonly [number, number] // point monde → pixels CSS du canvas
   setCamera(preset: CameraPreset): void
-  setTelegraphs(on: boolean): void // instrument : afficher ou masquer les télégraphes (mesure de leur lisibilité)
   lights(): readonly LightInfo[] // sources actives de la dernière image
   syncFrameMs(): number // rend la dernière image et attend la fin du travail du GPU (temps de frame complet)
   setLightMode(mode: LightMode): void // éclairage des images suivantes (B2 I2, amendement A11)
@@ -203,8 +202,8 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
   gl.info.autoReset = false
 
   const scene = new Scene()
-  // Couche des signaux, en trois passes (bodies.ts) : sol, télégraphes, signaux des corps.
-  const overlays = [new Scene(), new Scene(), new Scene()] as const
+  // Couche des signaux, en deux passes (bodies.ts) : sol, signaux des corps.
+  const overlays = [new Scene(), new Scene()] as const
   const dynamic = new Group() // créatures (vivantes et mortes) et gore : masqués pendant la capture de l'environnement
   scene.add(dynamic)
   const camera = new PerspectiveCamera(RENDER.camera.fovDeg, 1, 1, 120)
@@ -249,13 +248,13 @@ export const createRenderer = (canvas: HTMLCanvasElement, options: RendererOptio
     bois: pbr(bois, { tint: PALETTE.technique.neutre, normalScale: 1 }),
   }
   const bodies = new BodyLayer(
-    { scene: dynamic, ground: overlays[0], tel: overlays[1], signals: overlays[2] },
+    { scene: dynamic, ground: overlays[0], signals: overlays[1] },
     matterMaterials,
     shadows,
   )
   const goreLayer = new GoreLayer(dynamic, q.level === 'basse')
   const models = new ModelLayer(
-    { scene: dynamic, signals: overlays[2] },
+    { scene: dynamic, signals: overlays[1] },
     options.assetBase ?? assetBaseDefault(),
     q.level === 'basse',
     shadows,
@@ -775,9 +774,6 @@ void main() {
         const ctx = gl.getContext()
         const ext = ctx.getExtension('WEBGL_debug_renderer_info')
         return ext ? String(ctx.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : 'inconnu'
-      },
-      setTelegraphs(on) {
-        bodies.showTelegraphs = on
       },
       setCamera(p) {
         preset = p

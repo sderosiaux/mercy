@@ -13,7 +13,6 @@ import {
   sacCastsLight,
   sacColor,
   sacLuminanceOnly,
-  telegraphColor,
   tone,
 } from './look'
 import { mixHex, PALETTE } from './palette'
@@ -157,17 +156,6 @@ describe('couleur d’un corps selon son état', () => {
     expect(marksOf(c(3), 0)).toBe(PALETTE.or.base)
     expect(marksOf(c(3), 1)).toBe(pallor(PALETTE.or.base))
     expect(marksOf(c(2), 0)).toBeNull()
-  })
-})
-
-describe('couleur d’un télégraphe selon les ticks restants (§18)', () => {
-  it('reste rouge brun jusqu’à 13 ticks de l’impact, rouge vif sur les 12 derniers', () => {
-    expect(telegraphColor(54)).toBe(PALETTE.rougeBrun.telegraphe)
-    expect(telegraphColor(13)).toBe(PALETTE.rougeBrun.telegraphe)
-    expect(telegraphColor(12.5)).toBe(PALETTE.rougeBrun.telegraphe)
-    expect(telegraphColor(12)).toBe(PALETTE.rougeVif)
-    expect(telegraphColor(1)).toBe(PALETTE.rougeVif)
-    expect(telegraphColor(0.2)).toBe(PALETTE.rougeVif)
   })
 })
 

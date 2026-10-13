@@ -422,11 +422,7 @@ const run = async (scene: LabScene): Promise<void> => {
     // Rendus de B2 (amendement A11) : jeu, jugement, lumière figée, sans lumière (E8).
     setLightMode: (m: 'jeu' | 'jugement' | 'figee' | 'sans') => renderer.debug.setLightMode(m),
     freezeLights: (on: boolean) => renderer.debug.freezeLights(on),
-    setTelegraphs: (on: boolean) => {
-      renderer.debug.setTelegraphs(on)
-      draw()
-    },
-    // I1 fidèle à l'image (E4) : télégraphes et entités, image courante (fidelity.ts).
+    // I1 fidèle à l'image (E4) : entités, image courante (fidelity.ts).
     fidelity: (minPx = 150) => i1Fidelity(renderer, minPx),
     stats: () => renderer.debug.stats(),
     blood: () => renderer.debug.bloodLayer(), // couche du sol (E7)

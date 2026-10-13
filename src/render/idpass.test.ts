@@ -1,7 +1,6 @@
 // B2 §12 I1 et arbitrage E4 : la passe d'identification montre ce que montre l'image. Chaque objet de la couche des
 // signaux y est dessiné avec le même test de profondeur que dans la passe couleur : état matériel (profondeur de la
-// couche, gabarit, faces) et test contre la profondeur de la scène (même fonction GLSL, même tolérance). Un télégraphe
-// dessiné par-dessus un mort à l'écran l'est aussi dans la passe d'identification. Depuis E8, les morts sont dans la
+// couche, gabarit, faces) et test contre la profondeur de la scène (même fonction GLSL, même tolérance). Depuis E8, les morts sont dans la
 // scène : ni leur matière couleur ni leur matière d'identification ne se testent contre la profondeur de la scène.
 import {
   Group,
@@ -49,12 +48,7 @@ const fragmentOf = (m: Material): string => {
 }
 
 // Test contre la profondeur de la scène : les appels présents dans le fragment (pas les définitions).
-const SCENE_DEPTH_CALLS = [
-  'e1DepthTest();',
-  'e8TelegraphDepthTest();',
-  'e2RimDepthTest();',
-  'e2MarkDepthTest();',
-] as const
+const SCENE_DEPTH_CALLS = ['e1DepthTest();', 'e2RimDepthTest();', 'e2MarkDepthTest();'] as const
 const sceneDepth = (m: Material): string[] => SCENE_DEPTH_CALLS.filter((c) => fragmentOf(m).includes(c))
 
 const depthState = (m: Material) => ({
@@ -102,7 +96,7 @@ const ctx = (t: number): RigContext => ({
   prayerColor: null,
 })
 
-// Un Recousu qui télégraphie son Marteau au-dessus d'un mort, un Abattu (liseré, sceau de Sentence), un Résistant
+// Un Recousu qui arme son Marteau au-dessus d'un mort, un Abattu (liseré, sceau de Sentence), un Résistant
 // (marques), un Confesseur qui prie (halo au sol).
 const world = (): World => {
   let w = scene(
@@ -139,11 +133,10 @@ const world = (): World => {
 }
 
 describe('passe d’identification : même profondeur que la passe couleur', () => {
-  it('couche des signaux du jalon 1 : sol, télégraphes, liserés, marques ; morts dans la scène', () => {
+  it('couche des signaux du jalon 1 : sol, liserés, marques ; morts dans la scène', () => {
     const groups = {
       scene: new Group(),
       ground: new Group(),
-      tel: new Group(),
       signals: new Group(),
     }
     const matters = Object.fromEntries(
@@ -151,23 +144,18 @@ describe('passe d’identification : même profondeur que la passe couleur', () 
     ) as unknown as Record<Matter, Material>
     const layer = new BodyLayer(groups, matters, false)
     const w = world()
-    const t = 50 // rouge vif : dernières 0,2 s du Marteau
+    const t = 50 // pendant l'anticipation du Marteau
     layer.begin()
     for (const c of w.creatures as Creature[]) {
       layer.push(creatureBody(c, c.pos, c.facing, ctx(t)), c.state.kind === 'mort', 0)
       layer.ground(c, c.pos, c.facing, t, w, 3)
     }
     layer.end()
-    const overlays = { ground: groups.ground, tel: groups.tel, signals: groups.signals }
+    const overlays = { ground: groups.ground, signals: groups.signals }
     for (const [name, g] of Object.entries(overlays)) {
       const ms = meshesOf(g)
       expect(ms.length, `${name} : couche vide, la scène de test ne l'exerce pas`).toBeGreaterThan(0)
       for (const o of ms) expectSameDepth(o, name)
-    }
-    // Le télégraphe passe par-dessus les morts dans les deux passes : un mort de la scène ne le cache pas.
-    for (const o of meshesOf(groups.tel)) {
-      expect(idMaterialFor(o)?.depthTest).toBe(false)
-      expect(sceneDepth(o.material as Material)).toEqual(['e8TelegraphDepthTest();'])
     }
     // Les morts (scène) : rendus, sans test contre la profondeur de la scène, dans les deux passes.
     const dead = meshesOf(groups.scene).filter((o) =>

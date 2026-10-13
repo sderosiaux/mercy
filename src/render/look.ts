@@ -94,10 +94,6 @@ export const tone = (living: number, grey: number, greyTone: GreyTone = 'normal'
 export const marksOf = (c: Creature, grey: number): number | null =>
   c.resistant ? tone(PALETTE.or.base, grey, 'normal') : null
 
-// Télégraphe au sol : rouge brun, puis rouge vif pendant les 12 derniers ticks avant l'impact (§18).
-export const telegraphColor = (ticksRemaining: number): number =>
-  ticksRemaining <= RENDER.rougeVifTicks ? PALETTE.rougeVif : PALETTE.rougeBrun.telegraphe
-
 // Lueur du sac du Porteur selon son stade (0 à 3) ; rouge vif au stade 3 (§17).
 export const sacColor = (stage: number): number => {
   if (stage >= 3) return PALETTE.rougeVif

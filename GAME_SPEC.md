@@ -589,7 +589,7 @@ Règles de couleur. Chaque couleur a un sens de jeu :
 | Or terni | Résistant, élite, ornement, Reliquaire | Objets sans importance |
 | Gris cadavérique | Mort (désaturation à la mort), brume, pierre | Créatures vivantes |
 | Rouge brun | Sang ancien, décalques de sol après 2 s | Signaux |
-| Rouge vif | Danger imminent (dernières 0,2 s d'un télégraphe, sac de Porteur au stade 3) et sang frais pendant 2 s | Tout le reste |
+| Rouge vif | Danger imminent (sac de Porteur au stade 3) et sang frais pendant 2 s | Tout le reste |
 | Vert maladif | Prière du Confesseur, eaux, crypte | Interface |
 | Noir profond | Architecture, vide | |
 
@@ -629,8 +629,8 @@ Le sang porte aussi de l'information. Tout ce qui suit sort des lois existantes 
 Ce qui ne bouge pas, parce que le joueur en a besoin pour lire le combat :
 
 - le corps d'un mort reste gris ; son sang, sous lui et autour de lui, ne l'est pas. Un corps gris dans une flaque rouge se lit comme mort ;
-- le rouge vif reste réservé au sang des 2 dernières secondes, au sac du Porteur au stade 3 et aux 0,2 dernières secondes d'un télégraphe ; le sang ancien n'y revient jamais, même sous une flamme ;
-- les télégraphes restent lisibles par-dessus le sang, dans tous les cas (§30.13) ;
+- le rouge vif reste réservé au sang des 2 dernières secondes, et au sac du Porteur au stade 3 ; le sang ancien n'y revient jamais, même sous une flamme ;
+- une attaque reste lisible dans un lac de sang : elle se lit à la pose et au geste de la créature, que le sang ne cache pas (§30.13) ;
 - le coût d'image ne dépend pas de la quantité de sang accumulée : le sol l'absorbe dans une couche de sang qui ne s'efface pas. Le plafond de 400 décalques du §24 ne vaut plus que pour les éclaboussures en vol et les flaques en train de s'étendre.
 
 Plans de beauté : la mer de blé au couchant avec la silhouette du Veilleur, le jardin du cloître, la nef aux rais dorés, la Mère assise sous son rai de lumière.
@@ -644,7 +644,7 @@ L'animation est procédurale d'abord (cinématique inverse, rotations indépenda
 - Tout ce qui vit tremble. Même immobile, une créature vivante a un micro-mouvement. Un mort, son agonie finie, est parfaitement immobile. L'absence de mouvement signale la mort aussi sûrement que la couleur.
 - La synchronie signale l'Indifférence. Un groupe en Rituel bouge sur une phase commune (danse, fauche, prière). Passé Hostile, chaque créature retrouve sa propre phase. Une foule qui se désynchronise est une foule qui attaque.
 
-Télégraphes : anticipation exagérée avec une pose « fausse » propre à chaque famille. Le Souriant bascule la tête à 90°, le bras du Recousu traîne puis fouette, le Veilleur arme lentement mais ses mains partent vite. Les zones d'attaque au sol sont peintes en rouge brun, puis passent en rouge vif 0,2 s avant l'impact. Elles se dessinent toujours au-dessus des décalques de sang.
+Télégraphes : anticipation exagérée avec une pose « fausse » propre à chaque famille. Le Souriant bascule la tête à 90°, le bras du Recousu traîne puis fouette, le Veilleur arme lentement mais ses mains partent vite. Aucune zone d'attaque n'est peinte au sol (décision du concepteur, 2026-10-12) : une attaque se lit à la pose d'anticipation, au geste et au son de la créature, comme dans le monde.
 
 Abattus : rampent avec des mouvements propres à chaque famille (le Souriant sur le dos, le Recousu sur les coudes). Relèvement : les mains se plantent 1,5 s avant.
 
@@ -891,7 +891,7 @@ L'agent qui construit ce jeu ne doit pas réinterpréter ces points :
 10. Les couleurs ivoire, or, gris et rouge vif sont réservées aux sens définis en section 17.
 11. Une seule invite textuelle de tutoriel (F devant Jehanne). Tout le reste s'apprend par le jeu.
 12. Pas de chiffres de dégâts, pas de minicarte, pas de barre de vie au-dessus des créatures ordinaires.
-13. Les télégraphes restent lisibles par-dessus le gore, dans tous les cas.
+13. Les attaques restent lisibles malgré le gore, dans tous les cas : par la pose d'anticipation, le geste et le son de la créature. Aucune zone d'attaque n'est peinte au sol.
 14. Les valeurs marquées « réglage » peuvent bouger. Les règles ci-dessus, non.
 
 ---
@@ -927,3 +927,4 @@ L'agent qui construit ce jeu ne doit pas réinterpréter ces points :
 - 2026-10-12 (décision du concepteur, profondeur choisie par l'orchestrateur) : à une mise à mort, la nappe et l'ambiance baissent de 10 dB au lieu de 6 (§8, §19). Le concepteur avait accepté « un ducking plus profond si la retouche ne suffit pas » ; à −6 dB, le silence après une série de morts ne s'entendait pas assez (B5.O10).
 - 2026-10-12 (décision du concepteur) : le Bourreau porte la lumière, à la manière de Diablo. La chandelle de son reliquaire éclaire un vrai rayon autour de lui (réglage : 6 à 8 m) ; là où il tue, on voit le sang, les créatures et la boue ; au-delà, le noir. Le sang frais mouillé accroche la lumière des flammes.
 - 2026-10-12 (décision du concepteur) : les morts sont éclairés naturellement, comme le reste. Ils ne gardent plus une pâleur constante qui les fait ressortir dans le noir : un mort non éclairé se voit peu. La désaturation de la mort reste (pâleur d'un cadavre), sans éclaircir le corps. Ses mots : « c'est trop pâle, si c'est pas éclairé on devrait peu les voir, comme avec de la lumière naturelle ». Un mort reste parfaitement immobile : sa pose ne change plus après l'agonie, même si la lumière qui le touche change.
+- 2026-10-12 (décision du concepteur) : plus de zone d'attaque peinte au sol (« pas réaliste, j'en veux pas »). Une attaque se lit à la pose d'anticipation exagérée de chaque famille (§18), au geste et au son. Le rouge vif ne signale plus que le sac du Porteur au stade 3 et le sang frais. Remplace l'entrée de phase C sur les zones de télégraphe.

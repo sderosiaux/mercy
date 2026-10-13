@@ -21,7 +21,7 @@ export const PALETTE = {
   },
   // Rouge brun : sang ancien (décalques après 2 s), qui fonce jusqu'au noir en séchant (§17.1). Télégraphes au sol
   // (§18), plus clairs que le sang.
-  rougeBrun: { sangAncien: 0x4a1e18, sangNoir: 0x180908, telegraphe: 0x8a3424 },
+  rougeBrun: { sangAncien: 0x4a1e18, sangNoir: 0x180908 },
   // Rouge vif : danger imminent (12 derniers ticks d'un télégraphe, sac au stade 3), sang frais pendant 2 s.
   rougeVif: 0xe3261c,
   // Vert maladif : prière du Confesseur. Jamais dans l'interface.

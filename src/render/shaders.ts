@@ -110,10 +110,9 @@ vec3 e1Airlight( vec3 c, vec3 p, vec3 lp, vec3 I, float range ) {
 `
 
 // Test de profondeur manuel de la couche des signaux contre la profondeur de la scène (même caméra) : un fragment
-// de signal ne passe que s'il n'est pas derrière la surface de la scène à ce pixel. Quatre variantes, partagées par
+// de signal ne passe que s'il n'est pas derrière la surface de la scène à ce pixel. Trois variantes, partagées par
 // la passe couleur et la passe d'identification (B2 I1 : même test, même tolérance) :
 // - e1DepthTest : signaux du jalon 1, sol (halo de prière, sceau ; 2 cm + 0,1 % de la distance) ;
-// - e8TelegraphDepthTest : télégraphes, même tolérance, mais un mort de la scène ne les cache pas ;
 // - e2RimDepthTest : liseré des modèles (E2), sans tolérance : la coque n'apparaît que hors du corps. Avec la
 //   tolérance du jalon 1 (pensée pour des boîtes convexes), les faces arrière de la coque d'un vêtement mince ou d'un
 //   pli passeraient devant la surface du corps et dessineraient des lignes à l'intérieur de la silhouette ;
@@ -135,15 +134,6 @@ void e1DepthTest() {
   float fragDist = e1ViewDist( gl_FragCoord.z );
   if ( fragDist > sceneDist + 0.02 + 0.001 * sceneDist ) discard;
 }
-// Télégraphes (E8) : sous les vivants, mais par-dessus les morts, qui sont dans la scène depuis E8 (un pixel de la scène
-// marqué « mort » ne cache pas le télégraphe ; la tolérance est celle de e1DepthTest).
-void e8TelegraphDepthTest() {
-  vec2 uv = gl_FragCoord.xy / uViewport;
-  float sceneDist = e1ViewDist( texture2D( uSceneDepth, uv ).x );
-  float fragDist = e1ViewDist( gl_FragCoord.z );
-  bool deadBelow = abs( texture2D( uSceneTag, uv ).a - ${MORT_TAG.toFixed(4)} ) < 0.03;
-  if ( fragDist > sceneDist + 0.02 + 0.001 * sceneDist && ! deadBelow ) discard;
-}
 void e2RimDepthTest() {
   float sd = texture2D( uSceneDepth, gl_FragCoord.xy / uViewport ).x;
   if ( e1ViewDist( gl_FragCoord.z ) > e1ViewDist( sd ) ) discard;
@@ -155,11 +145,10 @@ void e2MarkDepthTest() {
 `
 
 // Test contre la profondeur de la scène d'un objet de la couche des signaux (aucun : objet de la scène).
-export type SceneDepth = 'aucun' | 'signal' | 'télégraphe' | 'liseré' | 'marque'
+export type SceneDepth = 'aucun' | 'signal' | 'liseré' | 'marque'
 export const SCENE_DEPTH_CALL: Readonly<Record<SceneDepth, string>> = {
   aucun: '',
   signal: 'e1DepthTest();',
-  télégraphe: 'e8TelegraphDepthTest();',
   liseré: 'e2RimDepthTest();',
   marque: 'e2MarkDepthTest();',
 }

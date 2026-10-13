@@ -294,10 +294,7 @@ export const signalMaterial = (opts: {
   transparent?: boolean
   opacity?: number
   depthWrite?: boolean
-  depthTest?: boolean // faux : ignore la profondeur de la couche (télégraphes au-dessus des morts)
   polygonOffset?: number
-  stripes?: boolean // hachures diagonales (remplissage des télégraphes : une forme que le sang n'a jamais)
-  sceneDepth?: 'signal' | 'télégraphe' // télégraphe : un mort ne le cache pas (shaders.ts)
 }): MeshBasicMaterial => {
   const m = new MeshBasicMaterial({
     color: PALETTE.technique.neutre,
@@ -305,33 +302,14 @@ export const signalMaterial = (opts: {
     transparent: opts.transparent ?? false,
     opacity: opts.opacity ?? 1,
     depthWrite: opts.depthWrite ?? true,
-    depthTest: opts.depthTest ?? true,
   })
   if (opts.polygonOffset !== undefined) {
     m.polygonOffset = true
     m.polygonOffsetFactor = opts.polygonOffset
     m.polygonOffsetUnits = opts.polygonOffset
   }
-  const depth = opts.sceneDepth ?? 'signal'
-  const patches = opts.stripes ? [DEPTH_PATCH(depth), WORLD_POS_VERT, STRIPES] : [DEPTH_PATCH(depth)]
-  applyPatches(
-    m,
-    `e1-signal-${opts.side === BackSide ? 'b' : 'f'}${opts.stripes ? '-h' : ''}-${depth === 'signal' ? 's' : 't'}`,
-    patches,
-  )
+  applyPatches(m, `e1-signal-${opts.side === BackSide ? 'b' : 'f'}-s`, [DEPTH_PATCH('signal')])
   return m
-}
-
-const STRIPES: Patch = (s) => {
-  s.fragmentShader = s.fragmentShader.replace(
-    '#include <alphatest_fragment>',
-    `float e1s = step( 0.5, fract( ( vE1World.x - vE1World.z ) * 2.4 ) );
-  // Hatching: a colour band, then a near-black, more opaque band (black stands out on blood,
-  // red stands out on mud).
-  diffuseColor.rgb *= mix( 0.06, 1.0, e1s );
-  diffuseColor.a = mix( max( diffuseColor.a, 0.62 ), diffuseColor.a, e1s );
-  #include <alphatest_fragment>`,
-  )
 }
 
 // Ordre de dessin des morts dans la scène (E8) : dans la liste transparente, après la brume de sang (goreview.ts, 3)

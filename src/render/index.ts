@@ -3,7 +3,7 @@ export { groundToUv, SCREEN_RIGHT, SCREEN_UP, uvToGround } from './camera'
 export { chroma, deltaE00, hexToLab, type Lab, srgbToLab } from './color-science'
 export { createHud, HUD_BAND_PX, type Hud } from './hud'
 export { decodeId, encodeId, ROLE, ROLE_NAMES } from './idpass'
-export { bodyClass, telegraphColor } from './look'
+export { bodyClass } from './look'
 export { cssVariables, hexCss, PALETTE } from './palette'
 export {
   createRenderer,
