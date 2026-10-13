@@ -68,23 +68,18 @@ pnpm bots -- --waves V3 --policies trieur --seeds 1-100 --variants B --latency 1
 
 ## Prochaines étapes
 
-Dans l'ordre. Les numéros des contrats renvoient à `.mercy/contracts/`.
+Dans l'ordre. P0 est clos sur l'état de ce dépôt. Les contrats de mesure (`.mercy/contracts/`, `.mercy/verdicts/`) restent une information. Depuis le 2026-10-13, ce qui fait foi pour l'image est le jugement du concepteur à l'écran, pas les seuils.
 
-1. **Clore P0.**
-   - Rendre le rapport de clôture.
-   - Lire les deux dernières vérifications (lisibilité B2 et couleurs réservées). Elles ont mesuré le code d'avant le retrait des zones au sol et de la brume rouge.
-   - Ce qui échoue encore, chiffré dans `.mercy/verdicts/` :
-     - les bots ne trouvent aucune pression (B1, B3 et B4 en échec), à remesurer depuis le changement d'orientation du Bourreau ;
-     - le silence après une mise à mort est juste au seuil (B5.O10) ;
-     - avec la lumière naturelle, un mort se détache mal de la boue, et des parties claires des morts tirent vers l'ivoire sous les flammes ;
-     - en qualité haute à 1080p, la scène la plus chargée dépasse 16,7 ms au 95e centile.
-2. **Le jeu du concepteur tranche ce que les bots ne peuvent pas trancher.**
-   - Peut-on gagner en ignorant les corps (vagues 3 et 5) ?
-   - La variante B se ressent-elle ?
-   - Le râle sonne-t-il comme un râle ?
-   - L'anticipation de 5 ticks (réglage par arme) est-elle juste ?
+1. **Le regard du concepteur sur le jeu.**
+   - La lumière de la chandelle du Bourreau : son reflet sur la boue, et les corps qu'elle blanchit quand elle est très proche.
+   - Les morts éclairés naturellement : se lisent-ils assez dans une mêlée ?
+   - La quantité de sang.
+   - L'agonie, effondrement et râle : sonne-t-elle juste ?
+2. **Le jeu lui-même, ce que les bots ne tranchent pas.**
+   - Peut-on gagner en ignorant les corps (vagues 3 et 5) ? Les bots ne trouvent aucune pression.
+   - La variante B se ressent-elle ? Il faut maintenir le clic pour atteindre le troisième coup.
+   - L'anticipation de 5 ticks est-elle juste ? C'est un réglage par arme.
    - Le Porteur offre-t-il son dos après une Charge ? Ce n'est vrai qu'en partie : quand il marche vers un corps, il pivote.
-   - Le reflet de la chandelle sur la boue est-il trop vif ?
 3. **Recharger Meshy (12 crédits restants), puis :**
    - de vraies armes et des clips faits pour tenir une arme ;
    - des foulées assez longues pour le Porteur, le Recousu et le Confesseur ;
@@ -92,5 +87,8 @@ Dans l'ordre. Les numéros des contrats renvoient à `.mercy/contracts/`.
    - l'esquive et les Sentences du Bourreau ;
    - régénérer le Souriant, dont la fiche dit 10 500 triangles alors qu'il a été généré à 10 000.
 4. **Le son du sang** (§17.1), pas encore fait : la part humide de chaque coup, le jaillissement sous le râle.
-5. **Le budget du §24 sur une puce intégrée** (M1, Iris Xe), jamais mesuré. Ensuite : chargement des 50 Mo d'assets, textures en KTX2, paquet JS de 873 kB.
+5. **La performance.**
+   - Le budget du §24 n'a jamais été mesuré sur une puce intégrée (M1, Iris Xe).
+   - En qualité haute à 1080p, la scène la plus chargée dépasse déjà 16,7 ms au 95e centile sur un M4 Max.
+   - Le chargement pèse 50 Mo d'assets : passer les textures en KTX2, et réduire le paquet JS de 873 kB.
 6. **P1** (§28) : le test à l'aveugle de l'horreur, puis le reste de la tranche verticale. Une question du §27 reste ouverte d'ici là : les derniers mots seront-ils dits ou écrits ?
