@@ -4,6 +4,30 @@ Un ARPG sombre où la mort est une grâce. Les créatures abattues ne meurent pa
 
 Ce dépôt contient le prototype P0, « La Fosse » : une arène, six familles de créatures, les sept lois du monde, et un jeu jouable dans le navigateur avec ses vrais modèles, sa lumière, son sang et son son.
 
+## Aperçu
+
+Fin de la vague 6. Les morts gisent dans le noir, à peine éclairés. Le sang frais, rouge vif, gicle près du Bourreau. Un Abattu encore vivant, à gauche, porte son liseré ivoire.
+
+![Fin de la vague 6](docs/captures/v6-fin-de-vague.jpg)
+
+Caméra proche, vague 3 : un Recousu saigne sous les coups, le Bourreau tient son Couperet.
+
+![Vague 3, caméra proche](docs/captures/v3-camera-proche.jpg)
+
+Vague 5, au bord de la Fosse : torches, pieux, chandelles posées au sol, une flaque sous un corps.
+
+![Vague 5](docs/captures/v5-combat.jpg)
+
+La Forge, l'outil qui fabrique les personnages : une planche générée par GPT Image, un modèle et des animations par Meshy. La Forge les valide par des mesures, avec les clips avant et après ses corrections.
+
+![La galerie de la Forge](docs/captures/forge-galerie.png)
+
+La planche de concept qui fixe la direction artistique (`art/concepts/`, GPT Image) :
+
+![La Fosse, planche de concept](art/concepts/key-art-la-fosse.png)
+
+Captures du 2026-10-12, à 1440×900 et à la caméra de jeu du §20 sauf mention contraire, jouées par le bot `trieur`.
+
 ## Jouer
 
 ```sh
