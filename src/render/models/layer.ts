@@ -4,9 +4,9 @@
 // d'animation (évènements observés) et de l'horloge de rendu en ticks.
 //
 // - vivant : maillage à squelette éclairé (scène), liseré et marques dans la couche des signaux ;
-// - mort : pendant l'agonie (TUNING.agonie), le corps allégé sur son squelette s'effondre et grisit dans la couche
-//   des morts ; puis la dernière pose de l'agonie, cuite une fois dans le lot des morts de son personnage (gris,
-//   lumière fixe), et plus rien ne bouge ;
+// - mort : pendant l'agonie (TUNING.agonie), le corps allégé sur son squelette s'effondre et prend la pâleur d'un
+//   cadavre ; puis la dernière pose de l'agonie, cuite une fois dans le lot des morts de son personnage, et plus rien
+//   ne bouge. Les morts sont dans la scène, sous la lumière du lieu comme tout le reste (E8) ;
 // - Membre errant : le bras du propriétaire, découpé du modèle, qui vit à part (le bras disparaît du corps) ;
 // - Bourreau : le modèle `bourreau` du manifeste, sinon ses segments ; son arme courante en main (weapons.ts).
 import {
@@ -47,6 +47,7 @@ import type { StainState } from '../gore'
 import { encodeId, ROLE } from '../idpass'
 import { DEAD_PROXY_LAYER } from '../lightrig'
 import { agonyProgress, greyMix, rimOf, sacColor, sacLuminanceOnly } from '../look'
+import { DEAD_RENDER_ORDER } from '../materials'
 import { PALETTE } from '../palette'
 import { urlParam } from '../quality'
 import { type ClassShift, parseShiftOverride, shiftFor, withOverrides } from './classes'
@@ -57,6 +58,7 @@ import {
   bodyDepthMaterial,
   bodyMaterial,
   deadIdMaterial,
+  deadInst,
   deadMaterial,
   idMaterial,
   type ModelUniforms,
@@ -70,9 +72,8 @@ import { PART } from './regions'
 import { HAND_BONE, HeldWeapons, type HeldWeaponsInfo, type WeaponMaps } from './weapons'
 
 export interface OverlayTargets {
-  readonly scene: Object3D
-  readonly dead: Object3D
-  readonly signals: Object3D
+  readonly scene: Object3D // scène éclairée : vivants, morts (E8), doublures d'ombre
+  readonly signals: Object3D // couche des signaux : liseré, marques
 }
 
 export interface ModelDrawContext {
@@ -236,6 +237,7 @@ export class ModelLayer {
   private readonly segs = new Map<number, ModelSegment[]>()
   private readonly frames = new Map<number, AnimFrame>() // dernière pose calculée (instrument)
   private env: Texture | null = null
+  private readonly deadMaterials = new Set<MeshStandardMaterial>() // reçoivent l'environnement, comme les vivants
   private readonly weapons: HeldWeapons | null
   private stencil = 1
   // Matière des doublures d'ombre dans la passe principale : ni couleur ni profondeur.
@@ -291,6 +293,15 @@ export class ModelLayer {
     for (const list of this.pool.values())
       for (const l of list) this.applyEnv(l.inst.mesh.material as MeshStandardMaterial)
     for (const m of this.weapons?.materials ?? []) this.applyEnv(m)
+    for (const m of this.deadMaterials) this.applyEnv(m)
+  }
+
+  // Matière d'un mort (E8) : mêmes reflets de l'environnement que le corps vivant.
+  private deadMat(asset: ModelAsset, form: 'batch' | 'skin' | 'mesh'): MeshStandardMaterial {
+    const m = deadMaterial(asset.map, asset.meanLum, form, this.shift(asset.id), asset.roughness)
+    this.deadMaterials.add(m)
+    this.applyEnv(m)
+    return m
   }
 
   private applyEnv(m: MeshStandardMaterial): void {
@@ -617,9 +628,8 @@ export class ModelLayer {
     let b = this.batches.get(key)
     if (!b) {
       b = new DeadBatch(
-        this.layers.dead,
         this.layers.scene,
-        deadMaterial(asset.map, asset.meanLum, 'batch', this.shift(asset.id)),
+        this.deadMat(asset, 'batch'),
         deadIdMaterial(),
         verts,
         index,
@@ -669,13 +679,15 @@ export class ModelLayer {
         'aMark',
         new BufferAttribute(new Float32Array(asset.lod.getAttribute('position').count), 1),
       )
-      const material = deadMaterial(asset.map, asset.meanLum, 'skin', this.shift(asset.id))
-      const inst = material.uniforms.uInst as { value: Vector4 }
+      const material = this.deadMat(asset, 'skin')
+      const inst = deadInst(material)
       const id = deadIdMaterial('skin', inst)
       const mesh = new SkinnedMesh(g, material)
       mesh.bind(l.inst.mesh.skeleton, l.inst.mesh.bindMatrix)
       mesh.frustumCulled = false
       mesh.matrixAutoUpdate = false
+      mesh.receiveShadow = this.shadows // l'ombre portée vient de la doublure du vivant
+      mesh.renderOrder = DEAD_RENDER_ORDER
       mesh.userData.idMaterial = id
       l.agony = { mesh, inst, materials: [material, id] }
     }
@@ -768,7 +780,7 @@ export class ModelLayer {
       d = { l, asset, deathTick, final: this.bakeFinal(c, asset, l) }
       this.dying.set(c.id, d)
       const a = this.agonyMesh(l, asset, c.resistant)
-      this.layers.dead.add(a.mesh)
+      this.layers.scene.add(a.mesh)
       if (l.shadow) this.layers.scene.add(l.shadow)
     }
     this.seenDying.add(c.id)
@@ -794,7 +806,7 @@ export class ModelLayer {
     const d = this.dying.get(id)
     if (!d) return
     this.dying.delete(id)
-    if (d.l.agony) this.layers.dead.remove(d.l.agony.mesh)
+    if (d.l.agony) this.layers.scene.remove(d.l.agony.mesh)
     if (d.l.shadow) d.l.shadow.visible = true
     this.toPool(d.l)
   }
@@ -911,17 +923,20 @@ export class ModelLayer {
       .multiply(new Matrix4().makeRotationY(Math.PI / 2 - facing + wig))
       .multiply(new Matrix4().makeRotationX(roll))
     if (dead && !placedDead && !this.corpses.has(c.id) && u < 1) {
-      // Agonie : la pièce de bras dans la matière des morts (maillage), qui grisit.
+      // Agonie : la pièce de bras dans la matière des morts (maillage), qui pâlit.
       let md = this.membresDying.get(c.id)
       if (!md) {
-        const material = deadMaterial(asset.map, asset.meanLum, 'mesh', this.shift(asset.id))
-        const inst = material.uniforms.uInst as { value: Vector4 }
+        const material = this.deadMat(asset, 'mesh')
+        const inst = deadInst(material)
         const id = deadIdMaterial('mesh', inst)
         const mesh = new Mesh(piece.geometry, material)
         mesh.matrixAutoUpdate = false
         mesh.frustumCulled = false
+        mesh.castShadow = this.shadows
+        mesh.receiveShadow = this.shadows
+        mesh.renderOrder = DEAD_RENDER_ORDER
         mesh.userData.idMaterial = id
-        this.layers.dead.add(mesh)
+        this.layers.scene.add(mesh)
         md = { mesh, inst, materials: [material, id] }
         this.membresDying.set(c.id, md)
       }
@@ -1027,7 +1042,7 @@ export class ModelLayer {
   private dropMembreDying(id: number): void {
     const md = this.membresDying.get(id)
     if (!md) return
-    this.layers.dead.remove(md.mesh)
+    this.layers.scene.remove(md.mesh)
     for (const m of md.materials) m.dispose()
     this.membresDying.delete(id)
   }

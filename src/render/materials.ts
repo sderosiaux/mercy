@@ -1,8 +1,9 @@
 // Matières du moteur de présentation (E1) : PBR (albédo, normale, occlusion/rugosité/métal) chargées depuis
 // public/textures (manifeste : scripts/fetch-textures.ts), teintées par la palette, et quelques retouches de shader :
 // flaques de la boue (eau stagnante qui reflète les flammes), occlusion au pied des murs, découpe des murs entre la
-// caméra et le joueur (§20), translucidité de la chair. La matière des morts et le test de profondeur de la couche
-// des signaux sont ici aussi : un mort ne reçoit que la lumière fixe du lieu, en luminance, sans vacillement.
+// caméra et le joueur (§20), translucidité de la chair. La matière des morts (segments du jalon 1) et le test de
+// profondeur de la couche des signaux sont ici aussi : un mort est dans la scène éclairée, sous la lumière du lieu
+// comme tout le reste (E8).
 import {
   BackSide,
   Color,
@@ -12,8 +13,8 @@ import {
   type Material,
   MeshBasicMaterial,
   MeshStandardMaterial,
+  NoBlending,
   RepeatWrapping,
-  ShaderMaterial,
   type Side,
   SRGBColorSpace,
   type Texture,
@@ -24,17 +25,8 @@ import {
   type WebGLProgramParametersWithUniforms,
 } from 'three'
 import { PALETTE } from './palette'
-import { fogUniforms, gradeUniforms } from './post'
-import {
-  CUT_GLSL,
-  DEPTH_TEST_GLSL,
-  FOG_GLSL,
-  GRADE_GLSL,
-  MAX_FIXED_LIGHTS,
-  NOISE_GLSL,
-  SCENE_DEPTH_CALL,
-  TONEMAP_GLSL,
-} from './shaders'
+import { SCENE_TAG } from './post'
+import { CUT_GLSL, DEPTH_TEST_GLSL, NOISE_GLSL, SCENE_DEPTH_CALL, type SceneDepth } from './shaders'
 
 export type TextureSet = 'boue' | 'terre' | 'pierre' | 'bois' | 'fer' | 'cuir' | 'tissu'
 export const TEXTURE_SETS: readonly TextureSet[] = ['boue', 'terre', 'pierre', 'bois', 'fer', 'cuir', 'tissu']
@@ -122,25 +114,18 @@ export const cutUniforms = {
   uCutRadius: { value: 2.6 },
 }
 
-// Couche des signaux : profondeur de la scène et caméra.
+// Couche des signaux : profondeur de la scène, son alpha (masque des personnages et des morts, post.ts) et caméra.
 export const overlayUniforms = {
   uSceneDepth: { value: null as DepthTexture | null },
+  uSceneTag: { value: null as Texture | null },
   uViewport: { value: new Vector2(1, 1) },
   uCamNear: { value: 1 },
   uCamFar: { value: 100 },
 }
 
-// Lumière fixe du lieu pour les morts : position + portée, luminance × intensité de base ; lune et ambiance.
-export const fixedLightUniforms = {
-  uFixedPos: { value: Array.from({ length: MAX_FIXED_LIGHTS }, () => new Vector4()) },
-  uFixedLum: { value: new Array<number>(MAX_FIXED_LIGHTS).fill(0) },
-  uFixedCount: { value: 0 },
-  uMoonDir: { value: new Vector3(0, 1, 0) },
-  uMoonLum: { value: 0 },
-  uDeadAmbient: { value: 0.05 },
-  uLantern: { value: new Vector4(0, 1, 0, 10) },
-  uLanternLum: { value: 0 },
-  uCamPosW: { value: new Vector3() },
+// Chandelle du reliquaire (position, portée), pour la règle de l'arme (models/weapons.ts).
+export const lanternUniforms = {
+  uLantern: { value: new Vector4(0, -1000, 0, 0) },
 }
 
 type Patch = (shader: WebGLProgramParametersWithUniforms) => void
@@ -292,13 +277,15 @@ export const skinMaterial = (normal: Texture | null): MeshStandardMaterial => {
 // ---------------------------------------------------------------------------------------------------------
 // Couche des signaux
 
-const DEPTH_PATCH: Patch = (s) => {
-  Object.assign(s.uniforms, overlayUniforms)
-  s.fragmentShader = s.fragmentShader.replace(
-    'void main() {',
-    `${DEPTH_TEST_GLSL}\nvoid main() {\n  ${SCENE_DEPTH_CALL.signal}`,
-  )
-}
+const DEPTH_PATCH =
+  (depth: SceneDepth): Patch =>
+  (s) => {
+    Object.assign(s.uniforms, overlayUniforms)
+    s.fragmentShader = s.fragmentShader.replace(
+      'void main() {',
+      `${DEPTH_TEST_GLSL}\nvoid main() {\n  ${SCENE_DEPTH_CALL[depth]}`,
+    )
+  }
 
 // Liseré, marques dorées, éclats : couleur exacte de la palette (aucune lumière, aucun étalonnage), testée contre
 // la profondeur de la scène.
@@ -310,6 +297,7 @@ export const signalMaterial = (opts: {
   depthTest?: boolean // faux : ignore la profondeur de la couche (télégraphes au-dessus des morts)
   polygonOffset?: number
   stripes?: boolean // hachures diagonales (remplissage des télégraphes : une forme que le sang n'a jamais)
+  sceneDepth?: 'signal' | 'télégraphe' // télégraphe : un mort ne le cache pas (shaders.ts)
 }): MeshBasicMaterial => {
   const m = new MeshBasicMaterial({
     color: PALETTE.technique.neutre,
@@ -324,8 +312,13 @@ export const signalMaterial = (opts: {
     m.polygonOffsetFactor = opts.polygonOffset
     m.polygonOffsetUnits = opts.polygonOffset
   }
-  const patches = opts.stripes ? [DEPTH_PATCH, WORLD_POS_VERT, STRIPES] : [DEPTH_PATCH]
-  applyPatches(m, `e1-signal-${opts.side === BackSide ? 'b' : 'f'}${opts.stripes ? '-h' : ''}`, patches)
+  const depth = opts.sceneDepth ?? 'signal'
+  const patches = opts.stripes ? [DEPTH_PATCH(depth), WORLD_POS_VERT, STRIPES] : [DEPTH_PATCH(depth)]
+  applyPatches(
+    m,
+    `e1-signal-${opts.side === BackSide ? 'b' : 'f'}${opts.stripes ? '-h' : ''}-${depth === 'signal' ? 's' : 't'}`,
+    patches,
+  )
   return m
 }
 
@@ -341,81 +334,36 @@ const STRIPES: Patch = (s) => {
   )
 }
 
-const DEAD_VERT = /* glsl */ `
-varying vec3 vColor;
-varying vec3 vNormalW;
-varying vec3 vWorld;
-void main() {
-  vColor = instanceColor;
-  vec4 w = modelMatrix * instanceMatrix * vec4( position, 1.0 );
-  vWorld = w.xyz;
-  mat3 nm = mat3( modelMatrix * instanceMatrix );
-  vNormalW = normalize( nm * normal );
-  gl_Position = projectionMatrix * viewMatrix * w;
-}
-`
+// Ordre de dessin des morts dans la scène (E8) : dans la liste transparente, après la brume de sang (goreview.ts, 3)
+// et avant les flammes (decor.ts, 5), sans mélange et en écrivant la profondeur. Ainsi la brume rouge, voile sans
+// profondeur, ne teint jamais un mort (§17.1 : « le corps d'un mort reste gris ; son sang, sous lui et autour de lui,
+// ne l'est pas »), comme quand les morts étaient dans la couche des signaux ; une flamme devant un mort l'éclaire.
+export const DEAD_RENDER_ORDER = 4
 
-const DEAD_FRAG = /* glsl */ `
-uniform vec4 uFixedPos[ ${MAX_FIXED_LIGHTS} ];
-uniform float uFixedLum[ ${MAX_FIXED_LIGHTS} ];
-uniform int uFixedCount;
-uniform vec3 uMoonDir;
-uniform float uMoonLum;
-uniform float uDeadAmbient;
-uniform vec4 uLantern;
-uniform float uLanternLum;
-uniform vec3 uCamPosW;
-uniform float uExposure;
-uniform vec2 uResolution;
-varying vec3 vColor;
-varying vec3 vNormalW;
-varying vec3 vWorld;
-${DEPTH_TEST_GLSL}
-${TONEMAP_GLSL}
-${GRADE_GLSL}
-${FOG_GLSL}
-void main() {
-  ${SCENE_DEPTH_CALL.signal}
-  vec3 n = normalize( vNormalW );
-  if ( ! gl_FrontFacing ) n = - n;
-  float lum = uDeadAmbient * ( 0.6 + 0.4 * n.y ) + uMoonLum * max( dot( n, uMoonDir ), 0.0 );
-  for ( int i = 0; i < ${MAX_FIXED_LIGHTS}; i ++ ) {
-    if ( i >= uFixedCount ) break;
-    vec3 d = uFixedPos[ i ].xyz - vWorld;
-    float dist = length( d );
-    float range = uFixedPos[ i ].w;
-    float win = pow( clamp( 1.0 - pow( dist / range, 4.0 ), 0.0, 1.0 ), 2.0 );
-    lum += uFixedLum[ i ] * win / max( dist * dist, 0.01 ) * max( dot( n, d / dist ), 0.0 );
-  }
-  // Lantern of the reliquary at base intensity (moves only with the player, and then the camera moves too).
-  if ( uLanternLum > 0.0 ) {
-    vec3 d = uLantern.xyz - vWorld;
-    float dist = length( d );
-    float win = pow( clamp( 1.0 - pow( dist / uLantern.w, 4.0 ), 0.0, 1.0 ), 2.0 );
-    lum += uLanternLum * win / max( dist * dist, 0.01 ) * max( dot( n, d / dist ), 0.0 );
-  }
-  // Lambert: albedo / pi, as in three.
-  vec3 c = vColor * lum * 0.3183099;
-  float tau = e1FogDepth( uCamPosW, vWorld );
-  float T = exp( - tau );
-  float fogL = dot( uFogAmbient, vec3( 0.2126, 0.7152, 0.0722 ) );
-  c = c * T + vec3( fogL ) * ( 1.0 - T ) * uFogScatter;
-  c = e1Aces( c * uExposure );
-  c = e1Grade( c, 1.0 );
-  c *= e1VignetteAt( gl_FragCoord.xy / uResolution, uResolution );
-  gl_FragColor = vec4( e1LinearToSrgb( c ), 1.0 );
-}
-`
-
-// Matière des morts (couche des signaux) : immobile au pixel près. Ni vacillement, ni lumière d'entité, ni grain ;
-// un gris reste un gris (courbe de luminance seule).
-export const deadMaterial = (): ShaderMaterial =>
-  new ShaderMaterial({
-    vertexShader: DEAD_VERT,
-    fragmentShader: DEAD_FRAG,
-    uniforms: { ...overlayUniforms, ...fixedLightUniforms, ...gradeUniforms, ...fogUniforms },
-    side: FrontSide,
+// Morts en segments (jalon 1, quand un modèle de la Forge manque) : dans la scène éclairée, comme les vivants (E8). La
+// couleur de l'instance est le gris du corps (rig.ts, look.ts : la luminance de sa couleur vivante, sans
+// éclaircissement) ; la lumière du lieu s'y applique comme au sol, chandelle du Bourreau comprise. Aucune émission :
+// dans le noir, un mort se voit à peine. Alpha de la scène : SCENE_TAG.mort (grain immobile sur un mort, post.ts).
+export const deadMaterial = (): MeshStandardMaterial => {
+  const m = new MeshStandardMaterial({
+    color: PALETTE.technique.neutre,
+    roughness: 0.7,
+    metalness: 0,
+    envMapIntensity: 0.25,
+    transparent: true, // liste transparente, après la brume (DEAD_RENDER_ORDER) ; aucun mélange
+    blending: NoBlending,
   })
+  m.forceSinglePass = true
+  applyPatches(m, 'e8-mort-segments', [
+    (s) => {
+      s.fragmentShader = s.fragmentShader.replace(
+        '#include <opaque_fragment>',
+        `#include <opaque_fragment>\n  gl_FragColor.a = ${SCENE_TAG.mort.toFixed(4)};`,
+      )
+    },
+  ])
+  return m
+}
 
 export const disposeAll = (ms: readonly Material[]): void => {
   for (const m of ms) m.dispose()

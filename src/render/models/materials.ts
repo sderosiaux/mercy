@@ -2,7 +2,7 @@
 // (MeshStandardMaterial et retouches), doublé dans la couche des signaux par son liseré (coque inversée gonflée le
 // long des normales de contour) et par ses marques dorées de Résistant ; chacun a sa matière d'identification
 // (B2 I1), avec la même géométrie et les mêmes déplacements de sommets. Un mort est figé et cuit dans un lot
-// (BatchedMesh) de la couche des morts, gris, sous la seule lumière fixe du lieu (comme au jalon 1).
+// (BatchedMesh) de la scène, gris, sous la lumière du lieu comme tout le reste (E8).
 import {
   AlwaysStencilFunc,
   BackSide,
@@ -11,6 +11,7 @@ import {
   FrontSide,
   MeshDepthMaterial,
   MeshStandardMaterial,
+  NoBlending,
   NotEqualStencilFunc,
   ReplaceStencilOp,
   RGBADepthPacking,
@@ -21,19 +22,11 @@ import {
   Vector4,
   type WebGLProgramParametersWithUniforms,
 } from 'three'
-import { fixedLightUniforms, overlayUniforms } from '../materials'
+import { overlayUniforms } from '../materials'
 import { PALETTE } from '../palette'
-import { fogUniforms, gradeUniforms, SCENE_TAG } from '../post'
+import { SCENE_TAG } from '../post'
 import { urlParam } from '../quality'
-import {
-  DEPTH_TEST_GLSL,
-  FOG_GLSL,
-  GRADE_GLSL,
-  MAX_FIXED_LIGHTS,
-  NOISE_GLSL,
-  SCENE_DEPTH_CALL,
-  TONEMAP_GLSL,
-} from '../shaders'
+import { DEPTH_TEST_GLSL, NOISE_GLSL, SCENE_DEPTH_CALL } from '../shaders'
 import { CLASS_SHIFT_GLSL, type ClassShift, classShiftUniforms, NO_SHIFT } from './classes'
 
 // Uniformes d'une instance, partagés par toutes ses matières (mêmes objets).
@@ -385,163 +378,129 @@ export const idMaterial = (u: ModelUniforms, which: 'body' | 'rim' | 'mark'): Sh
 }
 
 // ---------------------------------------------------------------------------------------------------------
-// Morts (couche des morts) : gris cadavérique, avec le détail de luminance de la texture autour de la pâleur de la
-// palette ; lumière fixe du lieu seulement (B2.O1, O5). Trois formes, un même shader :
+// Morts (E8 : dans la scène éclairée, sous la lumière du lieu comme tout le reste). Trois formes, une même matière :
 // - lot (BatchedMesh) : pose figée cuite en coordonnées monde, une fois l'agonie finie (ou un mort placé) ; couleur
-//   d'instance : (id >> 8, id & 255, -, passage au gris 0 → 1) ;
+//   d'instance : (id >> 8, id & 255, -, passage à la pâleur 0 → 1) ;
 // - peau (agonie, E7) : la version allégée du corps sur le squelette de l'instance, qui s'effondre pendant l'agonie
-//   (TUNING.agonie) et grisit ; sa dernière image est la pose cuite ensuite dans le lot ;
+//   (TUNING.agonie) ; sa dernière image est la pose cuite ensuite dans le lot ;
 // - maillage (agonie d'un Membre errant) : la pièce de bras, posée par sa matrice.
 // Hors du lot, la couleur d'instance vient de l'uniforme uInst (mêmes composantes).
+//
+// La pâleur d'un cadavre (L4, décision du concepteur du 2026-10-12) : pendant l'agonie, la matière du vivant (la
+// texture décalée vers la chair de la palette, exactement comme sur le corps vivant) perd sa couleur vers le gris
+// cadavérique de la palette, à luminance égale : désaturée, ni éclaircie, ni argentée. Les marques dorées d'un
+// Résistant passent de l'or au gris avec le reste. La translucidité de la chair (corps vivant) s'éteint avec la vie,
+// pendant l'agonie : un mort n'émet rien (B2.O1 (3)), et la lumière du corps ne saute pas au coup fatal. Ensuite, la
+// lumière de la scène s'applique comme au sol (torches, chandelle du Bourreau, lune, ambiance, ombres, reflets) : dans
+// le noir, un mort se devine ; sous une flamme, c'est un corps blême. Reflets de l'environnement et ombres reçues :
+// ceux du corps vivant ; sa chair devient mate (DEAD_ROUGHNESS). Alpha de la scène : SCENE_TAG.mort (post.ts).
 
 export type DeadForm = 'batch' | 'skin' | 'mesh'
 
-const DEAD_VERT = (form: DeadForm): string => /* glsl */ `
-#include <common>
-${form === 'batch' ? '#include <batching_pars_vertex>' : ''}
-${form === 'skin' ? '#include <skinning_pars_vertex>' : ''}
-${form === 'batch' ? '' : 'uniform vec4 uInst;'}
-attribute float aMark;
-varying vec3 vNormalW;
-varying vec3 vWorld;
-varying vec2 vUv;
-varying float vMarkD;
-varying vec4 vInst;
-void main() {
-  vec3 objectNormal = vec3( normal );
-  vec3 transformed = vec3( position );
-${
-  form === 'batch'
-    ? `  #include <batching_vertex>
-  mat4 e7Model = modelMatrix * batchingMatrix;
-  vInst = getBatchingColor( getIndirectIndex( gl_DrawID ) );`
-    : `  mat4 e7Model = modelMatrix;
-  vInst = uInst;`
-}
-${
-  form === 'skin'
-    ? `  #include <skinbase_vertex>
-  #include <skinnormal_vertex>
-  #include <skinning_vertex>`
-    : ''
-}
-  vec4 w = e7Model * vec4( transformed, 1.0 );
-  vWorld = w.xyz;
-  vNormalW = normalize( mat3( e7Model ) * objectNormal );
-  vUv = uv;
-  vMarkD = aMark;
-  gl_Position = projectionMatrix * viewMatrix * w;
-}
-`
+// Rugosité d'un cadavre (forme, E8) : la chair humide du vivant (ART_DIRECTION « Matières ») sèche et devient mate
+// pendant l'agonie, comme le sang qui sèche (§17.1). Un gris encore brillant renvoie le ciel froid et la lune en
+// reflets bleutés : c'est l'aspect argenté que le concepteur a écarté. Mesure : rapport E8.
+const DEAD_ROUGHNESS = 0.9
 
-const DEAD_FRAG = /* glsl */ `
-uniform sampler2D uMap;
-uniform float uMeanLum;
-uniform vec3 uGrey;
-uniform vec3 uGreyLight;
-uniform vec3 uMarkGold;
-uniform vec4 uFixedPos[ ${MAX_FIXED_LIGHTS} ];
-uniform float uFixedLum[ ${MAX_FIXED_LIGHTS} ];
-uniform int uFixedCount;
-uniform vec3 uMoonDir;
-uniform float uMoonLum;
-uniform float uDeadAmbient;
-uniform vec4 uLantern;
-uniform float uLanternLum;
-uniform vec3 uCamPosW;
-uniform float uExposure;
-uniform vec2 uResolution;
-varying vec3 vNormalW;
-varying vec3 vWorld;
-varying vec2 vUv;
-varying float vMarkD;
-varying vec4 vInst;
-${DEPTH_TEST_GLSL}
-${TONEMAP_GLSL}
-${GRADE_GLSL}
-${FOG_GLSL}
-${CLASS_SHIFT_GLSL}
-void main() {
-  ${SCENE_DEPTH_CALL.signal}
-  vec3 tex = texture2D( uMap, vUv ).rgb;
-  float lumT = dot( tex, vec3( 0.2126, 0.7152, 0.0722 ) );
-  // Détail de la texture autour de la pâleur de la palette : facteur borné (un mort reste pâle, B2.O3).
-  float detail = clamp( lumT / max( uMeanLum, 1e-3 ), 0.55, 1.45 );
-  bool mark = vMarkD > 0.5;
-  vec3 base = mark ? uGreyLight : uGrey;
-  vec3 grey = base * detail;
-  // Passage au gris pendant l'agonie (L4) : la chair du vivant (la texture décalée vers la chair de la palette, comme
-  // sur le corps vivant, classes.ts), exposée pour que sa luminance moyenne soit celle du gris (la pâleur du
-  // cadavre), perd sa couleur. Dès le coup fatal, le corps a donc la luminance qu'il gardera et se détache du sol
-  // (B2.O3, sans délai de grâce).
-  vec3 start = e2ClassShift( tex ) * ( dot( base, vec3( 0.2126, 0.7152, 0.0722 ) ) / max( uMeanLum, 1e-3 ) );
-  vec3 albedo = mix( start, grey, vInst.a );
-  vec3 n = normalize( vNormalW );
-  if ( ! gl_FrontFacing ) n = - n;
-  float lum = uDeadAmbient * ( 0.6 + 0.4 * n.y ) + uMoonLum * max( dot( n, uMoonDir ), 0.0 );
-  for ( int i = 0; i < ${MAX_FIXED_LIGHTS}; i ++ ) {
-    if ( i >= uFixedCount ) break;
-    vec3 d = uFixedPos[ i ].xyz - vWorld;
-    float dist = length( d );
-    float range = uFixedPos[ i ].w;
-    float win = pow( clamp( 1.0 - pow( dist / range, 4.0 ), 0.0, 1.0 ), 2.0 );
-    lum += uFixedLum[ i ] * win / max( dist * dist, 0.01 ) * max( dot( n, d / dist ), 0.0 );
-  }
-  if ( uLanternLum > 0.0 ) {
-    vec3 d = uLantern.xyz - vWorld;
-    float dist = length( d );
-    float win = pow( clamp( 1.0 - pow( dist / uLantern.w, 4.0 ), 0.0, 1.0 ), 2.0 );
-    lum += uLanternLum * win / max( dist * dist, 0.01 ) * max( dot( n, d / dist ), 0.0 );
-  }
-  vec3 c = albedo * lum * 0.3183099;
-  float tau = e1FogDepth( uCamPosW, vWorld );
-  float T = exp( - tau );
-  float fogL = dot( uFogAmbient, vec3( 0.2126, 0.7152, 0.0722 ) );
-  c = c * T + vec3( fogL ) * ( 1.0 - T ) * uFogScatter;
-  c = e1Aces( c * uExposure );
-  c = e1Grade( c, 1.0 );
-  c *= e1VignetteAt( gl_FragCoord.xy / uResolution, uResolution );
-  vec3 outC = e1LinearToSrgb( c );
-  // Marques dorées d'un Résistant : or (couleur exacte de la palette, comme les marques du vivant) dans l'image du
-  // coup, grises avec le reste à la fin de l'agonie (L4, D13). Une fois gris (vInst.a = 1), rien ne change.
-  if ( mark ) outC = mix( uMarkGold, outC, vInst.a );
-  gl_FragColor = vec4( outC, 1.0 );
+const linearOf = (hex: number): Color => new Color(hex) // three : converti en linéaire
+
+// Chromaticité du gris cadavérique de la palette, ramenée à une luminance de 1.
+const greyChroma = (): Color => {
+  const c = linearOf(PALETTE.gris.cadaverique)
+  const l = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
+  return c.multiplyScalar(1 / l)
 }
-`
+
+const instGlsl = (form: DeadForm): string =>
+  form === 'batch'
+    ? '#if defined( USE_COLOR_ALPHA )\n  vec4 e8Inst = vColor;\n#else\n  vec4 e8Inst = uInst;\n#endif'
+    : '  vec4 e8Inst = uInst;'
+
+const deadPatch =
+  (form: DeadForm): ((s: WebGLProgramParametersWithUniforms) => void) =>
+  (s) => {
+    s.vertexShader = s.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float aMark;\nvarying float vE8Mark;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vE8Mark = aMark;')
+    s.fragmentShader = s.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+uniform vec4 uInst;
+uniform vec3 uGreyChroma;
+uniform vec3 uMarkGold;
+uniform float uTranslucence;
+varying float vE8Mark;
+${CLASS_SHIFT_GLSL}`,
+      )
+      // Couleur d'instance : l'identité et le passage à la pâleur, jamais une teinte de l'albédo.
+      .replace(
+        '#include <color_fragment>',
+        `${instGlsl(form)}
+  vec3 e8Living = vE8Mark > 0.5 ? uMarkGold : e2ClassShift( diffuseColor.rgb );
+  float e8Pale = clamp( e8Inst.a, 0.0, 1.0 );
+  diffuseColor.rgb = mix( e8Living, uGreyChroma * dot( e8Living, vec3( 0.2126, 0.7152, 0.0722 ) ), e8Pale );`,
+      )
+      .replace(
+        '#include <roughnessmap_fragment>',
+        `#include <roughnessmap_fragment>
+  roughnessFactor = mix( roughnessFactor, ${DEAD_ROUGHNESS.toFixed(2)}, e8Pale );`,
+      )
+      .replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+  totalEmissiveRadiance += e8Living * uTranslucence * ( 1.0 - e8Pale );`,
+      )
+      .replace(
+        '#include <opaque_fragment>',
+        `#include <opaque_fragment>\n  gl_FragColor.a = ${SCENE_TAG.mort.toFixed(4)};`,
+      )
+  }
 
 export const deadMaterial = (
   map: Texture | null,
   meanLum: number,
   form: DeadForm = 'batch',
   shift: ClassShift = NO_SHIFT,
-): ShaderMaterial =>
-  new ShaderMaterial({
-    vertexShader: DEAD_VERT(form),
-    fragmentShader: DEAD_FRAG,
-    uniforms: {
-      ...overlayUniforms,
-      ...fixedLightUniforms,
-      ...gradeUniforms,
-      ...fogUniforms,
-      uMap: { value: map },
-      uMeanLum: { value: meanLum },
-      uGrey: { value: new Color(PALETTE.gris.cadaverique) },
-      uGreyLight: { value: new Color(PALETTE.gris.cadaveriqueClair) },
-      uMarkGold: { value: srgbVec(PALETTE.or.base) },
-      uInst: { value: new Vector4() },
-      ...classShiftUniforms(shift, meanLum),
-    },
+  roughness = 0.6,
+): MeshStandardMaterial => {
+  const m = new MeshStandardMaterial({
+    map,
+    roughness,
+    metalness: 0,
+    envMapIntensity: 0.25,
     // Deux faces : le regroupement de sommets de la version allégée retourne parfois un triangle ; vu de dos, il
-    // trouerait le corps (la normale est retournée dans le shader).
+    // trouerait le corps (three retourne la normale d'une face arrière).
     side: DoubleSide,
+    // Dessiné après la brume de sang (DEAD_RENDER_ORDER, materials.ts), sans mélange, en une passe.
+    transparent: true,
+    blending: NoBlending,
   })
+  m.forceSinglePass = true
+  const uniforms = {
+    uInst: { value: new Vector4() },
+    uGreyChroma: { value: greyChroma() },
+    uMarkGold: { value: linearOf(PALETTE.or.base) },
+    uTranslucence: { value: TRANSLUCENCE },
+    ...classShiftUniforms(shift, meanLum),
+  }
+  m.userData.inst = uniforms.uInst // couleur d'instance hors du lot (layer.ts)
+  const patch = deadPatch(form)
+  m.onBeforeCompile = (s) => {
+    Object.assign(s.uniforms, uniforms)
+    patch(s)
+  }
+  m.customProgramCacheKey = () => `e8-mort-${form}-${TRANSLUCENCE}`
+  return m
+}
 
-// Même test contre la profondeur de la scène que la matière couleur des morts (e1DepthTest, tolérance comprise).
+// Uniforme de la couleur d'instance d'une matière des morts (formes peau et maillage).
+export const deadInst = (m: MeshStandardMaterial): { value: Vector4 } => m.userData.inst as { value: Vector4 }
+
+// Passe d'identification d'un mort : objet de la scène, sans test contre la profondeur de la scène (B2 I1).
 const DEAD_ID_FRAG = /* glsl */ `
 varying vec4 vInst;
-${DEPTH_TEST_GLSL}
 void main() {
-  ${SCENE_DEPTH_CALL.signal}
   gl_FragColor = vec4( vInst.r, vInst.g, ${(1 / 255).toFixed(8)}, 1.0 );
 }
 `
@@ -575,14 +534,9 @@ export const deadIdMaterial = (form: DeadForm = 'batch', inst?: { value: Vector4
   new ShaderMaterial({
     vertexShader: DEAD_ID_VERT(form),
     fragmentShader: DEAD_ID_FRAG,
-    uniforms: { ...overlayUniforms, uInst: inst ?? { value: new Vector4() } },
+    uniforms: { uInst: inst ?? { value: new Vector4() } },
     side: DoubleSide,
   })
-
-// Couleur exacte de la palette en sortie (sRGB), pour un mélange après la conversion de sortie.
-function srgbVec(hex: number): Vector3 {
-  return new Vector3(((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255)
-}
 
 function glslColor(hex: number): string {
   const c = new Color(hex)

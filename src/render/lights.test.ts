@@ -1,19 +1,26 @@
 // Système de lumière (E1) : sources déclarées, vacillement borné et déterministe, budget continu, sources tirées
-// des entités (jamais d'un mort).
+// des entités (jamais d'un mort). E8 : rayon de lumière du Bourreau, rendus de jugement et sans lumière.
+import { Scene } from 'three'
 import { describe, expect, it } from 'vitest'
 import { type Creature, PORTEUR_STAGE_KEY, type World } from '../sim/index'
 import { mannequin, poteau, scene, withCreature } from '../sim/testing'
+import { LightRig } from './lightrig'
 import {
   entityLights,
   flameJitter,
   flickerAt,
+  judged,
   LIGHT_KINDS,
   type LightSource,
   lightScore,
+  RAYON_BOURREAU_M,
+  RELIQUAIRE_HEIGHT_M,
+  relativeLuminance,
   selectLights,
   source,
 } from './lights'
 import { PALETTE } from './palette'
+import { QUALITY } from './quality'
 
 const torches = (n: number, step: number): LightSource[] =>
   Array.from({ length: n }, (_, i) => source('torche', `torche:${i}`, i * step, 2.5, 0))
@@ -129,7 +136,7 @@ describe('sources tirées des entités', () => {
     const late = entityLights(w, w, 1, 140).find((s) => s.kind === 'priere')
     expect(early?.color).toBe(PALETTE.vertMaladif)
     expect(late?.intensity ?? 0).toBeGreaterThan(early?.intensity ?? 0)
-    expect(late?.fixed).toBe(false)
+    expect(late?.owner).toBe(1)
   })
 
   it('n’allume le sac qu’au stade 3, en rouge vif (§17, §30.10 : aux stades 0 à 2, sa lueur n’éclaire rien)', () => {
@@ -160,5 +167,103 @@ describe('sources tirées des entités', () => {
     expect(kinds).toEqual(['reliquaire'])
     const dead = w.creatures.filter((c: Creature) => c.state.kind === 'mort')
     expect(dead.length).toBe(2)
+  })
+})
+
+// E8 : la chandelle du reliquaire est un rayon de lumière autour du Bourreau (RAYON_BOURREAU_M). Éclairement du sol
+// selon la loi de three (getDistanceAttenuation : 1/d^decay, fenêtre lisse jusqu'à la portée), cosinus d'incidence.
+describe('rayon de lumière du Bourreau', () => {
+  const groundIrradiance = (r: number): number => {
+    const s = LIGHT_KINDS.reliquaire
+    const d = Math.hypot(r, RELIQUAIRE_HEIGHT_M)
+    const win = Math.max(0, 1 - (d / s.range) ** 4) ** 2
+    return ((s.intensity * (RELIQUAIRE_HEIGHT_M / d)) / Math.max(d ** s.decay, 0.01)) * win
+  }
+
+  it('prend un rayon dans la fourchette du concepteur (6 à 8 m)', () => {
+    expect(RAYON_BOURREAU_M).toBeGreaterThanOrEqual(6)
+    expect(RAYON_BOURREAU_M).toBeLessThanOrEqual(8)
+  })
+
+  it('éclaire encore là où il tue, décroît sans saut, s’éteint au rayon', () => {
+    const e0 = groundIrradiance(0)
+    expect(groundIrradiance(3) / e0).toBeGreaterThan(0.5) // portée de ses coups, et un peu plus
+    // Sous ses pieds, pas plus que l'ancienne chandelle (14 cd à 2,8 m, en 1/d² : 1,75) : rien n'y brûle.
+    expect(e0).toBeLessThanOrEqual(1.8)
+    let prev = e0
+    for (let r = 0.25; r <= RAYON_BOURREAU_M + 2; r += 0.25) {
+      const e = groundIrradiance(r)
+      expect(e).toBeLessThanOrEqual(prev + 1e-12)
+      expect(prev - e).toBeLessThan(0.08 * e0)
+      prev = e
+    }
+    expect(groundIrradiance(RAYON_BOURREAU_M)).toBe(0)
+    expect(groundIrradiance(RAYON_BOURREAU_M - 1) / e0).toBeLessThan(0.1)
+    expect(groundIrradiance(RAYON_BOURREAU_M - 0.5) / e0).toBeLessThan(0.03)
+  })
+
+  it('suit le Bourreau, en couleur de flamme de la palette', () => {
+    let w = scene([], {})
+    w = { ...w, player: { ...w.player, pos: { x: 3, z: -2 } } }
+    const r = entityLights(w, w, 1, 0).find((s) => s.kind === 'reliquaire')
+    expect([r?.x, r?.y, r?.z]).toEqual([3, RELIQUAIRE_HEIGHT_M, -2])
+    expect(r?.color).toBe(PALETTE.lumiere.reliquaire)
+  })
+})
+
+// B2, amendement A11 : rendu de jugement (sources neutres à luminance égale) et rendu sans lumière.
+describe('rendus de jugement et sans lumière', () => {
+  const kinds = ['torche', 'brasero', 'chandelle', 'lune', 'priere', 'sac', 'reliquaire'] as const
+
+  it('jugement : position, portée, vacillement et luminance gardés ; couleur neutre', () => {
+    for (const kind of kinds) {
+      const s = source(kind, `${kind}:0`, 1, 2, 3)
+      const j = judged(s)
+      expect(j.color).toBe(PALETTE.lumiere.neutre)
+      expect(j.intensity * relativeLuminance(j.color)).toBeCloseTo(
+        s.intensity * relativeLuminance(s.color),
+        10,
+      )
+      expect([j.x, j.y, j.z, j.range, j.flicker, j.seed, j.decay]).toEqual([
+        s.x,
+        s.y,
+        s.z,
+        s.range,
+        s.flicker,
+        s.seed,
+        s.decay,
+      ])
+    }
+  })
+
+  it('le gréement : neutre en jugement, tout éteint sans lumière', () => {
+    const srcs = [
+      ...kinds.map((k, i) => source(k, `${k}:${i}`, i - 3, 2, 1)),
+      source('lune', 'lune', 16, 30, 12),
+    ]
+    const lit = (sc: Scene): { r: number; g: number; b: number; i: number }[] => {
+      const out: { r: number; g: number; b: number; i: number }[] = []
+      sc.traverse((o) => {
+        const l = o as unknown as {
+          isLight?: boolean
+          color?: { r: number; g: number; b: number }
+          intensity: number
+        }
+        if (l.isLight && l.color && l.intensity > 0) out.push({ ...l.color, i: l.intensity })
+      })
+      return out
+    }
+    const sc = new Scene()
+    const r2 = new LightRig(sc, QUALITY.haute, 14)
+    r2.update(srcs, { x: 0, z: 0 }, 10, 12, 'jugement')
+    const judgedLights = lit(sc)
+    expect(judgedLights.length).toBeGreaterThan(3)
+    for (const l of judgedLights) {
+      expect(l.r).toBeCloseTo(l.g, 6)
+      expect(l.g).toBeCloseTo(l.b, 6)
+    }
+    r2.update(srcs, { x: 0, z: 0 }, 10, 12, 'sans')
+    expect(lit(sc)).toEqual([])
+    r2.dispose()
   })
 })

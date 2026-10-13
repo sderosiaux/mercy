@@ -37,7 +37,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { WeaponId } from '../../sim/index'
 import { ROLE, uniformIdMaterial } from '../idpass'
 import { RELIQUAIRE_HEIGHT_M } from '../lights'
-import { fixedLightUniforms, pbr, type SetMaps } from '../materials'
+import { lanternUniforms, pbr, type SetMaps } from '../materials'
 import { PALETTE } from '../palette'
 import { SCENE_TAG } from '../post'
 import { urlParam } from '../quality'
@@ -408,14 +408,14 @@ const CHARACTER_MASK = (s: WebGLProgramParametersWithUniforms) => {
 // ceinture. Une arme levée au-dessus de la tête s'approchait de cette source virtuelle à quelques centimètres et
 // blanchissait (ivoire : jusqu'à 267 pixels mesurés). Règle : l'arme ne reçoit jamais de la chandelle plus que le sol
 // juste sous elle (distance comptée au moins RELIQUAIRE_HEIGHT_M). Les autres sources (torches, braseros) gardent
-// leur loi. La source est reconnue par sa position (uniforme uLantern de la lumière fixe, en monde ; le vacillement
-// la déplace de 3 cm au plus).
+// leur loi. La source est reconnue par sa position (uniforme uLantern, en monde ; le vacillement la déplace de 3 cm
+// au plus).
 const POINT_FALLOFF =
   'light.color *= getDistanceAttenuation( lightDistance, pointLight.distance, pointLight.decay );'
 const NEAR_LIGHT = (s: WebGLProgramParametersWithUniforms) => {
   if (!ShaderChunk.lights_pars_begin.includes(POINT_FALLOFF))
     throw new Error('armes : atténuation des lumières ponctuelles de three introuvable (montée de version ?)')
-  s.uniforms.uLantern = fixedLightUniforms.uLantern
+  s.uniforms.uLantern = lanternUniforms.uLantern
   s.fragmentShader = s.fragmentShader
     .replace('#include <common>', '#include <common>\nuniform vec4 uLantern;')
     .replace(

@@ -150,6 +150,10 @@ const run = async (scene: LabScene): Promise<void> => {
   const urlIds = (k: string): number[] => (params.get(k) ?? '').split(',').filter(Boolean).map(Number)
   if (params.get('hide')) renderer.debug.hide(urlIds('hide'))
   if (params.get('isolate')) renderer.debug.isolate(urlIds('isolate')[0] ?? null)
+  // Rendus de B2 (amendement A11, E8) : `lumiere=jugement|figee|sans` (figee : lumière de l'image du tick demandé).
+  const lumiere = params.get('lumiere')
+  if (lumiere === 'jugement' || lumiere === 'figee' || lumiere === 'sans')
+    renderer.debug.setLightMode(lumiere)
   seedGore()
 
   const stepOnce = (): void => {
@@ -415,6 +419,9 @@ const run = async (scene: LabScene): Promise<void> => {
       draw()
     },
     setShake: (on: boolean) => renderer.debug.setShake(on),
+    // Rendus de B2 (amendement A11) : jeu, jugement, lumière figée, sans lumière (E8).
+    setLightMode: (m: 'jeu' | 'jugement' | 'figee' | 'sans') => renderer.debug.setLightMode(m),
+    freezeLights: (on: boolean) => renderer.debug.freezeLights(on),
     setTelegraphs: (on: boolean) => {
       renderer.debug.setTelegraphs(on)
       draw()

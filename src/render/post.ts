@@ -2,7 +2,7 @@
 // flammes (bloom, seuil haut : seules les flammes, le halo de prière et la lueur du sac le dépassent), puis une
 // passe de composition : brouillard bas éclairé par la lune et par les lumières actives, exposition, courbe ACES,
 // étalonnage froid et désaturé, vignettage, grain. Le résultat va au canvas ; la couche des signaux (liserés,
-// marques, morts, télégraphes) se dessine ensuite par-dessus, hors de cette chaîne.
+// marques, télégraphes, sceau) se dessine ensuite par-dessus, hors de cette chaîne. Les morts sont dans la scène (E8).
 import {
   AddEquation,
   Color,
@@ -30,9 +30,17 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { hexToLab } from './color-science'
 import { PALETTE } from './palette'
 import { type QualitySpec, urlParam } from './quality'
-import { FOG_GLSL, GRADE_GLSL, GUARD_GLSL, MAX_FOG_LIGHTS, NOISE_GLSL, TONEMAP_GLSL } from './shaders'
+import {
+  FOG_GLSL,
+  GRADE_GLSL,
+  GUARD_GLSL,
+  MAX_FOG_LIGHTS,
+  MORT_TAG,
+  NOISE_GLSL,
+  TONEMAP_GLSL,
+} from './shaders'
 
-// Réglages de l'image (forme, E1). Partagés avec la matière des morts par `gradeUniforms`.
+// Réglages de l'image (forme, E1), partagés par `gradeUniforms` et `fogUniforms`.
 export const LOOK = {
   exposure: 2.8,
   saturation: 0.72,
@@ -92,7 +100,9 @@ export const gradeUniforms = {
 // Alpha de la scène (cible HDR) : il porte le masque des personnages vivants (E3) et, depuis E7, la garde du rouge
 // vif. Décor : 1 (étalonnage froid, pas de garde). Personnage : 0 (sa couleur, gardée hors du rouge vif) ou 0,25 (sa
 // couleur, sans garde : sang frais des 2 dernières secondes, sac au stade 3, les seuls à avoir droit au rouge vif).
-export const SCENE_TAG = { decor: 1, modele: 0, modeleRougeVif: 0.25 } as const
+// Mort (E8) : 1/16, étalonné comme un personnage (aucun saut à la mort), gardé, avec un grain immobile : un cadavre
+// ne bouge plus, même au grain près (B2.O5) ; et un télégraphe passe par-dessus lui (shaders.ts).
+export const SCENE_TAG = { decor: 1, modele: 0, modeleRougeVif: 0.25, mort: MORT_TAG } as const
 
 // Écart CIEDE2000 minimal au rouge vif d'un pixel gardé (E7). L'audit de la clause 10 lit « rouge vif » à 10 ou
 // moins ; la marge couvre la quantification à 8 bits de la sortie.
@@ -107,6 +117,22 @@ export const fogUniforms = {
   uFogFalloff: { value: LOOK.fogFalloff as number },
   uFogAmbient: { value: linear(PALETTE.brouillard.ambiant) },
   uFogScatter: { value: LOOK.fogScatter as number },
+}
+
+// Éclairage de l'image (B2, amendement A11), côté composition : jeu ; jugement (le brouillard garde sa luminance, sa
+// couleur passe au neutre, les teintes d'étalonnage aussi) ; sans lumière (brouillard coupé, étalonnage inchangé).
+export type ImageLight = 'jeu' | 'jugement' | 'sans'
+const FOG_AMBIENT = linear(PALETTE.brouillard.ambiant)
+const SHADOW_TINT = tintOf(PALETTE.etalonnage.ombres, 0.4)
+const HIGHLIGHT_TINT = tintOf(PALETTE.etalonnage.lumieres, 0.4)
+const NEUTRAL = new Vector3(1, 1, 1)
+export const setImageLight = (mode: ImageLight): void => {
+  fogUniforms.uFogDensity.value = mode === 'sans' ? 0 : LOOK.fogDensity
+  const y = 0.2126 * FOG_AMBIENT.x + 0.7152 * FOG_AMBIENT.y + 0.0722 * FOG_AMBIENT.z
+  if (mode === 'jugement') fogUniforms.uFogAmbient.value.set(y, y, y)
+  else fogUniforms.uFogAmbient.value.copy(FOG_AMBIENT)
+  gradeUniforms.uShadowTint.value.copy(mode === 'jugement' ? NEUTRAL : SHADOW_TINT)
+  gradeUniforms.uHighlightTint.value.copy(mode === 'jugement' ? NEUTRAL : HIGHLIGHT_TINT)
 }
 
 export interface FogLight {
@@ -129,7 +155,7 @@ uniform float uExposure;
 uniform vec2 uResolution;
 uniform float uGrain;
 uniform float uFrame;
-uniform float uTime;
+uniform float uTime; // horloge du brouillard (figée avec la lumière, renderer.ts)
 uniform vec4 uFogLightPos[ ${MAX_FOG_LIGHTS} ];
 uniform vec3 uFogLightColor[ ${MAX_FOG_LIGHTS} ];
 uniform int uFogLightCount;
@@ -145,6 +171,7 @@ void main() {
   // Masque des personnages vivants (alpha de la scène, SCENE_TAG) : 1 sur le décor, 0 ou 0,25 sur leurs pixels.
   float model = clamp( ( 1.0 - scene.a ) / 0.75, 0.0, 1.0 );
   bool guard = scene.a < 0.125;
+  bool dead = abs( scene.a - ${MORT_TAG.toFixed(4)} ) < 0.03;
   float depth = texture2D( tDepth, vUv ).x;
   vec4 ndc = vec4( vUv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0 );
   vec4 view = uProjInv * ndc;
@@ -165,8 +192,9 @@ void main() {
   c = e1Aces( c * uExposure );
   c = e1GradeMix( c, 0.0, model );
   c *= e1VignetteAt( vUv, uResolution );
-  // Grain: deterministic noise (pixel, frame), stronger in the midtones.
-  vec2 gp = gl_FragCoord.xy + vec2( mod( uFrame, 97.0 ) * 13.17, mod( uFrame, 89.0 ) * 7.31 );
+  // Grain: deterministic noise (pixel, frame), stronger in the midtones; frozen on a corpse (frame 0).
+  float frame = dead ? 0.0 : uFrame;
+  vec2 gp = gl_FragCoord.xy + vec2( mod( frame, 97.0 ) * 13.17, mod( frame, 89.0 ) * 7.31 );
   float n = fract( sin( dot( gp, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) - 0.5;
   float l = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) );
   c += n * uGrain * ( 0.35 + 0.65 * smoothstep( 0.0, 0.25, l ) * ( 1.0 - smoothstep( 0.5, 1.0, l ) ) );
@@ -280,6 +308,7 @@ export class PostPipeline {
     t: number,
     fogLights: readonly FogLight[],
     grain: boolean,
+    fogT: number = t, // horloge du brouillard qui dérive (lumière figée : celle de la première image)
   ): void {
     if (this.bloom) this.bloom.render(gl, null as unknown as WebGLRenderTarget, this.sceneTarget, 0, false)
     const u = this.composite.uniforms
@@ -287,7 +316,7 @@ export class PostPipeline {
     this.camWorld.copy(camera.matrixWorld)
     this.camPos.copy(camera.position)
     if (u.uFrame) u.uFrame.value = Math.floor(t)
-    if (u.uTime) u.uTime.value = t / 60
+    if (u.uTime) u.uTime.value = fogT / 60
     if (u.uGrain) u.uGrain.value = grain && this.quality.grain ? LOOK.grain : 0
     const n = Math.min(MAX_FOG_LIGHTS, fogLights.length)
     for (let i = 0; i < n; i++) {

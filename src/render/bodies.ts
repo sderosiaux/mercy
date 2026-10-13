@@ -1,8 +1,8 @@
 // Corps et signaux au sol (E1). Les vivants vont dans la scène éclairée, une matière par sorte (chair, tissu, cuir,
-// fer, os, bois) ; les signaux vont dans la couche des signaux, dessinée après le post-traitement et testée contre
-// la profondeur de la scène : liseré (coque inversée), marques dorées, éclats, morts (gris immobile, lumière fixe),
-// télégraphes, halo de prière au sol, sceau de Sentence. Les morts portent aussi une ombre (couche des caméras
-// d'ombre seulement).
+// fer, os, bois) ; les morts aussi (E8 : gris, immobiles, sous la lumière du lieu comme tout le reste), avec une
+// doublure qui porte leur ombre ; les signaux vont dans la couche des signaux, dessinée après le post-traitement et
+// testée contre la profondeur de la scène : liseré (coque inversée), marques dorées, éclats, télégraphes (par-dessus
+// les morts), halo de prière au sol, sceau de Sentence.
 import {
   BackSide,
   BoxGeometry,
@@ -33,7 +33,7 @@ import { RENDER } from './constants'
 import { instancedIdMaterial, ROLE, uniformIdMaterial } from './idpass'
 import { DEAD_PROXY_LAYER } from './lightrig'
 import { telegraphColor } from './look'
-import { deadMaterial, signalMaterial } from './materials'
+import { DEAD_RENDER_ORDER, deadMaterial, signalMaterial } from './materials'
 import { PALETTE } from './palette'
 import { type Body, MATTERS, type Matter, type Shape } from './rig'
 import { telegraphPulse, telegraphZones } from './telegraph'
@@ -59,12 +59,11 @@ export const unitGeometry = (s: Shape): BufferGeometry => {
 
 const SHAPES: readonly Shape[] = ['box', 'sphere', 'cylinder', 'cone', 'torus']
 
-// Scène éclairée et couche des signaux, dessinée en quatre passes dans cet ordre : sol (halo de prière, sceau),
-// morts, télégraphes (au-dessus des morts), signaux des corps (liseré, marques, éclats).
+// Scène éclairée (vivants et morts) et couche des signaux, dessinée en trois passes dans cet ordre : sol (halo de
+// prière, sceau), télégraphes (au-dessus des morts), signaux des corps (liseré, marques, éclats).
 export interface OverlayLayers {
   readonly scene: Object3D
   readonly ground: Object3D
-  readonly dead: Object3D
   readonly tel: Object3D
   readonly signals: Object3D
 }
@@ -168,13 +167,14 @@ export class BodyLayer {
       )
       this.batches.set(
         `dead:${s}`,
-        new Batch(layers.dead, {
+        new Batch(scene, {
           geometry,
           material: deadMat,
-          idMaterial: idSignal(),
+          idMaterial: idScene(),
           capacity: big ? 4096 : 512,
           cast: false,
-          receive: false,
+          receive: shadows,
+          renderOrder: DEAD_RENDER_ORDER,
         }),
       )
       this.batches.set(
@@ -191,9 +191,10 @@ export class BodyLayer {
       )
     }
     this.lane = new PlaneGeometry(1, 1).rotateX(-Math.PI / 2).translate(0.5, 0, 0)
-    // Télégraphes : par-dessus les morts (aucun test contre leur profondeur), sous les vivants (test contre la
-    // profondeur de la scène). Halo de prière et sceau : sous les morts (un effet de support ne teint jamais un mort).
-    // La passe d'identification fait de même (arbitrage E4) : un pixel de télégraphe sur un mort est au télégraphe.
+    // Télégraphes : par-dessus les morts (un mort de la scène ne les cache pas, e8TelegraphDepthTest), sous les vivants
+    // (test contre la profondeur de la scène). Halo de prière et sceau : sous les morts (un effet de support ne teint
+    // jamais un mort). La passe d'identification fait de même (arbitrage E4) : un pixel de télégraphe sur un mort est
+    // au télégraphe.
     const make =
       (opacity: number, order: number, overDead: boolean, stripes = false) =>
       (): Mesh => {
@@ -204,6 +205,7 @@ export class BodyLayer {
           depthWrite: false,
           depthTest: !overDead,
           stripes,
+          sceneDepth: overDead ? 'télégraphe' : 'signal',
         })
         mat.color.setHex(PALETTE.rougeBrun.telegraphe)
         const m = new Mesh(this.lane, mat)
@@ -211,7 +213,7 @@ export class BodyLayer {
         m.userData.idMaterial = uniformIdMaterial(0, ROLE.autre, {
           side: DoubleSide,
           depthWrite: false,
-          sceneDepth: 'signal',
+          sceneDepth: overDead ? 'télégraphe' : 'signal',
         })
         return m
       }
@@ -255,7 +257,7 @@ export class BodyLayer {
     return n
   }
 
-  // Un corps : vivant dans la scène, mort dans la couche des signaux (et son ombre), liseré dans la couche.
+  // Un corps : vivant ou mort dans la scène (un mort a sa doublure d'ombre), liseré dans la couche des signaux.
   push(body: Body, dead: boolean, sink: number): void {
     const { tmp, tmpS } = this
     for (const s of body.segments) {

@@ -59,7 +59,7 @@ export interface Decor {
   readonly flames: readonly Flame[]
   readonly groundMaterial: MeshStandardMaterial
   readonly materials: readonly Material[]
-  update(t: number): void
+  update(t: number, flameT?: number): void // flameT : horloge des flammes vues (lumière figée, renderer.ts)
   dispose(): void
 }
 
@@ -815,8 +815,8 @@ void main() {
     flames,
     groundMaterial: groundMat,
     materials,
-    update(t: number) {
-      if (flameUniforms.uTime) flameUniforms.uTime.value = t / TICK_HZ
+    update(t: number, flameT: number = t) {
+      if (flameUniforms.uTime) flameUniforms.uTime.value = flameT / TICK_HZ
       const s = t / TICK_HZ
       for (const b of banners) {
         b.mesh.rotation.x = 0.05 * Math.sin(s * 0.9 + b.seed) + 0.03 * Math.sin(s * 2.3 + b.seed * 2)

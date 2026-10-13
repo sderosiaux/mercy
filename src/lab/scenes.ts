@@ -16,6 +16,7 @@ import {
 import { poteau, testWave, withCreature } from '../sim/testing'
 import { standingDeathPolicy, standingDeathWorld, unionPolicy, unionWorld } from './agonie'
 import { LAB_FAMILIES, LAB_FAMILIES_QUIET } from './families'
+import { eloignementPolicy, lumiereDecals, lumiereWorld } from './lumiere'
 import { b2Script, immobile, negligent, type Policy } from './policies'
 import {
   armesPolicy,
@@ -530,6 +531,20 @@ export const SCENES: readonly LabScene[] = [
     title: 'Agonie (E7) : achever un Recousu à terre tue son Membre errant dans la même image (L5)',
     world: unionWorld,
     policy: unionPolicy,
+  },
+  {
+    id: 'rayon',
+    title: 'Lumière du Bourreau (E8) : morts, Abattus et sang autour de lui, un corps tous les 2 m',
+    world: lumiereWorld,
+    policy: () => immobile,
+    decals: lumiereDecals(),
+  },
+  {
+    id: 'eloignement',
+    title: 'Lumière du Bourreau (E8) : il s’éloigne d’un groupe de morts',
+    world: lumiereWorld,
+    policy: eloignementPolicy,
+    decals: lumiereDecals(),
   },
   {
     id: 'charge',

@@ -58,6 +58,10 @@ export const auditFrame = (r: Renderer, world: World, given?: { ivoire: Lab; or:
     .map((e) => ({ id: e.id, pixels: e.pixels, ivoirePx: e.ivoirePx, orPx: e.orPx }))
   let playerGris = 0
   let playerPx = 0
+  // E8 : les morts sont éclairés naturellement ; dans le noir, un mort, le cuir du Bourreau et le sol sont tous près du
+  // noir, et la référence de gris de l'image (médiane des morts) aussi. On compte à part les pixels gris éclairés
+  // (L* ≥ 20, limite « éclairé » de B2, amendements A3 et A9), les seuls où le gris peut se lire comme un mort.
+  let playerGrisEclaire = 0
   const playerLabs: Lab[] = []
   for (let i = 0; i < ids.data.length; i += 4) {
     const { id } = decodeId(ids.data[i] ?? 0, ids.data[i + 1] ?? 0, ids.data[i + 2] ?? 0)
@@ -65,7 +69,10 @@ export const auditFrame = (r: Renderer, world: World, given?: { ivoire: Lab; or:
     playerPx++
     const l = labAt(color, i)
     playerLabs.push(l)
-    if (refs.gris && deltaE00(l, refs.gris) <= 10) playerGris++
+    if (refs.gris && deltaE00(l, refs.gris) <= 10) {
+      playerGris++
+      if (l.L >= 20) playerGrisEclaire++
+    }
   }
   const player = frame.entities.find((e) => e.id === PLAYER_ID)
   // L'arme en main (E6) : pixels du joueur au rôle « autre ». Classes réservées : ivoire, or, gris des morts (références
@@ -101,6 +108,9 @@ export const auditFrame = (r: Renderer, world: World, given?: { ivoire: Lab; or:
     ivoirePx: near(refs.ivoire),
     orPx: near(refs.or),
     grisPx: near(refs.gris),
+    grisPxEclaires: refs.gris
+      ? weaponLabs.filter((l) => l.L >= 20 && deltaE00(l, refs.gris as Lab) <= 10).length
+      : 0,
     rougeVifPx: near(rougeVif),
     lab: weaponMedian,
     deGrisMedian: refs.gris && weaponMedian ? deltaE00(weaponMedian, refs.gris) : null,
@@ -176,6 +186,8 @@ export const auditFrame = (r: Renderer, world: World, given?: { ivoire: Lab; or:
       ivoirePx: player?.ivoirePx ?? 0,
       orPx: player?.orPx ?? 0,
       grisPx: playerGris,
+      grisPxEclaires: playerGrisEclaire,
+      grisRefL: refs.gris?.L ?? null,
       deGrisMedian: refs.gris && playerLabs.length ? deltaE00(medianLab(playerLabs) as Lab, refs.gris) : null,
     },
     weapon,

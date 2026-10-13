@@ -1,7 +1,7 @@
 // Les morts d'un personnage (E2) : pose figée à la mort, cuite une fois (version allégée, coordonnées monde) dans un
-// lot BatchedMesh de la couche des morts, plus une doublure de positions seules dans la scène pour les ombres
-// (caméras d'ombre seulement, comme au jalon 1). Un mort coûte un appel de dessin par personnage, pas par corps,
-// et aucun squelette animé (§24 : 250 morts).
+// lot BatchedMesh de la scène éclairée (E8 : la lumière du lieu, ombres reçues comprises), plus une doublure de
+// positions seules pour les ombres portées (caméras d'ombre seulement, comme les vivants). Un mort coûte un appel de
+// dessin par personnage, pas par corps, et aucun squelette animé (§24 : 250 morts).
 import {
   BatchedMesh,
   BufferAttribute,
@@ -14,6 +14,7 @@ import {
 } from 'three'
 import { encodeId } from '../idpass'
 import { DEAD_PROXY_LAYER } from '../lightrig'
+import { DEAD_RENDER_ORDER } from '../materials'
 
 export interface BakedCorpse {
   readonly positions: Float32Array
@@ -49,7 +50,6 @@ export class DeadBatch {
   private readonly tmpC = new Vector4()
 
   constructor(
-    private readonly overlay: Object3D,
     private readonly scene: Object3D,
     private readonly material: Material,
     private readonly idMaterial: Material,
@@ -84,8 +84,10 @@ export class DeadBatch {
       m.userData.noId = true
       this.scene.add(m)
     } else {
+      m.renderOrder = DEAD_RENDER_ORDER // après la brume de sang (materials.ts)
+      m.receiveShadow = this.shadows
       m.userData.idMaterial = this.idMaterial
-      this.overlay.add(m)
+      this.scene.add(m)
     }
     return m
   }
@@ -196,7 +198,7 @@ export class DeadBatch {
   }
 
   private disposeMeshes(): void {
-    this.overlay.remove(this.mesh)
+    this.scene.remove(this.mesh)
     this.scene.remove(this.proxy)
     this.mesh.dispose()
     this.proxy.dispose()

@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { type Creature, TUNING } from '../sim/index'
 import { mannequin, scene } from '../sim/testing'
-import { deltaE00, hexToLab, type Lab, srgbToLab } from './color-science'
+import { chroma, deltaE00, hexToLab, type Lab, srgbToLab } from './color-science'
 import {
   bodyClass,
   decalColor,
   greyMix,
   marksOf,
+  pallor,
   pulse,
   rimOf,
   sacCastsLight,
@@ -131,15 +132,30 @@ describe('couleur d’un corps selon son état', () => {
     expect(greyMix(c(2), 50)).toBe(0)
   })
 
-  it('ramène toute couleur vivante au gris cadavérique', () => {
-    expect(tone(PALETTE.chair.souriant, 1)).toBe(PALETTE.gris.cadaverique)
-    expect(tone(PALETTE.chair.souriantMasque, 1, 'clair')).toBe(PALETTE.gris.cadaveriqueClair)
+  it('ramène toute couleur vivante à sa pâleur de cadavre : gris, à luminance égale, sans éclaircissement (E8)', () => {
+    const living = [
+      PALETTE.chair.souriant,
+      PALETTE.chair.souriantMasque,
+      PALETTE.habit.haillon,
+      PALETTE.chair.chasuble,
+      PALETTE.matiere.fer,
+    ]
+    for (const hex of living) {
+      for (const gt of ['normal', 'clair', 'sombre'] as const) {
+        const dead = tone(hex, 1, gt)
+        expect(dead).toBe(pallor(hex, gt))
+        // Gris : C* au plus 3, la moitié du plafond d'un gris de B2.O1 (6), arrondi 8 bits compris.
+        expect(chroma(hexToLab(dead))).toBeLessThanOrEqual(3)
+        // Luminance de la couleur vivante, à l'arrondi 8 bits près : ni éclaircie, ni assombrie.
+        expect(Math.abs(hexToLab(dead).L - hexToLab(hex).L)).toBeLessThan(1)
+      }
+    }
     expect(tone(PALETTE.chair.souriant, 0)).toBe(PALETTE.chair.souriant)
   })
 
   it('dore les marques d’un Résistant vivant et les grise à sa mort (D13)', () => {
     expect(marksOf(c(3), 0)).toBe(PALETTE.or.base)
-    expect(marksOf(c(3), 1)).toBe(PALETTE.gris.cadaverique)
+    expect(marksOf(c(3), 1)).toBe(pallor(PALETTE.or.base))
     expect(marksOf(c(2), 0)).toBeNull()
   })
 })

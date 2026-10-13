@@ -1,10 +1,12 @@
-// Morceaux GLSL partagés par la passe de composition (scène), la matière des morts et la couche des signaux.
-// Une seule définition de la courbe de tons, de l'étalonnage, du vignettage et du brouillard : un mort (couche des
-// signaux) et le sol qui l'entoure (scène) passent par la même exposition et la même courbe, sans la teinte froide
-// ni le grain (B2.O1, O5).
+// Morceaux GLSL partagés par la passe de composition (scène), les matières et la couche des signaux : une seule
+// définition de la courbe de tons, de l'étalonnage, du vignettage, du brouillard et des tests de profondeur.
 
 export const MAX_FOG_LIGHTS = 12
-export const MAX_FIXED_LIGHTS = 48
+
+// Alpha de la scène sur les pixels d'un mort (E8 ; SCENE_TAG, post.ts). Les morts sont dans la scène éclairée ; cet
+// alpha dit à la composition de leur garder un grain immobile (B2.O5 : aucun mouvement sur un cadavre) et aux
+// télégraphes de passer par-dessus eux (§30.13). 1/16, exact en demi-flottant.
+export const MORT_TAG = 0.0625
 
 // Courbe ACES ajustée (Narkowicz/Hill, celle de three) : linéaire scène → linéaire affichage [0, 1].
 export const TONEMAP_GLSL = /* glsl */ `
@@ -108,9 +110,10 @@ vec3 e1Airlight( vec3 c, vec3 p, vec3 lp, vec3 I, float range ) {
 `
 
 // Test de profondeur manuel de la couche des signaux contre la profondeur de la scène (même caméra) : un fragment
-// de signal ne passe que s'il n'est pas derrière la surface de la scène à ce pixel. Trois variantes, partagées par
+// de signal ne passe que s'il n'est pas derrière la surface de la scène à ce pixel. Quatre variantes, partagées par
 // la passe couleur et la passe d'identification (B2 I1 : même test, même tolérance) :
-// - e1DepthTest : signaux du jalon 1, morts, télégraphes, sol (2 cm + 0,1 % de la distance) ;
+// - e1DepthTest : signaux du jalon 1, sol (halo de prière, sceau ; 2 cm + 0,1 % de la distance) ;
+// - e8TelegraphDepthTest : télégraphes, même tolérance, mais un mort de la scène ne les cache pas ;
 // - e2RimDepthTest : liseré des modèles (E2), sans tolérance : la coque n'apparaît que hors du corps. Avec la
 //   tolérance du jalon 1 (pensée pour des boîtes convexes), les faces arrière de la coque d'un vêtement mince ou d'un
 //   pli passeraient devant la surface du corps et dessineraient des lignes à l'intérieur de la silhouette ;
@@ -118,6 +121,7 @@ vec3 e1Airlight( vec3 c, vec3 p, vec3 lp, vec3 I, float range ) {
 //   sinon les marques d'un corps à terre transparaîtraient à travers une créature debout qui l'enjambe.
 export const DEPTH_TEST_GLSL = /* glsl */ `
 uniform sampler2D uSceneDepth;
+uniform sampler2D uSceneTag;
 uniform vec2 uViewport;
 uniform float uCamNear;
 uniform float uCamFar;
@@ -131,6 +135,15 @@ void e1DepthTest() {
   float fragDist = e1ViewDist( gl_FragCoord.z );
   if ( fragDist > sceneDist + 0.02 + 0.001 * sceneDist ) discard;
 }
+// Télégraphes (E8) : sous les vivants, mais par-dessus les morts, qui sont dans la scène depuis E8 (un pixel de la scène
+// marqué « mort » ne cache pas le télégraphe ; la tolérance est celle de e1DepthTest).
+void e8TelegraphDepthTest() {
+  vec2 uv = gl_FragCoord.xy / uViewport;
+  float sceneDist = e1ViewDist( texture2D( uSceneDepth, uv ).x );
+  float fragDist = e1ViewDist( gl_FragCoord.z );
+  bool deadBelow = abs( texture2D( uSceneTag, uv ).a - ${MORT_TAG.toFixed(4)} ) < 0.03;
+  if ( fragDist > sceneDist + 0.02 + 0.001 * sceneDist && ! deadBelow ) discard;
+}
 void e2RimDepthTest() {
   float sd = texture2D( uSceneDepth, gl_FragCoord.xy / uViewport ).x;
   if ( e1ViewDist( gl_FragCoord.z ) > e1ViewDist( sd ) ) discard;
@@ -142,10 +155,11 @@ void e2MarkDepthTest() {
 `
 
 // Test contre la profondeur de la scène d'un objet de la couche des signaux (aucun : objet de la scène).
-export type SceneDepth = 'aucun' | 'signal' | 'liseré' | 'marque'
+export type SceneDepth = 'aucun' | 'signal' | 'télégraphe' | 'liseré' | 'marque'
 export const SCENE_DEPTH_CALL: Readonly<Record<SceneDepth, string>> = {
   aucun: '',
   signal: 'e1DepthTest();',
+  télégraphe: 'e8TelegraphDepthTest();',
   liseré: 'e2RimDepthTest();',
   marque: 'e2MarkDepthTest();',
 }

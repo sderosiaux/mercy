@@ -1,7 +1,8 @@
 // B2 §12 I1 et arbitrage E4 : la passe d'identification montre ce que montre l'image. Chaque objet de la couche des
 // signaux y est dessiné avec le même test de profondeur que dans la passe couleur : état matériel (profondeur de la
 // couche, gabarit, faces) et test contre la profondeur de la scène (même fonction GLSL, même tolérance). Un télégraphe
-// dessiné par-dessus un mort à l'écran l'est aussi dans la passe d'identification.
+// dessiné par-dessus un mort à l'écran l'est aussi dans la passe d'identification. Depuis E8, les morts sont dans la
+// scène : ni leur matière couleur ni leur matière d'identification ne se testent contre la profondeur de la scène.
 import {
   Group,
   type Material,
@@ -48,7 +49,12 @@ const fragmentOf = (m: Material): string => {
 }
 
 // Test contre la profondeur de la scène : les appels présents dans le fragment (pas les définitions).
-const SCENE_DEPTH_CALLS = ['e1DepthTest();', 'e2RimDepthTest();', 'e2MarkDepthTest();'] as const
+const SCENE_DEPTH_CALLS = [
+  'e1DepthTest();',
+  'e8TelegraphDepthTest();',
+  'e2RimDepthTest();',
+  'e2MarkDepthTest();',
+] as const
 const sceneDepth = (m: Material): string[] => SCENE_DEPTH_CALLS.filter((c) => fragmentOf(m).includes(c))
 
 const depthState = (m: Material) => ({
@@ -133,11 +139,10 @@ const world = (): World => {
 }
 
 describe('passe d’identification : même profondeur que la passe couleur', () => {
-  it('couche des signaux du jalon 1 : sol, morts, télégraphes, liserés, marques', () => {
+  it('couche des signaux du jalon 1 : sol, télégraphes, liserés, marques ; morts dans la scène', () => {
     const groups = {
       scene: new Group(),
       ground: new Group(),
-      dead: new Group(),
       tel: new Group(),
       signals: new Group(),
     }
@@ -153,14 +158,23 @@ describe('passe d’identification : même profondeur que la passe couleur', () 
       layer.ground(c, c.pos, c.facing, t, w, 3)
     }
     layer.end()
-    const overlays = { ground: groups.ground, dead: groups.dead, tel: groups.tel, signals: groups.signals }
+    const overlays = { ground: groups.ground, tel: groups.tel, signals: groups.signals }
     for (const [name, g] of Object.entries(overlays)) {
       const ms = meshesOf(g)
       expect(ms.length, `${name} : couche vide, la scène de test ne l'exerce pas`).toBeGreaterThan(0)
       for (const o of ms) expectSameDepth(o, name)
     }
-    // Le télégraphe passe par-dessus les morts dans les deux passes.
-    for (const o of meshesOf(groups.tel)) expect(idMaterialFor(o)?.depthTest).toBe(false)
+    // Le télégraphe passe par-dessus les morts dans les deux passes : un mort de la scène ne le cache pas.
+    for (const o of meshesOf(groups.tel)) {
+      expect(idMaterialFor(o)?.depthTest).toBe(false)
+      expect(sceneDepth(o.material as Material)).toEqual(['e8TelegraphDepthTest();'])
+    }
+    // Les morts (scène) : rendus, sans test contre la profondeur de la scène, dans les deux passes.
+    const dead = meshesOf(groups.scene).filter((o) =>
+      (o.material as Material).customProgramCacheKey().startsWith('e8-mort'),
+    )
+    expect(dead.length, 'aucun mort dans la scène').toBeGreaterThan(0)
+    for (const o of dead) expectSameDepth(o, 'morts (scène)')
   })
 
   it('modèles de la Forge : masque de silhouette et liseré (gabarit), marques, morts', () => {

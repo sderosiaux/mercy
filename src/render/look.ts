@@ -58,9 +58,37 @@ const GREY: Record<GreyTone, number> = {
   sombre: PALETTE.gris.cadaveriqueSombre,
 }
 
-// Couleur d'une partie du corps : sa couleur vivante, ramenée au gris cadavérique selon greyMix.
+const toLinear = (c8: number): number => {
+  const c = c8 / 255
+  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+}
+const toSrgb8 = (l: number): number => {
+  const c = Math.min(1, Math.max(0, l))
+  return Math.round(255 * (c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055))
+}
+const channels = (hex: number): [number, number, number] => [
+  toLinear((hex >> 16) & 255),
+  toLinear((hex >> 8) & 255),
+  toLinear(hex & 255),
+]
+const luminanceOf = (hex: number): number => {
+  const [r, g, b] = channels(hex)
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+// Pâleur d'un cadavre (L4, E8) : la couleur vivante perd sa couleur vers le gris cadavérique de la palette, à
+// luminance égale : désaturée, ni éclaircie ni assombrie (« sans être éclaircie »). La teinte du gris vient de la
+// palette (normal, clair, sombre), la luminance de la couleur vivante.
+export const pallor = (living: number, greyTone: GreyTone = 'normal'): number => {
+  const g = GREY[greyTone]
+  const k = luminanceOf(living) / Math.max(1e-6, luminanceOf(g))
+  const [r, gg, b] = channels(g)
+  return (toSrgb8(r * k) << 16) | (toSrgb8(gg * k) << 8) | toSrgb8(b * k)
+}
+
+// Couleur d'une partie du corps : sa couleur vivante, ramenée à sa pâleur de cadavre selon greyMix.
 export const tone = (living: number, grey: number, greyTone: GreyTone = 'normal'): number =>
-  grey <= 0 ? living : mixHex(living, GREY[greyTone], grey)
+  grey <= 0 ? living : mixHex(living, pallor(living, greyTone), grey)
 
 // Marques dorées d'un Résistant : or tant qu'il vit, gris avec le reste du corps à la mort (D13).
 export const marksOf = (c: Creature, grey: number): number | null =>
